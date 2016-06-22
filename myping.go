@@ -13,5 +13,5 @@ func resIPAddr(t string, name string) (*net.IPAddr, error) {
 
 func main() {
 	p := icmp.NewPing()
-	p.AddIP(8.8.8.8)
+	p.AddIP("8.8.8.8")
 }

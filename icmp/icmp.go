@@ -24,6 +24,7 @@ type Ping struct {
 	isV4Avail bool
 	isV6Avail bool
 	network   string
+	source    string
 	MaxRTT    time.Duration
 	mu        sync.RWMutex
 }
@@ -36,6 +37,7 @@ func NewPing() *Ping {
 		isV4Avail: false,
 		isV6Avail: false,
 		network:   "ip",
+		source:    "",
 		MaxRTT:    time.Second,
 	}
 }
@@ -48,18 +50,19 @@ func isIPv6(ip net.IP) bool {
 	return len(ip) == net.IPv6len
 }
 
-func (p *Ping) AddIP(ip *net.IPAddr) {
+func (p *Ping) AddIP(ipAddr string) {
+	ip := net.ParseIP(ipAddr)
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.addrs[ip.String()] = ip
+	p.addrs[ip.String()] = &net.IPAddr{IP: ip}
 }
 
-func (p *Ping) DelIP(ip *net.IPAddr) {
+func (p *Ping) DelIP(ipAddr string) {
 
 }
 
 func (p *Ping) listen(network string) *icmp.PacketConn {
-	c, err := icmp.ListenPacket(network, "0.0.0.0")
+	c, err := icmp.ListenPacket(network, p.source)
 	if err != nil {
 		log.Fatalf("listen err, %s", err)
 	}
@@ -72,11 +75,11 @@ func (p *Ping) send(conn *icmp.PacketConn) {
 	var (
 		wg sync.WaitGroup
 	)
-	for _, addr := range p.addrs {
+	for _, dest := range p.addrs {
 		var icmpType icmp.Type
-		if isIPv4(addr.IP) {
+		if isIPv4(dest.IP) {
 			icmpType = ipv4.ICMPTypeEcho
-		} else if isIPv6(addr.IP) {
+		} else if isIPv6(dest.IP) {
 			icmpType = ipv6.ICMPTypeEchoRequest
 		} else {
 			continue
@@ -87,7 +90,7 @@ func (p *Ping) send(conn *icmp.PacketConn) {
 			Body: &icmp.Echo{
 				ID:   p.id,
 				Seq:  1,
-				Data: []byte("myping modern cli tool"),
+				Data: []byte("myping"),
 			},
 		}
 		bytes, err := m.Marshal(nil)
@@ -95,9 +98,9 @@ func (p *Ping) send(conn *icmp.PacketConn) {
 
 		}
 		wg.Add(1)
-		go func(conn *icmp.PacketConn, ra net.Addr, b []byte) {
+		go func(conn *icmp.PacketConn, dest net.Addr, b []byte) {
 
-		}(conn, addr, bytes)
+		}(conn, dest, bytes)
 
 	}
 }
