@@ -20,14 +20,14 @@ func Init(prompt string) *Readline {
 	return &r
 }
 
-func (r *Readline) Run() {
+func (r *Readline) Run(out chan<- string) {
 	func() {
 		for {
 			line, err := r.instance.Readline()
 			if err != nil { // io.EOF, readline.ErrInterrupt
 				break
 			}
-			println(line)
+			out <- line
 		}
 	}()
 }
