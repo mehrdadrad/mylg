@@ -25,6 +25,10 @@ func Init(prompt string) *Readline {
 	return &r
 }
 
+func (r *Readline) SetPrompt(p string) {
+	r.instance.SetPrompt(p + "> ")
+}
+
 func (r *Readline) Run(cmd chan<- string, next chan struct{}) {
 	func() {
 		for {
