@@ -109,10 +109,16 @@ func (p *Ping) listen(network string) *icmp.PacketConn {
 
 func (p *Ping) recv(conn *icmp.PacketConn, rcvdChan chan<- *packet) {
 	bytes := make([]byte, 1500)
-	conn.SetReadDeadline(time.Now().Add(time.Millisecond * 100))
+	conn.SetReadDeadline(time.Now().Add(time.Millisecond * 150))
 	n, dest, err := conn.ReadFrom(bytes)
 	if err != nil {
-
+		if neterr, ok := err.(*net.OpError); ok {
+			if neterr.Timeout() {
+				println("Request timeout")
+			} else {
+				println("Error:", err)
+			}
+		}
 	}
 	bytes = bytes[:n]
 	select {
