@@ -27,7 +27,7 @@ type Ping struct {
 	id        int
 	seq       int
 	pSize     int
-	addrs     map[string]*net.IPAddr
+	addr      *net.IPAddr
 	isV4Avail bool
 	isV6Avail bool
 	network   string
@@ -45,7 +45,6 @@ func NewPing() *Ping {
 		id:        rand.Intn(0xffff),
 		seq:       rand.Intn(0xffff),
 		pSize:     64,
-		addrs:     make(map[string]*net.IPAddr),
 		isV4Avail: false,
 		isV6Avail: false,
 		network:   "ip",
@@ -75,11 +74,11 @@ func (p *Ping) ParseHeader(m *packet) (*ipv4.Header, error) {
 	return h, err
 }
 
-func (p *Ping) AddIP(ipAddr string) {
+func (p *Ping) IP(ipAddr string) {
 	ip := net.ParseIP(ipAddr)
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.addrs[ip.String()] = &net.IPAddr{IP: ip}
+	p.addr = &net.IPAddr{IP: ip}
 	if isIPv4(ip) {
 		p.isV4Avail = true
 	} else {
@@ -137,45 +136,41 @@ func (p *Ping) send(conn *icmp.PacketConn) {
 	var (
 		wg sync.WaitGroup
 	)
-	for _, dest := range p.addrs {
-		var icmpType icmp.Type
-		if isIPv4(dest.IP) {
-			icmpType = ipv4.ICMPTypeEcho
-		} else if isIPv6(dest.IP) {
-			icmpType = ipv6.ICMPTypeEchoRequest
-		} else {
-			continue
-		}
+	var icmpType icmp.Type
+	if isIPv4(p.addr.IP) {
+		icmpType = ipv4.ICMPTypeEcho
+	} else if isIPv6(p.addr.IP) {
+		icmpType = ipv6.ICMPTypeEchoRequest
+	}
 
-		bytes, err := (&icmp.Message{
-			Type: icmpType, Code: 0,
-			Body: &icmp.Echo{
-				ID:   p.id,
-				Seq:  p.seq,
-				Data: p.payload(),
-			},
-		}).Marshal(nil)
-		if err != nil {
-			log.Println(err)
-		}
+	bytes, err := (&icmp.Message{
+		Type: icmpType, Code: 0,
+		Body: &icmp.Echo{
+			ID:   p.id,
+			Seq:  p.seq,
+			Data: p.payload(),
+		},
+	}).Marshal(nil)
+	if err != nil {
+		log.Println(err)
+	}
 
-		wg.Add(1)
-		go func(conn *icmp.PacketConn, dest net.Addr, b []byte) {
-			defer wg.Done()
-			for {
-				if _, err := conn.WriteTo(bytes, dest); err != nil {
-					log.Println(err)
-					if neterr, ok := err.(*net.OpError); ok {
-						if neterr.Err == syscall.ENOBUFS {
-							continue
-						}
+	wg.Add(1)
+	go func(conn *icmp.PacketConn, dest net.Addr, b []byte) {
+		defer wg.Done()
+		for {
+			if _, err := conn.WriteTo(bytes, dest); err != nil {
+				log.Println(err)
+				if neterr, ok := err.(*net.OpError); ok {
+					if neterr.Err == syscall.ENOBUFS {
+						continue
 					}
 				}
-				break
 			}
-		}(conn, dest, bytes)
+			break
+		}
+	}(conn, p.addr, bytes)
 
-	}
 	wg.Wait()
 }
 
