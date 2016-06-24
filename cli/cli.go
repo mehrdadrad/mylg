@@ -13,21 +13,27 @@ func Init(prompt string) *Readline {
 		r   Readline
 		err error
 	)
-	r.instance, err = readline.New(prompt + "> ")
+	r.instance, err = readline.NewEx(&readline.Config{
+		Prompt:          prompt + "> ",
+		HistoryFile:     "/tmp/myping",
+		InterruptPrompt: "^C",
+		EOFPrompt:       "exit",
+	})
 	if err != nil {
 		panic(err)
 	}
 	return &r
 }
 
-func (r *Readline) Run(out chan<- string) {
+func (r *Readline) Run(cmd chan<- string, next chan struct{}) {
 	func() {
 		for {
 			line, err := r.instance.Readline()
 			if err != nil { // io.EOF, readline.ErrInterrupt
 				break
 			}
-			out <- line
+			cmd <- line
+			<-next
 		}
 	}()
 }
