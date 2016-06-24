@@ -1,6 +1,7 @@
 package icmp
 
 import (
+	"fmt"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
@@ -25,7 +26,7 @@ type Ping struct {
 	m         icmp.Message
 	id        int
 	seq       int
-	pSize     uint
+	pSize     int
 	addrs     map[string]*net.IPAddr
 	isV4Avail bool
 	isV6Avail bool
@@ -35,6 +36,10 @@ type Ping struct {
 	mu        sync.RWMutex
 }
 
+func resolveHost(t string, name string) (*net.IPAddr, error) {
+	ip, err := net.ResolveIPAddr(t, name)
+	return ip, err
+}
 func NewPing() *Ping {
 	return &Ping{
 		id:        rand.Intn(0xffff),
@@ -80,7 +85,6 @@ func (p *Ping) AddIP(ipAddr string) {
 	} else {
 		p.isV6Avail = true
 	}
-
 }
 
 func (p *Ping) DelIP(ipAddr string) {
@@ -94,7 +98,7 @@ func (p *Ping) Network() {
 func (p *Ping) SetTTL() {
 
 }
-func (p *Ping) PacketSize(s uint) {
+func (p *Ping) PacketSize(s int) {
 	p.pSize = s
 }
 
@@ -119,6 +123,16 @@ func (p *Ping) recv(conn *icmp.PacketConn, rcvdChan chan<- *packet) {
 	}
 }
 
+func (p *Ping) payload() []byte {
+	timeBytes := make([]byte, 8)
+	ts := time.Now().UnixNano()
+	for i := uint8(0); i < 8; i++ {
+		timeBytes[i] = byte((ts >> (i * 8)) & 0xff)
+	}
+	payload := make([]byte, p.pSize-16)
+	payload = append(payload, timeBytes...)
+	return payload
+}
 func (p *Ping) send(conn *icmp.PacketConn) {
 	var (
 		wg sync.WaitGroup
@@ -138,7 +152,7 @@ func (p *Ping) send(conn *icmp.PacketConn) {
 			Body: &icmp.Echo{
 				ID:   p.id,
 				Seq:  p.seq,
-				Data: make([]byte, p.pSize-8),
+				Data: p.payload(),
 			},
 		}).Marshal(nil)
 		if err != nil {
@@ -165,11 +179,7 @@ func (p *Ping) send(conn *icmp.PacketConn) {
 	wg.Wait()
 }
 
-func (p *Ping) Ping() {
-	p.run()
-}
-
-func (p *Ping) run() {
+func (p *Ping) Ping(out chan string) {
 	var (
 		conn     *icmp.PacketConn
 		rcvdChan chan *packet = make(chan *packet, 1)
@@ -192,11 +202,9 @@ func (p *Ping) run() {
 	p.send(conn)
 	p.recv(conn, rcvdChan)
 	m := <-rcvdChan
-	h, _ := p.ParseHeader(m)
-	log.Printf("%#v\n\n%#v", h, m)
 	rm, err := icmp.ParseMessage(1, m.bytes)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	switch rm.Body.(type) {
 	case *icmp.TimeExceeded:
@@ -206,11 +214,19 @@ func (p *Ping) run() {
 	case *icmp.DstUnreach:
 		log.Println("unreachable")
 	case *icmp.Echo:
-		log.Println("echo")
+		out <- fmt.Sprintf("%f ms", float64(time.Now().UnixNano()-getTimeStamp(m.bytes))/1000000)
 	default:
 		log.Println("error")
 	}
 
+}
+
+func getTimeStamp(m []byte) int64 {
+	var ts int64
+	for i := uint(0); i < 8; i++ {
+		ts += int64(m[uint(len(m))-8+i]) << (i * 8)
+	}
+	return ts
 }
 
 func (p *Ping) Start() {
