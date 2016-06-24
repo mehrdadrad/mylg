@@ -61,17 +61,15 @@ func isIPv6(ip net.IP) bool {
 	return len(ip) == net.IPv6len
 }
 
-func (p *Ping) ParseHeader(m *packet) (*ipv4.Header, error) {
+func (p *Ping) parseMessage(m *packet) (*ipv4.Header, *icmp.Message, error) {
 	var proto int = ProtocolIPv4ICMP
 	if p.isV6Avail {
 		proto = ProtocolIPv6ICMP
 	}
-
-	rm, _ := icmp.ParseMessage(proto, m.bytes)
-	bytes, _ := rm.Body.Marshal(proto)
+	msg, _ := icmp.ParseMessage(proto, m.bytes)
+	bytes, _ := msg.Body.Marshal(proto)
 	h, err := icmp.ParseIPv4Header(bytes)
-
-	return h, err
+	return h, msg, err
 }
 
 func (p *Ping) IP(ipAddr string) {
@@ -196,12 +194,14 @@ func (p *Ping) Ping(out chan string) {
 
 	p.send(conn)
 	p.recv(conn, rcvdChan)
-	m := <-rcvdChan
-	rm, err := icmp.ParseMessage(1, m.bytes)
+	rm := <-rcvdChan
+
+	h, m, err := p.parseMessage(rm)
 	if err != nil {
 		log.Println(err)
 	}
-	switch rm.Body.(type) {
+
+	switch m.Body.(type) {
 	case *icmp.TimeExceeded:
 		log.Println("time exceeded")
 	case *icmp.PacketTooBig:
@@ -209,7 +209,8 @@ func (p *Ping) Ping(out chan string) {
 	case *icmp.DstUnreach:
 		log.Println("unreachable")
 	case *icmp.Echo:
-		out <- fmt.Sprintf("%f ms", float64(time.Now().UnixNano()-getTimeStamp(m.bytes))/1000000)
+		rtt := float64(time.Now().UnixNano()-getTimeStamp(rm.bytes)) / 1000000
+		out <- fmt.Sprintf("64 bytes from %s to %s time=%f ms", h.Src.String(), h.Dst.String(), rtt)
 	default:
 		log.Println("error")
 	}
