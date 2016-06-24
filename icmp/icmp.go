@@ -66,7 +66,10 @@ func (p *Ping) parseMessage(m *packet) (*ipv4.Header, *icmp.Message, error) {
 	if p.isV6Avail {
 		proto = ProtocolIPv6ICMP
 	}
-	msg, _ := icmp.ParseMessage(proto, m.bytes)
+	msg, err := icmp.ParseMessage(proto, m.bytes)
+	if err != nil {
+		return nil, nil, err
+	}
 	bytes, _ := msg.Body.Marshal(msg.Type.Protocol())
 	h, err := icmp.ParseIPv4Header(bytes)
 	return h, msg, err
@@ -157,7 +160,7 @@ func (p *Ping) send(conn *icmp.PacketConn) {
 		},
 	}).Marshal(nil)
 	if err != nil {
-		log.Println(err)
+		println(err)
 	}
 
 	wg.Add(1)
@@ -165,7 +168,7 @@ func (p *Ping) send(conn *icmp.PacketConn) {
 		defer wg.Done()
 		for {
 			if _, err := conn.WriteTo(bytes, dest); err != nil {
-				log.Println(err)
+				println(err)
 				if neterr, ok := err.(*net.OpError); ok {
 					if neterr.Err == syscall.ENOBUFS {
 						continue
@@ -205,7 +208,8 @@ func (p *Ping) Ping(out chan string) {
 
 	_, m, err := p.parseMessage(rm)
 	if err != nil {
-		log.Println(err)
+		out <- fmt.Sprintf("%s", err)
+		return
 	}
 
 	switch m.Body.(type) {
