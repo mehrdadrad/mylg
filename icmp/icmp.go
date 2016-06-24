@@ -43,7 +43,7 @@ func resolveHost(t string, name string) (*net.IPAddr, error) {
 func NewPing() *Ping {
 	return &Ping{
 		id:        rand.Intn(0xffff),
-		seq:       rand.Intn(0xffff),
+		seq:       -1,
 		pSize:     64,
 		isV4Avail: false,
 		isV6Avail: false,
@@ -67,7 +67,7 @@ func (p *Ping) parseMessage(m *packet) (*ipv4.Header, *icmp.Message, error) {
 		proto = ProtocolIPv6ICMP
 	}
 	msg, _ := icmp.ParseMessage(proto, m.bytes)
-	bytes, _ := msg.Body.Marshal(proto)
+	bytes, _ := msg.Body.Marshal(msg.Type.Protocol())
 	h, err := icmp.ParseIPv4Header(bytes)
 	return h, msg, err
 }
@@ -108,7 +108,7 @@ func (p *Ping) listen(network string) *icmp.PacketConn {
 }
 
 func (p *Ping) recv(conn *icmp.PacketConn, rcvdChan chan<- *packet) {
-	bytes := make([]byte, 512)
+	bytes := make([]byte, 1500)
 	conn.SetReadDeadline(time.Now().Add(time.Millisecond * 100))
 	n, dest, err := conn.ReadFrom(bytes)
 	if err != nil {
@@ -141,6 +141,7 @@ func (p *Ping) send(conn *icmp.PacketConn) {
 		icmpType = ipv6.ICMPTypeEchoRequest
 	}
 
+	p.seq++
 	bytes, err := (&icmp.Message{
 		Type: icmpType, Code: 0,
 		Body: &icmp.Echo{
@@ -196,7 +197,7 @@ func (p *Ping) Ping(out chan string) {
 	p.recv(conn, rcvdChan)
 	rm := <-rcvdChan
 
-	h, m, err := p.parseMessage(rm)
+	_, m, err := p.parseMessage(rm)
 	if err != nil {
 		log.Println(err)
 	}
@@ -210,7 +211,7 @@ func (p *Ping) Ping(out chan string) {
 		log.Println("unreachable")
 	case *icmp.Echo:
 		rtt := float64(time.Now().UnixNano()-getTimeStamp(rm.bytes)) / 1000000
-		out <- fmt.Sprintf("64 bytes from %s to %s time=%f ms", h.Src.String(), h.Dst.String(), rtt)
+		out <- fmt.Sprintf("%d bytes from %s time=%f ms", len(rm.bytes), rm.addr, rtt)
 	default:
 		log.Println("error")
 	}
