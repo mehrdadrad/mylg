@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/mehrdadrad/myping/cli"
 	"github.com/mehrdadrad/myping/icmp"
+	"net"
 	"regexp"
 	"strings"
 )
@@ -39,7 +40,13 @@ func main() {
 			switch {
 			case subReq[1] == "ping" && cProvider == "local":
 				p := icmp.NewPing()
-				p.IP(subReq[2])
+				ra, err := net.ResolveIPAddr("ip", subReq[2])
+				if err != nil {
+					println(err)
+					nxt <- struct{}{}
+					continue
+				}
+				p.IP(ra.String())
 				for n := 0; n < 4; n++ {
 					p.Ping(rep)
 					println(<-rep)
