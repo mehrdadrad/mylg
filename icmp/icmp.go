@@ -36,10 +36,6 @@ type Ping struct {
 	mu        sync.RWMutex
 }
 
-func resolveHost(t string, name string) (*net.IPAddr, error) {
-	ip, err := net.ResolveIPAddr(t, name)
-	return ip, err
-}
 func NewPing() *Ping {
 	return &Ping{
 		id:        rand.Intn(0xffff),
