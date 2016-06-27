@@ -1,6 +1,7 @@
 package icmp
 
 import (
+	"errors"
 	"fmt"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
@@ -21,6 +22,7 @@ const (
 type packet struct {
 	bytes []byte
 	addr  net.Addr
+	err   error
 }
 type Ping struct {
 	m         icmp.Message
@@ -107,21 +109,21 @@ func (p *Ping) listen(network string) *icmp.PacketConn {
 }
 
 func (p *Ping) recv(conn *icmp.PacketConn, rcvdChan chan<- *packet) {
+	var err error
 	bytes := make([]byte, 1500)
-	conn.SetReadDeadline(time.Now().Add(time.Millisecond * 150))
+	conn.SetReadDeadline(time.Now().Add(time.Millisecond * 500))
 	n, dest, err := conn.ReadFrom(bytes)
 	if err != nil {
 		if neterr, ok := err.(*net.OpError); ok {
 			if neterr.Timeout() {
-				println("Request timeout")
-			} else {
-				println("Error:", err)
+				err = errors.New("Request timeout")
 			}
 		}
 	}
+
 	bytes = bytes[:n]
 	select {
-	case rcvdChan <- &packet{bytes: bytes, addr: dest}:
+	case rcvdChan <- &packet{bytes: bytes, addr: dest, err: err}:
 	}
 }
 
@@ -202,6 +204,10 @@ func (p *Ping) Ping(out chan string) {
 	p.recv(conn, rcvdChan)
 	rm := <-rcvdChan
 
+	if rm.err != nil {
+		out <- fmt.Sprintf("%s", rm.err)
+		return
+	}
 	_, m, err := p.parseMessage(rm)
 	if err != nil {
 		out <- fmt.Sprintf("%s", err)
