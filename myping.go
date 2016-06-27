@@ -42,7 +42,7 @@ func main() {
 				p := icmp.NewPing()
 				ra, err := net.ResolveIPAddr("ip", subReq[2])
 				if err != nil {
-					println(err)
+					println("cannot resolve", subReq[2], ": Unknown host")
 					nxt <- struct{}{}
 					continue
 				}
