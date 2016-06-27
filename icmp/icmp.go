@@ -217,7 +217,7 @@ func (p *Ping) Ping(out chan string) {
 		log.Println("unreachable")
 	case *icmp.Echo:
 		rtt := float64(time.Now().UnixNano()-getTimeStamp(rm.bytes)) / 1000000
-		out <- fmt.Sprintf("%d bytes from %s time=%f ms", len(rm.bytes), rm.addr, rtt)
+		out <- fmt.Sprintf("%d bytes from %s icmp_seq=%d time=%f ms", len(rm.bytes), rm.addr, p.seq, rtt)
 	default:
 		log.Println("error")
 	}
