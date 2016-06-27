@@ -15,7 +15,7 @@ func validateProvider(p string) (string, error) {
 func main() {
 	var (
 		err       error
-		cProvider string
+		cProvider string = "local"
 	)
 
 	rep := make(chan string, 1)
@@ -36,14 +36,16 @@ func main() {
 				nxt <- struct{}{}
 				continue
 			}
-			switch subReq[1] {
-			case "ping":
+			switch {
+			case subReq[1] == "ping" && cProvider == "local":
 				p := icmp.NewPing()
 				p.IP(subReq[2])
-				p.Ping(rep)
-				println(<-rep)
+				for n := 0; n < 4; n++ {
+					p.Ping(rep)
+					println(<-rep)
+				}
 				nxt <- struct{}{}
-			case "connect":
+			case subReq[1] == "connect":
 				var provider string
 				if provider, err = validateProvider(subReq[2]); err != nil {
 					println("provider not available")
