@@ -10,7 +10,7 @@ import (
 )
 
 type Provider interface {
-	//Init()
+	Init(host, version, node string)
 	GetNodes() map[string]string
 	Ping() (string, error)
 }
@@ -24,8 +24,8 @@ func validateProvider(p string) (string, error) {
 
 func main() {
 	var (
-		err       error
-		cProvider string = "local"
+		err    error
+		cPName string = "local"
 	)
 
 	rep := make(chan string, 1)
@@ -47,7 +47,7 @@ func main() {
 				continue
 			}
 			switch {
-			case subReq[1] == "ping" && cProvider == "local":
+			case subReq[1] == "ping" && cPName == "local":
 				p := icmp.NewPing()
 				ra, err := net.ResolveIPAddr("ip", subReq[2])
 				if err != nil {
@@ -61,20 +61,20 @@ func main() {
 					println(<-rep)
 				}
 				nxt <- struct{}{}
-			case subReq[1] == "ping" && cProvider == "telia":
-				p := telia.Init(subReq[2], "ipv4", "Los Angeles")
-				m, _ := p.Ping()
+			case subReq[1] == "ping" && cPName == "telia":
+				providers[cPName].Init(subReq[2], "ipv4", "Los Angeles")
+				m, _ := providers[cPName].Ping()
 				println(m)
 				nxt <- struct{}{}
 			case subReq[1] == "connect":
-				var provider string
-				if provider, err = validateProvider(subReq[2]); err != nil {
+				var pName string
+				if pName, err = validateProvider(subReq[2]); err != nil {
 					println("provider not available")
 					nxt <- struct{}{}
 					continue
 				}
-				cProvider = provider
-				c.SetPrompt(cProvider)
+				cPName = pName
+				c.SetPrompt(cPName)
 				nxt <- struct{}{}
 			}
 		}
