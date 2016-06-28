@@ -9,6 +9,14 @@ import (
 	"strings"
 )
 
+type Provider interface {
+	//Init()
+	GetNodes() map[string]string
+	Ping() (string, error)
+}
+
+var providers = map[string]Provider{"telia": new(telia.Provider)}
+
 func validateProvider(p string) (string, error) {
 	p = strings.ToLower(p)
 	return p, nil
@@ -55,7 +63,8 @@ func main() {
 				nxt <- struct{}{}
 			case subReq[1] == "ping" && cProvider == "telia":
 				p := telia.Init(subReq[2], "ipv4", "Los Angeles")
-				println(p.Ping())
+				m, _ := p.Ping()
+				println(m)
 				nxt <- struct{}{}
 			case subReq[1] == "connect":
 				var provider string
