@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/mehrdadrad/myping/cli"
 	"github.com/mehrdadrad/myping/icmp"
+	"github.com/mehrdadrad/myping/icmp/telia"
 	"net"
 	"regexp"
 	"strings"
@@ -51,6 +52,10 @@ func main() {
 					p.Ping(rep)
 					println(<-rep)
 				}
+				nxt <- struct{}{}
+			case subReq[1] == "ping" && cProvider == "telia":
+				p := telia.Init(subReq[2], "ipv4", "Los Angeles")
+				println(p.Ping())
 				nxt <- struct{}{}
 			case subReq[1] == "connect":
 				var provider string
