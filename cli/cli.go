@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"github.com/mehrdadrad/myping/banner"
 	"gopkg.in/readline.v1"
 )
 
@@ -22,6 +23,7 @@ func Init(prompt string) *Readline {
 	if err != nil {
 		panic(err)
 	}
+	banner.Println()
 	return &r
 }
 
