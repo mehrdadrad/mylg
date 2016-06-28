@@ -10,9 +10,10 @@ import (
 )
 
 type Provider interface {
-	Init(host, version string)
+	Set(host, version string)
 	GetDefaultNode() string
 	GetNodes() map[string]string
+	ChangeNode(node string)
 	Ping() (string, error)
 }
 
@@ -36,7 +37,7 @@ func main() {
 	c := cli.Init("local")
 	go c.Run(cmd, nxt)
 
-	r, _ := regexp.Compile("(ping|connect) (.*)")
+	r, _ := regexp.Compile("(ping|connect|node) (.*)")
 
 	for {
 		select {
@@ -63,9 +64,13 @@ func main() {
 				}
 				nxt <- struct{}{}
 			case subReq[1] == "ping":
-				providers[cPName].Init(subReq[2], "ipv4")
+				providers[cPName].Set(subReq[2], "ipv4")
 				m, _ := providers[cPName].Ping()
 				println(m)
+				nxt <- struct{}{}
+			case subReq[1] == "node":
+				providers[cPName].ChangeNode(subReq[2])
+				c.SetPrompt(cPName + "/" + subReq[2])
 				nxt <- struct{}{}
 			case subReq[1] == "connect":
 				var pName string
