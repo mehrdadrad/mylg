@@ -1,31 +1,42 @@
 package telia
 
 import (
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"regexp"
 )
 
-type Telia struct {
+type Provider struct {
 	Host string
 	IPv  string
 	Node string
 }
 
-func Init(host, version, node string) *Telia {
-	return &Telia{host, version, node}
+var nodes = map[string]string{"Amsterdam": "Amsterdam", "Los Angeles": "Los Angeles"}
+
+func Init(host, version, node string) *Provider {
+	return &Provider{host, version, node}
 }
 
-func (t *Telia) Ping() string {
+func GetNodes() map[string]string {
+	return nodes
+}
+
+func (p *Provider) Ping() (string, error) {
 	resp, err := http.PostForm("http://looking-glass.telia.net/",
-		url.Values{"query": {"ping"}, "protocol": {t.IPv}, "addr": {t.Host}, "router": {t.Node}})
+		url.Values{"query": {"ping"}, "protocol": {p.IPv}, "addr": {p.Host}, "router": {p.Node}})
 	if err != nil {
 		println(err)
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	r, _ := regexp.Compile(`<CODE>(?s)(.*?)</CODE>`)
-	p := r.FindStringSubmatch(string(body))
-	return p[1]
+	b := r.FindStringSubmatch(string(body))
+	if len(b) > 0 {
+		return b[1], nil
+	} else {
+		return "", errors.New("error")
+	}
 }
