@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"github.com/mehrdadrad/myping/cli"
 	"github.com/mehrdadrad/myping/icmp"
 	"github.com/mehrdadrad/myping/icmp/telia"
@@ -20,8 +21,13 @@ type Provider interface {
 var providers = map[string]Provider{"telia": new(telia.Provider)}
 
 func validateProvider(p string) (string, error) {
+	match, _ := regexp.MatchString("(telia|level3)", p)
 	p = strings.ToLower(p)
-	return p, nil
+	if match {
+		return p, nil
+	} else {
+		return "", errors.New("provider not support")
+	}
 }
 
 func main() {
@@ -37,7 +43,7 @@ func main() {
 	c := cli.Init("local")
 	go c.Run(cmd, nxt)
 
-	r, _ := regexp.Compile("(ping|connect|node) (.*)")
+	r, _ := regexp.Compile(`(ping|connect|node|local) (.*)`)
 
 	for {
 		select {
@@ -71,6 +77,10 @@ func main() {
 			case subReq[1] == "node":
 				providers[cPName].ChangeNode(subReq[2])
 				c.SetPrompt(cPName + "/" + subReq[2])
+				nxt <- struct{}{}
+			case subReq[1] == "local":
+				cPName = "local"
+				c.SetPrompt(cPName)
 				nxt <- struct{}{}
 			case subReq[1] == "connect":
 				var pName string
