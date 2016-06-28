@@ -62,7 +62,7 @@ func main() {
 					println(<-rep)
 				}
 				nxt <- struct{}{}
-			case subReq[1] == "ping" && cPName == "telia":
+			case subReq[1] == "ping":
 				providers[cPName].Init(subReq[2], "ipv4")
 				m, _ := providers[cPName].Ping()
 				println(m)
