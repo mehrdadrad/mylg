@@ -14,14 +14,19 @@ type Provider struct {
 	Node string
 }
 
-var nodes = map[string]string{"Amsterdam": "Amsterdam", "Los Angeles": "Los Angeles"}
+var (
+	nodes        = map[string]string{"Amsterdam": "Amsterdam", "Los Angeles": "Los Angeles"}
+	dNode string = "Los Angeles"
+)
 
-func (p *Provider) Init(host, version, node string) {
+func (p *Provider) Init(host, version string) {
 	p.Host = host
 	p.IPv = version
-	p.Node = node
+	p.Node = dNode
 }
-
+func (p *Provider) GetDefaultNode() string {
+	return dNode
+}
 func (p *Provider) GetNodes() map[string]string {
 	return nodes
 }

@@ -10,7 +10,8 @@ import (
 )
 
 type Provider interface {
-	Init(host, version, node string)
+	Init(host, version string)
+	GetDefaultNode() string
 	GetNodes() map[string]string
 	Ping() (string, error)
 }
@@ -62,7 +63,7 @@ func main() {
 				}
 				nxt <- struct{}{}
 			case subReq[1] == "ping" && cPName == "telia":
-				providers[cPName].Init(subReq[2], "ipv4", "Los Angeles")
+				providers[cPName].Init(subReq[2], "ipv4")
 				m, _ := providers[cPName].Ping()
 				println(m)
 				nxt <- struct{}{}
@@ -74,7 +75,7 @@ func main() {
 					continue
 				}
 				cPName = pName
-				c.SetPrompt(cPName)
+				c.SetPrompt(cPName + "/" + providers[cPName].GetDefaultNode())
 				nxt <- struct{}{}
 			}
 		}
