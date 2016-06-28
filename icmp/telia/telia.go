@@ -19,10 +19,12 @@ var (
 	dNode string = "Los Angeles"
 )
 
-func (p *Provider) Init(host, version string) {
+func (p *Provider) Set(host, version string) {
 	p.Host = host
 	p.IPv = version
-	p.Node = dNode
+	if p.Node == "" {
+		p.Node = dNode
+	}
 }
 func (p *Provider) GetDefaultNode() string {
 	return dNode
@@ -30,7 +32,9 @@ func (p *Provider) GetDefaultNode() string {
 func (p *Provider) GetNodes() map[string]string {
 	return nodes
 }
-
+func (p *Provider) ChangeNode(node string) {
+	p.Node = node
+}
 func (p *Provider) Ping() (string, error) {
 	resp, err := http.PostForm("http://looking-glass.telia.net/",
 		url.Values{"query": {"ping"}, "protocol": {p.IPv}, "addr": {p.Host}, "router": {p.Node}})
