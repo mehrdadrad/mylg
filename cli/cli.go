@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"github.com/mehrdadrad/myping/banner"
+	"github.com/mehrdadrad/mylg/banner"
 	"gopkg.in/readline.v1"
 )
 
