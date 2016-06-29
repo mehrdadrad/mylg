@@ -2,12 +2,14 @@ package main
 
 import (
 	"errors"
+	"github.com/briandowns/spinner"
 	"github.com/mehrdadrad/mylg/cli"
 	"github.com/mehrdadrad/mylg/icmp"
 	"github.com/mehrdadrad/mylg/lg"
 	"net"
 	"regexp"
 	"strings"
+	"time"
 )
 
 type Provider interface {
@@ -44,6 +46,7 @@ func main() {
 	go c.Run(cmd, nxt)
 
 	r, _ := regexp.Compile(`(ping|connect|node|local) (.*)`)
+	s := spinner.New(spinner.CharSets[0], 220*time.Millisecond)
 
 	for {
 		select {
@@ -70,8 +73,11 @@ func main() {
 				}
 				nxt <- struct{}{}
 			case subReq[1] == "ping":
+				s.Prefix = "please wait "
+				s.Start()
 				providers[cPName].Set(subReq[2], "ipv4")
 				m, _ := providers[cPName].Ping()
+				s.Stop()
 				println(m)
 				nxt <- struct{}{}
 			case subReq[1] == "node":
