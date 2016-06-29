@@ -15,7 +15,6 @@ type Telia struct {
 }
 
 var (
-	teliaNodes              = map[string]string{"Amsterdam": "Amsterdam", "Los Angeles": "Los Angeles"}
 	teliaDefaultNode string = "Los Angeles"
 )
 
@@ -30,7 +29,7 @@ func (p *Telia) GetDefaultNode() string {
 	return teliaDefaultNode
 }
 func (p *Telia) GetNodes() map[string]string {
-	return teliaNodes
+	return p.FetchNodes()
 }
 func (p *Telia) ChangeNode(node string) {
 	p.Node = node
@@ -50,4 +49,19 @@ func (p *Telia) Ping() (string, error) {
 	} else {
 		return "", errors.New("error")
 	}
+}
+func (p *Telia) FetchNodes() map[string]string {
+	var nodes = make(map[string]string, 100)
+	resp, err := http.Get("http://looking-glass.telia.net/")
+	if err != nil {
+		println(err)
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	r, _ := regexp.Compile(`<OPTION VALUE="(?s)([\w|\s|)(._-]+)"> (?s)([\w|\s|)(._-]+)`)
+	b := r.FindAllStringSubmatch(string(body), -1)
+	for _, v := range b {
+		nodes[v[1]] = v[2]
+	}
+	return nodes
 }
