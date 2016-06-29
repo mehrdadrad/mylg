@@ -11,14 +11,25 @@ type Readline struct {
 
 func Init(prompt string) *Readline {
 	var (
-		r   Readline
-		err error
+		r         Readline
+		err       error
+		completer = readline.NewPrefixCompleter(
+			readline.PcItem("ping"),
+			readline.PcItem("connect",
+				readline.PcItem("telia"),
+				readline.PcItem("level3"),
+			),
+			readline.PcItem("node"),
+			readline.PcItem("local"),
+			readline.PcItem("help"),
+		)
 	)
 	r.instance, err = readline.NewEx(&readline.Config{
 		Prompt:          prompt + "> ",
 		HistoryFile:     "/tmp/myping",
 		InterruptPrompt: "^C",
 		EOFPrompt:       "exit",
+		AutoComplete:    completer,
 	})
 	if err != nil {
 		panic(err)
