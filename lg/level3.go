@@ -21,8 +21,9 @@ var (
 	level3DefaultNode string = "Los Angeles"
 )
 
-func sanitize(b string) {
-
+func sanitize(b string) string {
+	re := regexp.MustCompile("<(.*)>")
+	return re.ReplaceAllString(b, "")
 }
 func (p *Level3) Set(host, version string) {
 	p.Host = host
@@ -52,7 +53,7 @@ func (p *Level3) Ping() (string, error) {
 	r, _ := regexp.Compile(`</div></div>(?s)(.*?)</font></pre>`)
 	b := r.FindStringSubmatch(strings.Replace(string(body), "<br>", "\n", -1))
 	if len(b) > 0 {
-		return b[1], nil
+		return sanitize(b[1]), nil
 	} else {
 		return "", errors.New("error")
 	}
