@@ -99,6 +99,7 @@ func main() {
 				}
 				cPName = pName
 				c.SetPrompt(cPName + "/" + providers[cPName].GetDefaultNode())
+				c.UpdateCompleter("node", providers[cPName].GetNodes())
 				nxt <- struct{}{}
 			}
 		}
