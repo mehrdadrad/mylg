@@ -57,12 +57,14 @@ func main() {
 				nxt <- struct{}{}
 				continue
 			}
+			cmd := strings.TrimSpace(subReq[1])
+			args := strings.TrimSpace(subReq[2])
 			switch {
-			case subReq[1] == "ping" && cPName == "local":
+			case cmd == "ping" && cPName == "local":
 				p := icmp.NewPing()
-				ra, err := net.ResolveIPAddr("ip", subReq[2])
+				ra, err := net.ResolveIPAddr("ip", args)
 				if err != nil {
-					println("cannot resolve", subReq[2], ": Unknown host")
+					println("cannot resolve", args, ": Unknown host")
 					nxt <- struct{}{}
 					continue
 				}
@@ -72,25 +74,25 @@ func main() {
 					println(<-rep)
 				}
 				nxt <- struct{}{}
-			case subReq[1] == "ping":
+			case cmd == "ping":
 				s.Prefix = "please wait "
 				s.Start()
-				providers[cPName].Set(subReq[2], "ipv4")
+				providers[cPName].Set(args, "ipv4")
 				m, _ := providers[cPName].Ping()
 				s.Stop()
 				println(m)
 				nxt <- struct{}{}
-			case subReq[1] == "node":
-				providers[cPName].ChangeNode(subReq[2])
-				c.SetPrompt(cPName + "/" + subReq[2])
+			case cmd == "node":
+				providers[cPName].ChangeNode(args)
+				c.SetPrompt(cPName + "/" + args)
 				nxt <- struct{}{}
-			case subReq[1] == "local":
+			case cmd == "local":
 				cPName = "local"
 				c.SetPrompt(cPName)
 				nxt <- struct{}{}
-			case subReq[1] == "connect":
+			case cmd == "connect":
 				var pName string
-				if pName, err = validateProvider(subReq[2]); err != nil {
+				if pName, err = validateProvider(args); err != nil {
 					println("provider not available")
 					nxt <- struct{}{}
 					continue
