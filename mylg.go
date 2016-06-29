@@ -2,9 +2,9 @@ package main
 
 import (
 	"errors"
-	"github.com/mehrdadrad/myping/cli"
-	"github.com/mehrdadrad/myping/icmp"
-	"github.com/mehrdadrad/myping/icmp/telia"
+	"github.com/mehrdadrad/mylg/cli"
+	"github.com/mehrdadrad/mylg/icmp"
+	"github.com/mehrdadrad/mylg/lg"
 	"net"
 	"regexp"
 	"strings"
@@ -18,7 +18,7 @@ type Provider interface {
 	Ping() (string, error)
 }
 
-var providers = map[string]Provider{"telia": new(telia.Provider)}
+var providers = map[string]Provider{"telia": new(lg.Telia), "level3": new(lg.Level3)}
 
 func validateProvider(p string) (string, error) {
 	match, _ := regexp.MatchString("(telia|level3)", p)
