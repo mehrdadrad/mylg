@@ -46,7 +46,7 @@ func main() {
 	go c.Run(cmd, nxt)
 
 	r, _ := regexp.Compile(`(ping|connect|node|local) (.*)`)
-	s := spinner.New(spinner.CharSets[0], 220*time.Millisecond)
+	s := spinner.New(spinner.CharSets[26], 220*time.Millisecond)
 
 	for {
 		select {
