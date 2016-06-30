@@ -1,3 +1,5 @@
+// myLG is command line looking glass that written with Go language
+// it tries from its own icmp and external looking glasses tools
 package main
 
 import (
