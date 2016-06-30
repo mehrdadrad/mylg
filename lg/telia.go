@@ -55,6 +55,7 @@ func (p *Telia) FetchNodes() map[string]string {
 	resp, err := http.Get("http://looking-glass.telia.net/")
 	if err != nil {
 		println(err)
+		return map[string]string{}
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
