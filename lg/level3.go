@@ -17,8 +17,8 @@ type Level3 struct {
 }
 
 var (
-	level3Nodes              = map[string]string{"Los Angeles": "ear1.lax1"}
-	level3DefaultNode string = "Los Angeles"
+	level3Nodes              = map[string]string{"Los Angeles, CA": "ear1.lax1"}
+	level3DefaultNode string = "Los Angeles, CA"
 )
 
 func sanitize(b string) string {
@@ -37,6 +37,7 @@ func (p *Level3) GetDefaultNode() string {
 	return level3DefaultNode
 }
 func (p *Level3) GetNodes() map[string]string {
+	level3Nodes = p.FetchNodes()
 	return level3Nodes
 }
 func (p *Level3) ChangeNode(node string) {
@@ -57,4 +58,21 @@ func (p *Level3) Ping() (string, error) {
 	} else {
 		return "", errors.New("error")
 	}
+}
+
+func (p *Level3) FetchNodes() map[string]string {
+	var nodes = make(map[string]string, 100)
+	resp, err := http.Get("http://lookingglass.level3.net/ping/lg_ping_main.php")
+	if err != nil {
+		println(err)
+		return map[string]string{}
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	r, _ := regexp.Compile(`(?i)<option value="(?s)([\w|\s|)(._-]+)">(?s)([a-z|\s|)(,._-]+)</option>`)
+	b := r.FindAllStringSubmatch(string(body), -1)
+	for _, v := range b {
+		nodes[v[2]] = v[1]
+	}
+	return nodes
 }
