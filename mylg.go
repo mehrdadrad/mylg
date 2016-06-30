@@ -36,24 +36,29 @@ func validateProvider(p string) (string, error) {
 
 func main() {
 	var (
-		err    error
-		cPName string = "local"
+		err     error
+		request string
+		loop    bool   = true
+		cPName  string = "local"
 	)
 
 	rep := make(chan string, 1)
-	cmd := make(chan string, 1)
+	req := make(chan string, 1)
 	nxt := make(chan struct{}, 1)
 
 	c := cli.Init("local")
-	go c.Run(cmd, nxt)
+	go c.Run(req, nxt)
 
-	r, _ := regexp.Compile(`(ping|connect|node|local|help)\s{0,1}(.*)`)
+	r, _ := regexp.Compile(`(ping|connect|node|local|help|exit|quit)\s{0,1}(.*)`)
 	s := spinner.New(spinner.CharSets[26], 220*time.Millisecond)
 
-	for {
+	for loop {
 		select {
-		case req := <-cmd:
-			subReq := r.FindStringSubmatch(req)
+		case request, loop = <-req:
+			if !loop {
+				break
+			}
+			subReq := r.FindStringSubmatch(request)
 			if len(subReq) == 0 {
 				println("syntax error")
 				nxt <- struct{}{}
@@ -113,9 +118,15 @@ func main() {
 					println("it doesn't support")
 				}
 				nxt <- struct{}{}
+			case cmd == "mode":
+				// todo
 			case cmd == "help":
 				c.Help()
 				nxt <- struct{}{}
+			case cmd == "exit", cmd == "quit":
+				c.Close(nxt)
+				close(req)
+				// todo
 			}
 		}
 	}
