@@ -25,6 +25,7 @@ func Init(prompt string) *Readline {
 			readline.PcItem("node"),
 			readline.PcItem("local"),
 			readline.PcItem("help"),
+			readline.PcItem("exit"),
 		)
 	)
 	r.completer = completer
@@ -86,9 +87,15 @@ func (r *Readline) Run(cmd chan<- string, next chan struct{}) {
 				break
 			}
 			cmd <- line
-			<-next
+			if _, ok := <-next; !ok {
+				break
+			}
 		}
 	}()
+}
+
+func (r *Readline) Close(next chan struct{}) {
+	r.instance.Close()
 }
 
 func (r *Readline) Help() {
