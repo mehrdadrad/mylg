@@ -85,8 +85,12 @@ func main() {
 				println(m)
 				nxt <- struct{}{}
 			case cmd == "node":
-				providers[cPName].ChangeNode(args)
-				c.SetPrompt(cPName + "/" + args)
+				if _, ok := providers[cPName]; ok {
+					providers[cPName].ChangeNode(args)
+					c.SetPrompt(cPName + "/" + args)
+				} else {
+					println("it doesn't support")
+				}
 				nxt <- struct{}{}
 			case cmd == "local":
 				cPName = "local"
@@ -100,10 +104,14 @@ func main() {
 					continue
 				}
 				cPName = pName
-				c.SetPrompt(cPName + "/" + providers[cPName].GetDefaultNode())
-				go func() {
-					c.UpdateCompleter("node", providers[cPName].GetNodes())
-				}()
+				if _, ok := providers[cPName]; ok {
+					c.SetPrompt(cPName + "/" + providers[cPName].GetDefaultNode())
+					go func() {
+						c.UpdateCompleter("node", providers[cPName].GetNodes())
+					}()
+				} else {
+					println("it doesn't support")
+				}
 				nxt <- struct{}{}
 			}
 		}
