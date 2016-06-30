@@ -1,4 +1,4 @@
-# myLG V0.1
+# myLG V0.1.2
 
 ###Command line looking glass tool - support popular looking glasses 
 
