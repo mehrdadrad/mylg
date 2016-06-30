@@ -59,7 +59,7 @@ func (p *Telia) FetchNodes() map[string]string {
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
-	r, _ := regexp.Compile(`<OPTION VALUE="(?s)([\w|\s|)(._-]+)"> (?s)([\w|\s|)(._-]+)`)
+	r, _ := regexp.Compile(`(?i)<option value="(?s)([\w|\s|)(._-]+)"> (?s)([\w|\s|)(._-]+)`)
 	b := r.FindAllStringSubmatch(string(body), -1)
 	for _, v := range b {
 		nodes[v[1]] = v[2]
