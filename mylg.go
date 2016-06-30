@@ -47,7 +47,7 @@ func main() {
 	c := cli.Init("local")
 	go c.Run(cmd, nxt)
 
-	r, _ := regexp.Compile(`(ping|connect|node|local) (.*)`)
+	r, _ := regexp.Compile(`(ping|connect|node|local|help)\s{0,1}(.*)`)
 	s := spinner.New(spinner.CharSets[26], 220*time.Millisecond)
 
 	for {
@@ -112,6 +112,9 @@ func main() {
 				} else {
 					println("it doesn't support")
 				}
+				nxt <- struct{}{}
+			case cmd == "help":
+				c.Help()
 				nxt <- struct{}{}
 			}
 		}
