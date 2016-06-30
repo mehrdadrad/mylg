@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"github.com/mehrdadrad/mylg/banner"
 	"gopkg.in/readline.v1"
 	"strings"
@@ -88,4 +89,16 @@ func (r *Readline) Run(cmd chan<- string, next chan struct{}) {
 			<-next
 		}
 	}()
+}
+
+func (r *Readline) Help() {
+	fmt.Println(`Usage:
+	The myLG tool developed to troubleshoot networking situations.
+	The vi/emacs mode,almost all basic features is supported. press tab to see what options are available.
+
+	connect <provider name>     connects to external looking glass, press tab to see the menu
+	node <city/country name>    connects to specific node at current looking glass, press tab to see the available nodes
+	local                       back to local
+	ping                        ping ip address or domain name
+	`)
 }
