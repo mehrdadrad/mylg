@@ -8,6 +8,7 @@ import (
 	"github.com/mehrdadrad/mylg/cli"
 	"github.com/mehrdadrad/mylg/icmp"
 	"github.com/mehrdadrad/mylg/lg"
+	"github.com/mehrdadrad/mylg/ripe"
 	"net"
 	"regexp"
 	"strings"
@@ -22,10 +23,22 @@ type Provider interface {
 	Ping() (string, error)
 }
 
-var providers = map[string]Provider{"telia": new(lg.Telia), "level3": new(lg.Level3)}
+var (
+	providers = map[string]Provider{"telia": new(lg.Telia), "level3": new(lg.Level3)}
+	pNames    = providerNames()
+)
+
+func providerNames() map[string]string {
+	pNames := map[string]string{}
+	for p := range providers {
+		pNames[p] = p
+	}
+	return pNames
+}
 
 func validateProvider(p string) (string, error) {
-	match, _ := regexp.MatchString("(telia|level3)", p)
+	pNames := []string{}
+	match, _ := regexp.MatchString("("+strings.Join(pNames, "|")+")", p)
 	p = strings.ToLower(p)
 	if match {
 		return p, nil
@@ -47,9 +60,10 @@ func main() {
 	nxt := make(chan struct{}, 1)
 
 	c := cli.Init("local")
+	c.UpdateCompleter("connect", pNames)
 	go c.Run(req, nxt)
 
-	r, _ := regexp.Compile(`(ping|connect|node|local|help|exit|quit)\s{0,1}(.*)`)
+	r, _ := regexp.Compile(`(ping|connect|node|local|asn|help|exit|quit)\s{0,1}(.*)`)
 	s := spinner.New(spinner.CharSets[26], 220*time.Millisecond)
 
 	for loop {
@@ -117,6 +131,11 @@ func main() {
 				} else {
 					println("it doesn't support")
 				}
+				nxt <- struct{}{}
+			case cmd == "asn":
+				asn := ripe.ASN{Number: args}
+				asn.GetData()
+				asn.PrettyPrint()
 				nxt <- struct{}{}
 			case cmd == "mode":
 				// todo
