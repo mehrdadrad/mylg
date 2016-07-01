@@ -18,12 +18,10 @@ func Init(prompt string) *Readline {
 		err       error
 		completer = readline.NewPrefixCompleter(
 			readline.PcItem("ping"),
-			readline.PcItem("connect",
-				readline.PcItem("telia"),
-				readline.PcItem("level3"),
-			),
+			readline.PcItem("connect"),
 			readline.PcItem("node"),
 			readline.PcItem("local"),
+			readline.PcItem("asn"),
 			readline.PcItem("help"),
 			readline.PcItem("exit"),
 		)
@@ -64,7 +62,7 @@ func (r *Readline) UpdateCompleter(pcItem string, pcSubItems map[string]string) 
 			for item, _ := range pcSubItems {
 				c = append(c, readline.PcItem(item))
 			}
-			pc.Name = []rune("node ")
+			pc.Name = []rune(pcItem + " ")
 			pc.Children = c
 			child = append(child, &pc)
 		} else {
