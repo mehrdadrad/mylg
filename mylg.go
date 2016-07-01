@@ -24,7 +24,7 @@ type Provider interface {
 }
 
 var (
-	providers = map[string]Provider{"telia": new(lg.Telia), "level3": new(lg.Level3)}
+	providers = map[string]Provider{"telia": new(lg.Telia), "level3": new(lg.Level3), "cogent": new(lg.Cogent)}
 	pNames    = providerNames()
 )
 
