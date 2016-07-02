@@ -29,9 +29,13 @@ func (p *Cogent) Set(host, version string) {
 func (p *Cogent) GetDefaultNode() string {
 	return cogentDefaultNode
 }
-func (p *Cogent) GetNodes() map[string]string {
+func (p *Cogent) GetNodes() []string {
 	cogentNodes = p.FetchNodes()
-	return cogentNodes
+	var nodes []string
+	for node := range cogentNodes {
+		nodes = append(nodes, node)
+	}
+	return nodes
 }
 func (p *Cogent) ChangeNode(node string) {
 	p.Node = node

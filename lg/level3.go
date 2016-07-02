@@ -36,9 +36,13 @@ func (p *Level3) Set(host, version string) {
 func (p *Level3) GetDefaultNode() string {
 	return level3DefaultNode
 }
-func (p *Level3) GetNodes() map[string]string {
+func (p *Level3) GetNodes() []string {
 	level3Nodes = p.FetchNodes()
-	return level3Nodes
+	var nodes []string
+	for node := range level3Nodes {
+		nodes = append(nodes, node)
+	}
+	return nodes
 }
 func (p *Level3) ChangeNode(node string) {
 	p.Node = node

@@ -28,8 +28,12 @@ func (p *Telia) Set(host, version string) {
 func (p *Telia) GetDefaultNode() string {
 	return teliaDefaultNode
 }
-func (p *Telia) GetNodes() map[string]string {
-	return p.FetchNodes()
+func (p *Telia) GetNodes() []string {
+	var nodes []string
+	for node := range p.FetchNodes() {
+		nodes = append(nodes, node)
+	}
+	return nodes
 }
 func (p *Telia) ChangeNode(node string) {
 	p.Node = node
