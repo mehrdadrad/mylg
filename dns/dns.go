@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/mehrdadrad/mylg/cli"
+	"github.com/mehrdadrad/mylg/data"
 	"github.com/miekg/dns"
 	"net/http"
 	"regexp"
@@ -41,8 +42,10 @@ func (d *DNS) Init(c *cli.Readline) {
 			items[i[0]] = struct{}{}
 		}
 	}
-	for iso2 := range items {
-		countries = append(countries, iso2)
+	for alpha2 := range items {
+		if name, ok := data.Country[alpha2]; ok {
+			countries = append(countries, name)
+		}
 	}
 	c.UpdateCompleter("connect", countries)
 }
