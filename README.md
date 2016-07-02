@@ -1,4 +1,4 @@
-# myLG [![Go Report Card](https://goreportcard.com/badge/github.com/mehrdadrad/mylg)](https://goreportcard.com/report/github.com/mehrdadrad/myLG)
+# myLG [![Build Status](https://travis-ci.org/mehrdadrad/myLG.svg?branch=master)](https://travis-ci.org/mehrdadrad/myLG) [![Go Report Card](https://goreportcard.com/badge/github.com/mehrdadrad/mylg)](https://goreportcard.com/report/github.com/mehrdadrad/myLG)
 
 ###Command line looking glass tool - support popular looking glasses 
 
