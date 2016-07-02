@@ -7,6 +7,7 @@ import (
 	"strings"
 )
 
+// Readline structure
 type Readline struct {
 	instance  *readline.Instance
 	completer *readline.PrefixCompleter
@@ -14,6 +15,7 @@ type Readline struct {
 	next      chan struct{}
 }
 
+// Initialize items
 func Init(prompt string) *Readline {
 	var (
 		r         Readline
@@ -43,6 +45,7 @@ func Init(prompt string) *Readline {
 	return &r
 }
 
+// Remove item from completer
 func (r *Readline) RemoveItemCompleter(pcItem string) {
 	child := []readline.PrefixCompleterInterface{}
 	for _, p := range r.completer.Children {
@@ -55,6 +58,7 @@ func (r *Readline) RemoveItemCompleter(pcItem string) {
 
 }
 
+// Add item to completer
 func (r *Readline) UpdateCompleter(pcItem string, pcSubItems []string) {
 	child := []readline.PrefixCompleterInterface{}
 	var pc readline.PrefixCompleter
@@ -75,19 +79,23 @@ func (r *Readline) UpdateCompleter(pcItem string, pcSubItems []string) {
 	r.completer.Children = child
 }
 
+// Set prompt and store it
 func (r *Readline) SetPrompt(p string) {
 	r.prompt = p
 	r.instance.SetPrompt(p + "> ")
 }
 
+// Get current prompt
 func (r *Readline) GetPrompt() string {
 	return r.prompt
 }
 
+// Refresh prompt
 func (r *Readline) Refresh() {
 	r.instance.Refresh()
 }
 
+// Set mode to vim
 func (r *Readline) SetVim() {
 	if !r.instance.IsVimMode() {
 		r.instance.SetVimMode(true)
@@ -97,6 +105,7 @@ func (r *Readline) SetVim() {
 	}
 }
 
+// Set mode to emacs
 func (r *Readline) SetEmacs() {
 	if r.instance.IsVimMode() {
 		r.instance.SetVimMode(false)
@@ -106,10 +115,12 @@ func (r *Readline) SetEmacs() {
 	}
 }
 
+// Triger to read next line
 func (r *Readline) Next() {
 	r.next <- struct{}{}
 }
 
+// Run the main loop
 func (r *Readline) Run(cmd chan<- string, next chan struct{}) {
 	r.next = next
 	func() {
@@ -126,10 +137,12 @@ func (r *Readline) Run(cmd chan<- string, next chan struct{}) {
 	}()
 }
 
+// Close the readline instance
 func (r *Readline) Close(next chan struct{}) {
 	r.instance.Close()
 }
 
+// Print out the main help
 func (r *Readline) Help() {
 	fmt.Println(`Usage:
 	The myLG tool developed to troubleshoot networking situations.
