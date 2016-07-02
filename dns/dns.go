@@ -22,10 +22,12 @@ type DNSHost struct {
 	City    string
 }
 
+// Create a new dns object
 func NewRequest() *DNS {
 	return &DNS{host: ""}
 }
 
+// Initialize dns object
 func (d *DNS) Init(c *cli.Readline) {
 	c.SetPrompt("dns")
 	c.Refresh()
@@ -50,6 +52,7 @@ func (d *DNS) Init(c *cli.Readline) {
 	c.UpdateCompleter("connect", countries)
 }
 
+// Look up name server
 func (d *DNS) dnsLookup() {
 	//var list []DNSHost
 
@@ -67,6 +70,7 @@ func (d *DNS) dnsLookup() {
 	}
 }
 
+// Fetch dns servers from public-dns.info
 func fetchDNSHosts() map[string]DNSHost {
 	var list = map[string]DNSHost{}
 	resp, err := http.Get("http://public-dns.info/nameservers.csv")
