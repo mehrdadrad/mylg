@@ -10,6 +10,8 @@ import (
 type Readline struct {
 	instance  *readline.Instance
 	completer *readline.PrefixCompleter
+	prompt    string
+	next      chan struct{}
 }
 
 func Init(prompt string) *Readline {
@@ -53,13 +55,13 @@ func (r *Readline) RemoveItemCompleter(pcItem string) {
 
 }
 
-func (r *Readline) UpdateCompleter(pcItem string, pcSubItems map[string]string) {
+func (r *Readline) UpdateCompleter(pcItem string, pcSubItems []string) {
 	child := []readline.PrefixCompleterInterface{}
 	var pc readline.PrefixCompleter
 	for _, p := range r.completer.Children {
 		if strings.TrimSpace(string(p.GetName())) == pcItem {
 			c := []readline.PrefixCompleterInterface{}
-			for item, _ := range pcSubItems {
+			for _, item := range pcSubItems {
 				c = append(c, readline.PcItem(item))
 			}
 			pc.Name = []rune(pcItem + " ")
@@ -74,10 +76,42 @@ func (r *Readline) UpdateCompleter(pcItem string, pcSubItems map[string]string) 
 }
 
 func (r *Readline) SetPrompt(p string) {
+	r.prompt = p
 	r.instance.SetPrompt(p + "> ")
 }
 
+func (r *Readline) GetPrompt() string {
+	return r.prompt
+}
+
+func (r *Readline) Refresh() {
+	r.instance.Refresh()
+}
+
+func (r *Readline) SetVim() {
+	if !r.instance.IsVimMode() {
+		r.instance.SetVimMode(true)
+		println("mode changed to vim")
+	} else {
+		println("mode already is vim")
+	}
+}
+
+func (r *Readline) SetEmacs() {
+	if r.instance.IsVimMode() {
+		r.instance.SetVimMode(false)
+		println("mode changed to emacs")
+	} else {
+		println("mode already is emacs")
+	}
+}
+
+func (r *Readline) Next() {
+	r.next <- struct{}{}
+}
+
 func (r *Readline) Run(cmd chan<- string, next chan struct{}) {
+	r.next = next
 	func() {
 		for {
 			line, err := r.instance.Readline()
