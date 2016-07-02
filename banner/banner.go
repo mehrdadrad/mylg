@@ -1,5 +1,6 @@
 package banner
 
+// Login banner print func
 func Println() {
 	b := `
  =======================	
