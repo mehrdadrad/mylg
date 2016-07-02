@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/briandowns/spinner"
 	"github.com/mehrdadrad/mylg/cli"
+	"github.com/mehrdadrad/mylg/dns"
 	"github.com/mehrdadrad/mylg/icmp"
 	"github.com/mehrdadrad/mylg/lg"
 	"github.com/mehrdadrad/mylg/ripe"
@@ -18,7 +19,7 @@ import (
 type Provider interface {
 	Set(host, version string)
 	GetDefaultNode() string
-	GetNodes() map[string]string
+	GetNodes() []string
 	ChangeNode(node string)
 	Ping() (string, error)
 }
@@ -28,10 +29,10 @@ var (
 	pNames    = providerNames()
 )
 
-func providerNames() map[string]string {
-	pNames := map[string]string{}
+func providerNames() []string {
+	pNames := []string{}
 	for p := range providers {
-		pNames[p] = p
+		pNames = append(pNames, p)
 	}
 	return pNames
 }
@@ -60,10 +61,9 @@ func main() {
 	nxt := make(chan struct{}, 1)
 
 	c := cli.Init("local")
-	c.UpdateCompleter("connect", pNames)
 	go c.Run(req, nxt)
 
-	r, _ := regexp.Compile(`(ping|connect|node|local|asn|help|exit|quit)\s{0,1}(.*)`)
+	r, _ := regexp.Compile(`(ping|lg|dns|asn|connect|node|local|mode|help|exit|quit)\s{0,1}(.*)`)
 	s := spinner.New(spinner.CharSets[26], 220*time.Millisecond)
 
 	for loop {
@@ -75,9 +75,10 @@ func main() {
 			subReq := r.FindStringSubmatch(request)
 			if len(subReq) == 0 {
 				println("syntax error")
-				nxt <- struct{}{}
+				c.Next()
 				continue
 			}
+			prompt := c.GetPrompt()
 			cmd := strings.TrimSpace(subReq[1])
 			args := strings.TrimSpace(subReq[2])
 			switch {
@@ -86,7 +87,7 @@ func main() {
 				ra, err := net.ResolveIPAddr("ip", args)
 				if err != nil {
 					println("cannot resolve", args, ": Unknown host")
-					nxt <- struct{}{}
+					c.Next()
 					continue
 				}
 				p.IP(ra.String())
@@ -94,7 +95,7 @@ func main() {
 					p.Ping(rep)
 					println(<-rep)
 				}
-				nxt <- struct{}{}
+				c.Next()
 			case cmd == "ping":
 				s.Prefix = "please wait "
 				s.Start()
@@ -102,7 +103,7 @@ func main() {
 				m, _ := providers[cPName].Ping()
 				s.Stop()
 				println(m)
-				nxt <- struct{}{}
+				c.Next()
 			case cmd == "node":
 				if _, ok := providers[cPName]; ok {
 					providers[cPName].ChangeNode(args)
@@ -110,38 +111,57 @@ func main() {
 				} else {
 					println("it doesn't support")
 				}
-				nxt <- struct{}{}
+				c.Next()
 			case cmd == "local":
 				cPName = "local"
 				c.SetPrompt(cPName)
-				nxt <- struct{}{}
+				c.Next()
+			case cmd == "lg":
+				c.SetPrompt("lg")
+				c.UpdateCompleter("connect", pNames)
+				c.Next()
 			case cmd == "connect":
-				var pName string
-				if pName, err = validateProvider(args); err != nil {
-					println("provider not available")
-					nxt <- struct{}{}
-					continue
-				}
-				cPName = pName
-				if _, ok := providers[cPName]; ok {
-					c.SetPrompt(cPName + "/" + providers[cPName].GetDefaultNode())
-					go func() {
-						c.UpdateCompleter("node", providers[cPName].GetNodes())
-					}()
+				if strings.HasPrefix(prompt, "dns") {
+					println("todo")
 				} else {
-					println("it doesn't support")
+					var pName string
+					if pName, err = validateProvider(args); err != nil {
+						println("provider not available")
+						c.Next()
+						continue
+					}
+					cPName = pName
+					if _, ok := providers[cPName]; ok {
+						c.SetPrompt(cPName + "/" + providers[cPName].GetDefaultNode())
+						go func() {
+							c.UpdateCompleter("node", providers[cPName].GetNodes())
+						}()
+					} else {
+						println("it doesn't support")
+					}
 				}
-				nxt <- struct{}{}
+				c.Next()
+			case cmd == "dns":
+				d := dns.NewRequest()
+				go d.Init(c)
+				c.Next()
 			case cmd == "asn":
 				asn := ripe.ASN{Number: args}
 				asn.GetData()
 				asn.PrettyPrint()
-				nxt <- struct{}{}
+				c.Next()
 			case cmd == "mode":
-				// todo
+				if args == "vim" {
+					c.SetVim()
+				} else if args == "emacs" {
+					c.SetEmacs()
+				} else {
+					println("the request mode doesn't support")
+				}
+				c.Next()
 			case cmd == "help":
 				c.Help()
-				nxt <- struct{}{}
+				c.Next()
 			case cmd == "exit", cmd == "quit":
 				c.Close(nxt)
 				close(req)
