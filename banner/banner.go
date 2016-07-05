@@ -1,6 +1,7 @@
+// Package banner provides banner information
 package banner
 
-// Login banner print func
+// Println print out banner information
 func Println() {
 	b := `
  =======================	
