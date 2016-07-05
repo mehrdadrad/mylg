@@ -1,5 +1,7 @@
+// Package data provides all configured data for mylg
 package data
 
+// Country maps alpha2 code to country name
 var Country = map[string]string{
 	"AF": "AFGHANISTAN",
 	"AX": "ÅLAND ISLANDS",
