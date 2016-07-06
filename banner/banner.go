@@ -12,7 +12,7 @@ func Println() {
         |__/          
  	
      My Looking Glass 
- ====== myLG v0.1 ======
+ ====== myLG v0.1.3 ======
 	`
 	println(b)
 }
