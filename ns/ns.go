@@ -77,7 +77,7 @@ func (d *Request) ChkCountry(country string) bool {
 	return true
 }
 
-// ChkCountry set requested country
+// ChkNode set requested country
 func (d *Request) ChkNode(city string) bool {
 	for _, h := range d.hosts {
 		if d.country == h.country && city == h.city {
@@ -88,14 +88,13 @@ func (d *Request) ChkNode(city string) bool {
 }
 
 // Dig look up name server
-func (d *Request) Dig() {
-	println(d.host)
+func (d *Request) Dig(args string) {
 	c := new(dns.Client)
 	m := new(dns.Msg)
 
-	m.SetQuestion(dns.Fqdn("yahoo.com"), dns.TypeA)
+	m.SetQuestion(dns.Fqdn(args), dns.TypeA)
 	m.RecursionDesired = true
-	r, _, err := c.Exchange(m, "8.8.8.8:53")
+	r, _, err := c.Exchange(m, d.host+":53")
 	if err != nil {
 		println(err.Error())
 	}
@@ -131,7 +130,6 @@ func (d *Request) cache(r string) bool {
 		if err != nil {
 			panic(err.Error())
 		}
-		println("write done!")
 	case "validate":
 		f, err := os.Stat("/tmp/mylg.ns")
 		if err != nil {
