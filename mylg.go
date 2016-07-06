@@ -5,17 +5,19 @@ package main
 import (
 	"errors"
 	"github.com/briandowns/spinner"
+	"net"
+	"regexp"
+	"strings"
+	"time"
+
 	"github.com/mehrdadrad/mylg/cli"
 	"github.com/mehrdadrad/mylg/dns"
 	"github.com/mehrdadrad/mylg/icmp"
 	"github.com/mehrdadrad/mylg/lg"
 	"github.com/mehrdadrad/mylg/ripe"
-	"net"
-	"regexp"
-	"strings"
-	"time"
 )
 
+// Provider is a interface to accessing lg
 type Provider interface {
 	Set(host, version string)
 	GetDefaultNode() string
@@ -27,6 +29,7 @@ type Provider interface {
 var (
 	providers = map[string]Provider{"telia": new(lg.Telia), "level3": new(lg.Level3), "cogent": new(lg.Cogent)}
 	pNames    = providerNames()
+	ns        *dns.NSRequest
 )
 
 func providerNames() []string {
@@ -43,17 +46,22 @@ func validateProvider(p string) (string, error) {
 	p = strings.ToLower(p)
 	if match {
 		return p, nil
-	} else {
-		return "", errors.New("provider not support")
 	}
+	return "", errors.New("provider not support")
+
+}
+func init() {
+	// Initialize name server data
+	ns = dns.NewRequest()
+	go ns.Init()
 }
 
 func main() {
 	var (
 		err     error
 		request string
-		loop    bool   = true
-		cPName  string = "local"
+		loop    = true
+		cPName  = "local"
 	)
 
 	rep := make(chan string, 1)
@@ -63,7 +71,7 @@ func main() {
 	c := cli.Init("local")
 	go c.Run(req, nxt)
 
-	r, _ := regexp.Compile(`(ping|lg|dns|asn|connect|node|local|mode|help|exit|quit)\s{0,1}(.*)`)
+	r, _ := regexp.Compile(`(ping|lg|ns|asn|connect|node|local|mode|help|exit|quit)\s{0,1}(.*)`)
 	s := spinner.New(spinner.CharSets[26], 220*time.Millisecond)
 
 	for loop {
@@ -121,8 +129,8 @@ func main() {
 				c.UpdateCompleter("connect", pNames)
 				c.Next()
 			case cmd == "connect":
-				if strings.HasPrefix(prompt, "dns") {
-					println("todo")
+				if strings.HasPrefix(prompt, "ns") {
+					println("todo", args)
 				} else {
 					var pName string
 					if pName, err = validateProvider(args); err != nil {
@@ -141,9 +149,9 @@ func main() {
 					}
 				}
 				c.Next()
-			case cmd == "dns":
-				d := dns.NewRequest()
-				go d.Init(c)
+			case cmd == "ns":
+				ns.SetCountryList(c)
+				c.SetPrompt("ns")
 				c.Next()
 			case cmd == "asn":
 				asn := ripe.ASN{Number: args}
