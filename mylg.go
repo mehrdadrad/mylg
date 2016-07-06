@@ -71,7 +71,7 @@ func main() {
 	c := cli.Init("local")
 	go c.Run(req, nxt)
 
-	r, _ := regexp.Compile(`(ping|lg|ns|asn|connect|node|local|mode|help|exit|quit)\s{0,1}(.*)`)
+	r, _ := regexp.Compile(`(ping|lg|ns|dig|asn|connect|node|local|mode|help|exit|quit)\s{0,1}(.*)`)
 	s := spinner.New(spinner.CharSets[26], 220*time.Millisecond)
 
 	for loop {
@@ -112,6 +112,9 @@ func main() {
 				s.Stop()
 				println(m)
 				c.Next()
+			case cmd == "dig":
+				nsr.Dig()
+				c.Next()
 			case cmd == "node":
 				switch {
 				case strings.HasPrefix(prompt, "lg"):
@@ -122,6 +125,10 @@ func main() {
 						println("the specified node doesn't support")
 					}
 				case strings.HasPrefix(prompt, "ns"):
+					if !nsr.ChkNode(args) {
+						println("error: argument is not valid")
+						continue
+					}
 					c.UpdatePromptN(args, 3)
 				}
 				c.Next()
@@ -135,13 +142,6 @@ func main() {
 				c.Next()
 			case cmd == "connect":
 				switch {
-				case strings.HasPrefix(prompt, "ns"):
-					if !nsr.ValidateCountry(args) {
-						println("error: arguments not validated")
-						continue
-					}
-					c.SetPrompt("ns/" + args)
-					nsr.SetNodeList(c)
 				case strings.HasPrefix(prompt, "lg"):
 					var pName string
 					if pName, err = validateProvider(args); err != nil {
@@ -151,13 +151,21 @@ func main() {
 					}
 					cPName = pName
 					if _, ok := providers[cPName]; ok {
-						c.SetPrompt("lg/" + cPName + "/" + providers[cPName].GetDefaultNode())
+						c.UpdatePromptN(cPName+"/"+providers[cPName].GetDefaultNode(), 2)
 						go func() {
 							c.UpdateCompleter("node", providers[cPName].GetNodes())
 						}()
 					} else {
 						println("it doesn't support")
 					}
+				case strings.HasPrefix(prompt, "ns"):
+					if !nsr.ChkCountry(args) {
+						println("error: argument is not valid")
+						continue
+					}
+					c.SetPrompt("ns/" + args)
+					nsr.SetNodeList(c)
+
 				}
 				c.Next()
 			case cmd == "ns":
