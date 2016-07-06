@@ -86,6 +86,19 @@ func (r *Readline) SetPrompt(p string) {
 	r.instance.SetPrompt(p + "> ")
 }
 
+// UpdatePromptN appends readline prompt
+func (r *Readline) UpdatePromptN(p string, n int) {
+	var parts []string
+	parts = strings.SplitAfterN(r.prompt, "/", n)
+	if n <= len(parts) && n > -1 {
+		parts[n-1] = p
+		r.prompt = strings.Join(parts, "")
+	} else {
+		r.prompt += "/" + p
+	}
+	r.instance.SetPrompt(r.prompt + "> ")
+}
+
 // GetPrompt returns the current prompt string
 func (r *Readline) GetPrompt() string {
 	return r.prompt
