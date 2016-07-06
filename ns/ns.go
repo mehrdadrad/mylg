@@ -58,8 +58,20 @@ func (d *Request) SetCountryList(c *cli.Readline) {
 	c.UpdateCompleter("connect", countries)
 }
 
-// SetArgs set requested country
-func (d *Request) SetArgs(args string) bool {
+// SetNodeList init the node city items
+func (d *Request) SetNodeList(c *cli.Readline) {
+	var node []string
+	for _, host := range d.hosts {
+		if host.country == d.country {
+			node = append(node, host.city)
+		}
+	}
+	sort.Strings(node)
+	c.UpdateCompleter("node", node)
+}
+
+// ValidateCountry set requested country
+func (d *Request) ValidateCountry(args string) bool {
 	d.country = args
 	return true
 }
