@@ -85,11 +85,15 @@ func (p *Level3) FetchNodes() map[string]string {
 	var nodes = make(map[string]string, 100)
 	resp, err := http.Get("http://lookingglass.level3.net/ping/lg_ping_main.php")
 	if err != nil {
-		println(err)
+		println("error: level3 looking glass unreachable (1) " + err.Error())
 		return map[string]string{}
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		println("error: level3 looking glass unreachable (2)" + err.Error())
+		return map[string]string{}
+	}
 	r, _ := regexp.Compile(`(?i)<option value="(?s)([\w|\s|)(._-]+)">(?s)([a-z|\s|)(,._-]+)</option>`)
 	b := r.FindAllStringSubmatch(string(body), -1)
 	for _, v := range b {

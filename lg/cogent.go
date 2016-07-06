@@ -81,11 +81,15 @@ func (p *Cogent) FetchNodes() map[string]string {
 	var nodes = make(map[string]string, 100)
 	resp, err := http.Get("http://www.cogentco.com/lookingglass.php")
 	if err != nil {
-		println(err)
+		println("error: cogent looking glass unreachable (1)" + err.Error())
 		return map[string]string{}
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		println("error: cogent looking glass unreachable (2)" + err.Error())
+		return map[string]string{}
+	}
 	r, _ := regexp.Compile(`(?is)Option\(\"([\w|\s|-]+)\",\"([\w|\d]+)\"`)
 	b := r.FindAllStringSubmatch(string(body), -1)
 	for _, v := range b {
