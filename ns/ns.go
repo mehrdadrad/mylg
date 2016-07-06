@@ -28,6 +28,7 @@ type Host struct {
 // A Request represents a name server request
 type Request struct {
 	country string
+	city    string
 	host    string
 	hosts   []Host
 }
@@ -70,16 +71,25 @@ func (d *Request) SetNodeList(c *cli.Readline) {
 	c.UpdateCompleter("node", node)
 }
 
-// ValidateCountry set requested country
-func (d *Request) ValidateCountry(args string) bool {
-	d.country = args
+// ChkCountry set requested country
+func (d *Request) ChkCountry(country string) bool {
+	d.country = country
 	return true
 }
 
-// Look up name server
-func (d *Request) dnsLookup() {
-	//var list []DNSHost
+// ChkCountry set requested country
+func (d *Request) ChkNode(city string) bool {
+	for _, h := range d.hosts {
+		if d.country == h.country && city == h.city {
+			d.host = h.ip
+		}
+	}
+	return true
+}
 
+// Dig look up name server
+func (d *Request) Dig() {
+	println(d.host)
 	c := new(dns.Client)
 	m := new(dns.Msg)
 
@@ -90,7 +100,7 @@ func (d *Request) dnsLookup() {
 		println(err.Error())
 	}
 	for _, a := range r.Answer {
-		fmt.Printf("%#v\n", a)
+		fmt.Println(a)
 	}
 }
 
