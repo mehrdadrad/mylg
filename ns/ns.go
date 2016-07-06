@@ -1,5 +1,5 @@
-// Package dns provides name server methods for selected name server(s)
-package dns
+// Package ns provides name server methods for selected name server(s)
+package ns
 
 import (
 	"bufio"
@@ -17,28 +17,28 @@ import (
 	"github.com/miekg/dns"
 )
 
-// A NSRequest represents a name server request
-type NSRequest struct {
-	country string
-	host    string
-	hosts   []NSHost
-}
-
-// A NSHost represents a name server host
-type NSHost struct {
+// A Host represents a name server host
+type Host struct {
 	ip      string
 	alpha2  string
 	country string
 	city    string
 }
 
+// A Request represents a name server request
+type Request struct {
+	country string
+	host    string
+	hosts   []Host
+}
+
 // NewRequest creates a new dns request object
-func NewRequest() *NSRequest {
-	return &NSRequest{host: ""}
+func NewRequest() *Request {
+	return &Request{host: ""}
 }
 
 // Init configure dns command and fetch name servers
-func (d *NSRequest) Init() {
+func (d *Request) Init() {
 	if !d.cache("validate") {
 		d.hosts = fetchNSHosts()
 		d.cache("write")
@@ -48,7 +48,7 @@ func (d *NSRequest) Init() {
 }
 
 // SetCountryList init the connect contry items
-func (d *NSRequest) SetCountryList(c *cli.Readline) {
+func (d *Request) SetCountryList(c *cli.Readline) {
 	var countries []string
 	for _, host := range d.hosts {
 		countries = append(countries, host.country)
@@ -58,13 +58,14 @@ func (d *NSRequest) SetCountryList(c *cli.Readline) {
 	c.UpdateCompleter("connect", countries)
 }
 
-func (d *NSRequest) SetArgs(args string) bool {
+// SetArgs
+func (d *Request) SetArgs(args string) bool {
 	d.country = args
 	return true
 }
 
 // Look up name server
-func (d *NSRequest) dnsLookup() {
+func (d *Request) dnsLookup() {
 	//var list []DNSHost
 
 	c := new(dns.Client)
@@ -82,12 +83,12 @@ func (d *NSRequest) dnsLookup() {
 }
 
 // cache provides caching for name servers
-func (d *NSRequest) cache(r string) bool {
+func (d *Request) cache(r string) bool {
 	switch r {
 	case "read":
 		b, err := ioutil.ReadFile("/tmp/mylg.ns")
 		if err != nil {
-			panic(err.Error)
+			panic(err.Error())
 		}
 		d.hosts = d.hosts[:0]
 		r := bytes.NewBuffer(b)
@@ -97,7 +98,7 @@ func (d *NSRequest) cache(r string) bool {
 			if len(csv) != 4 {
 				continue
 			}
-			d.hosts = append(d.hosts, NSHost{alpha2: csv[0], country: csv[1], city: csv[2], ip: csv[3]})
+			d.hosts = append(d.hosts, Host{alpha2: csv[0], country: csv[1], city: csv[2], ip: csv[3]})
 		}
 	case "write":
 		var data []string
@@ -106,7 +107,7 @@ func (d *NSRequest) cache(r string) bool {
 		}
 		err := ioutil.WriteFile("/tmp/mylg.ns", []byte(strings.Join(data, "\n")), 0644)
 		if err != nil {
-			panic(err.Error)
+			panic(err.Error())
 		}
 		println("write done!")
 	case "validate":
@@ -123,9 +124,9 @@ func (d *NSRequest) cache(r string) bool {
 }
 
 // Fetch name servers from public-dns.info
-func fetchNSHosts() []NSHost {
+func fetchNSHosts() []Host {
 	var (
-		hosts   []NSHost
+		hosts   []Host
 		counter = make(map[string]int)
 	)
 	resp, err := http.Get("http://public-dns.info/nameservers.csv")
@@ -138,7 +139,7 @@ func fetchNSHosts() []NSHost {
 		csv := strings.Split(scanner.Text(), ",")
 		if csv[3] != "\"\"" {
 			if name, ok := data.Country[csv[2]]; ok && counter[csv[2]] < 5 {
-				hosts = append(hosts, NSHost{ip: csv[0], alpha2: csv[2], country: name, city: csv[3]})
+				hosts = append(hosts, Host{ip: csv[0], alpha2: csv[2], country: name, city: csv[3]})
 				counter[csv[2]]++
 			}
 		}

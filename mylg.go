@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/mehrdadrad/mylg/cli"
-	"github.com/mehrdadrad/mylg/dns"
 	"github.com/mehrdadrad/mylg/icmp"
 	"github.com/mehrdadrad/mylg/lg"
+	"github.com/mehrdadrad/mylg/ns"
 	"github.com/mehrdadrad/mylg/ripe"
 )
 
@@ -29,7 +29,7 @@ type Provider interface {
 var (
 	providers = map[string]Provider{"telia": new(lg.Telia), "level3": new(lg.Level3), "cogent": new(lg.Cogent)}
 	pNames    = providerNames()
-	ns        *dns.NSRequest
+	nsr       *ns.NSRequest
 )
 
 func providerNames() []string {
@@ -52,8 +52,8 @@ func validateProvider(p string) (string, error) {
 }
 func init() {
 	// Initialize name server data
-	ns = dns.NewRequest()
-	go ns.Init()
+	nsr = ns.NewRequest()
+	go nsr.Init()
 }
 
 func main() {
@@ -150,7 +150,7 @@ func main() {
 				}
 				c.Next()
 			case cmd == "ns":
-				ns.SetCountryList(c)
+				nsr.SetCountryList(c)
 				c.SetPrompt("ns")
 				c.Next()
 			case cmd == "asn":
