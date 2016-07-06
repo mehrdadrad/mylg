@@ -73,10 +73,15 @@ func (p *Telia) FetchNodes() map[string]string {
 	var nodes = make(map[string]string, 100)
 	resp, err := http.Get("http://looking-glass.telia.net/")
 	if err != nil {
+		println("error: telia looking glass unreachable (1) " + err.Error())
 		return map[string]string{}
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		println("error: telia looking glass unreachable (2)" + err.Error())
+		return map[string]string{}
+	}
 	r, _ := regexp.Compile(`(?i)<option value="(?s)([\w|\s|)(._-]+)"> (?s)([\w|\s|)(._-]+)`)
 	b := r.FindAllStringSubmatch(string(body), -1)
 	for _, v := range b {
