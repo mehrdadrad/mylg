@@ -1,4 +1,4 @@
-// Package Data Provides All Configured Data For Mylg
+// Package data Provides All Configured Data For Mylg
 package data
 
 // Country Maps Alpha2 Code To Country Name

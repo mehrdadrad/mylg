@@ -58,7 +58,7 @@ func (d *Request) SetCountryList(c *cli.Readline) {
 	c.UpdateCompleter("connect", countries)
 }
 
-// SetArgs
+// SetArgs set requested country
 func (d *Request) SetArgs(args string) bool {
 	d.country = args
 	return true
