@@ -69,6 +69,9 @@ func (p *Level3) Ping() (string, error) {
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
 	r, _ := regexp.Compile(`</div></div>(?s)(.*?)</font></pre>`)
 	b := r.FindStringSubmatch(strings.Replace(string(body), "<br>", "\n", -1))
 	if len(b) > 0 {

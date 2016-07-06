@@ -57,6 +57,9 @@ func (p *Telia) Ping() (string, error) {
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
 	r, _ := regexp.Compile(`<CODE>(?s)(.*?)</CODE>`)
 	b := r.FindStringSubmatch(string(body))
 	if len(b) > 0 {
@@ -70,7 +73,6 @@ func (p *Telia) FetchNodes() map[string]string {
 	var nodes = make(map[string]string, 100)
 	resp, err := http.Get("http://looking-glass.telia.net/")
 	if err != nil {
-		println(err)
 		return map[string]string{}
 	}
 	defer resp.Body.Close()

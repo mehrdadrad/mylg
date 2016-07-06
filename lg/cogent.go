@@ -65,6 +65,9 @@ func (p *Cogent) Ping() (string, error) {
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
 	r, _ := regexp.Compile(`<pre>(?s)(.*?)</pre>`)
 	b := r.FindStringSubmatch(string(body))
 	if len(b) > 0 {
