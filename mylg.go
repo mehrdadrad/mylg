@@ -129,9 +129,10 @@ func main() {
 				c.UpdateCompleter("connect", pNames)
 				c.Next()
 			case cmd == "connect":
-				if strings.HasPrefix(prompt, "ns") {
-					println("todo", args)
-				} else {
+				switch {
+				case strings.HasPrefix(prompt, "ns"):
+					println("todo")
+				case strings.HasPrefix(prompt, "lg"):
 					var pName string
 					if pName, err = validateProvider(args); err != nil {
 						println("provider not available")
