@@ -1,3 +1,4 @@
+// Package icmp provides icmp enhanced methods based on the golang icmp package
 package icmp
 
 import (
@@ -14,16 +15,20 @@ import (
 	"time"
 )
 
+// IANA ICMP
 const (
 	ProtocolIPv4ICMP = 1  // IANA ICMP for IPv4
 	ProtocolIPv6ICMP = 58 // IANA ICMP for IPv6
 )
 
+// packet represents ping packet
 type packet struct {
 	bytes []byte
 	addr  net.Addr
 	err   error
 }
+
+// Ping represents ping fields
 type Ping struct {
 	m         icmp.Message
 	id        int
@@ -38,6 +43,7 @@ type Ping struct {
 	mu        sync.RWMutex
 }
 
+// NewPing creates a new ping object
 func NewPing() *Ping {
 	return &Ping{
 		id:        rand.Intn(0xffff),
@@ -60,7 +66,7 @@ func isIPv6(ip net.IP) bool {
 }
 
 func (p *Ping) parseMessage(m *packet) (*ipv4.Header, *icmp.Message, error) {
-	var proto int = ProtocolIPv4ICMP
+	var proto = ProtocolIPv4ICMP
 	if p.isV6Avail {
 		proto = ProtocolIPv6ICMP
 	}
@@ -86,15 +92,15 @@ func (p *Ping) IP(ipAddr string) {
 }
 
 func (p *Ping) DelIP(ipAddr string) {
-
+	//todo
 }
 
 func (p *Ping) Network() {
-
+	//todo
 }
 
 func (p *Ping) SetTTL() {
-
+	//todo
 }
 func (p *Ping) PacketSize(s int) {
 	p.pSize = s
