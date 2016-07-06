@@ -113,11 +113,16 @@ func main() {
 				println(m)
 				c.Next()
 			case cmd == "node":
-				if _, ok := providers[cPName]; ok {
-					providers[cPName].ChangeNode(args)
-					c.SetPrompt(cPName + "/" + args)
-				} else {
-					println("it doesn't support")
+				switch {
+				case strings.HasPrefix(prompt, "lg"):
+					if _, ok := providers[cPName]; ok {
+						providers[cPName].ChangeNode(args)
+						c.UpdatePromptN(args, 3)
+					} else {
+						println("the specified node doesn't support")
+					}
+				case strings.HasPrefix(prompt, "ns"):
+					c.UpdatePromptN(args, 3)
 				}
 				c.Next()
 			case cmd == "local":
@@ -131,7 +136,12 @@ func main() {
 			case cmd == "connect":
 				switch {
 				case strings.HasPrefix(prompt, "ns"):
-					println("todo")
+					if !nsr.ValidateCountry(args) {
+						println("error: arguments not validated")
+						continue
+					}
+					c.SetPrompt("ns/" + args)
+					nsr.SetNodeList(c)
 				case strings.HasPrefix(prompt, "lg"):
 					var pName string
 					if pName, err = validateProvider(args); err != nil {
@@ -141,7 +151,7 @@ func main() {
 					}
 					cPName = pName
 					if _, ok := providers[cPName]; ok {
-						c.SetPrompt(cPName + "/" + providers[cPName].GetDefaultNode())
+						c.SetPrompt("lg/" + cPName + "/" + providers[cPName].GetDefaultNode())
 						go func() {
 							c.UpdateCompleter("node", providers[cPName].GetNodes())
 						}()
