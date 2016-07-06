@@ -1,3 +1,5 @@
+// Package lg provides looking glass methods for selected looking glasses
+// Cogent Carrier Looking Glass ASN 174
 package lg
 
 import (
@@ -8,6 +10,7 @@ import (
 	"regexp"
 )
 
+// A Cogent represents a telia looking glass request
 type Cogent struct {
 	Host string
 	IPv  string
@@ -15,10 +18,11 @@ type Cogent struct {
 }
 
 var (
-	cogentNodes              = map[string]string{}
-	cogentDefaultNode string = "US - Los Angeles"
+	cogentNodes       = map[string]string{}
+	cogentDefaultNode = "US - Los Angeles"
 )
 
+// Set configures host and ip version
 func (p *Cogent) Set(host, version string) {
 	p.Host = host
 	p.IPv = version
@@ -26,9 +30,13 @@ func (p *Cogent) Set(host, version string) {
 		p.Node = cogentDefaultNode
 	}
 }
+
+// GetDefaultNode returns telia default node
 func (p *Cogent) GetDefaultNode() string {
 	return cogentDefaultNode
 }
+
+// GetNodes returns all Cogent nodes (US and International)
 func (p *Cogent) GetNodes() []string {
 	cogentNodes = p.FetchNodes()
 	var nodes []string
@@ -37,11 +45,16 @@ func (p *Cogent) GetNodes() []string {
 	}
 	return nodes
 }
+
+// ChangeNode set new requested node
 func (p *Cogent) ChangeNode(node string) {
 	p.Node = node
 }
+
+// Ping tries to connect Cogent's ping looking glass through HTTP
+// Returns the result
 func (p *Cogent) Ping() (string, error) {
-	var cmd string = "P4"
+	var cmd = "P4"
 	if p.IPv == "ipv6" {
 		cmd = "P6"
 	}
@@ -56,10 +69,11 @@ func (p *Cogent) Ping() (string, error) {
 	b := r.FindStringSubmatch(string(body))
 	if len(b) > 0 {
 		return b[1], nil
-	} else {
-		return "", errors.New("error")
 	}
+	return "", errors.New("error")
 }
+
+//FetchNodes returns all available nodes through HTTP
 func (p *Cogent) FetchNodes() map[string]string {
 	var nodes = make(map[string]string, 100)
 	resp, err := http.Get("http://www.cogentco.com/lookingglass.php")
