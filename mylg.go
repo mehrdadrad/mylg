@@ -113,7 +113,7 @@ func main() {
 				println(m)
 				c.Next()
 			case cmd == "dig":
-				nsr.Dig()
+				nsr.Dig(args)
 				c.Next()
 			case cmd == "node":
 				switch {
@@ -174,8 +174,9 @@ func main() {
 				c.Next()
 			case cmd == "asn":
 				asn := ripe.ASN{Number: args}
-				asn.GetData()
-				asn.PrettyPrint()
+				if asn.GetData() {
+					asn.PrettyPrint()
+				}
 				c.Next()
 			case cmd == "mode":
 				if args == "vim" {
