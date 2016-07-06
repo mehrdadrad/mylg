@@ -1,59 +1,70 @@
+// Package dns provides name server methods for selected name server(s)
 package dns
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"sort"
+	"strings"
+	"time"
+
 	"github.com/mehrdadrad/mylg/cli"
 	"github.com/mehrdadrad/mylg/data"
 	"github.com/miekg/dns"
-	"net/http"
-	"regexp"
-	"strings"
 )
 
-type DNS struct {
+// A NSRequest represents a name server request
+type NSRequest struct {
+	country string
 	host    string
-	servers map[string]DNSHost
+	hosts   []NSHost
 }
 
-type DNSHost struct {
-	IP      string
-	Country string
-	City    string
+// A NSHost represents a name server host
+type NSHost struct {
+	ip      string
+	alpha2  string
+	country string
+	city    string
 }
 
-// Create a new dns object
-func NewRequest() *DNS {
-	return &DNS{host: ""}
+// NewRequest creates a new dns request object
+func NewRequest() *NSRequest {
+	return &NSRequest{host: ""}
 }
 
-// Initialize dns object
-func (d *DNS) Init(c *cli.Readline) {
-	c.SetPrompt("dns")
-	c.Refresh()
-	var (
-		items     = make(map[string]struct{})
-		countries []string
-		r, _      = regexp.Compile(`^(\w{2})`)
-	)
-	sl := fetchDNSHosts()
-	d.servers = sl
-	for item, _ := range sl {
-		i := r.FindStringSubmatch(item)
-		if len(i) > 0 {
-			items[i[0]] = struct{}{}
-		}
+// Init configure dns command and fetch name servers
+func (d *NSRequest) Init() {
+	if !d.cache("validate") {
+		d.hosts = fetchNSHosts()
+		d.cache("write")
+	} else {
+		d.cache("read")
 	}
-	for alpha2 := range items {
-		if name, ok := data.Country[alpha2]; ok {
-			countries = append(countries, name)
-		}
+}
+
+// SetCountryList init the connect contry items
+func (d *NSRequest) SetCountryList(c *cli.Readline) {
+	var countries []string
+	for _, host := range d.hosts {
+		countries = append(countries, host.country)
 	}
+	countries = uniqStrSlice(countries)
+	sort.Strings(countries)
 	c.UpdateCompleter("connect", countries)
 }
 
+func (d *NSRequest) SetArgs(args string) bool {
+	d.country = args
+	return true
+}
+
 // Look up name server
-func (d *DNS) dnsLookup() {
+func (d *NSRequest) dnsLookup() {
 	//var list []DNSHost
 
 	c := new(dns.Client)
@@ -70,9 +81,53 @@ func (d *DNS) dnsLookup() {
 	}
 }
 
-// Fetch dns servers from public-dns.info
-func fetchDNSHosts() map[string]DNSHost {
-	var list = map[string]DNSHost{}
+// cache provides caching for name servers
+func (d *NSRequest) cache(r string) bool {
+	switch r {
+	case "read":
+		b, err := ioutil.ReadFile("/tmp/mylg.ns")
+		if err != nil {
+			panic(err.Error)
+		}
+		d.hosts = d.hosts[:0]
+		r := bytes.NewBuffer(b)
+		s := bufio.NewScanner(r)
+		for s.Scan() {
+			csv := strings.Split(s.Text(), ";")
+			if len(csv) != 4 {
+				continue
+			}
+			d.hosts = append(d.hosts, NSHost{alpha2: csv[0], country: csv[1], city: csv[2], ip: csv[3]})
+		}
+	case "write":
+		var data []string
+		for _, h := range d.hosts {
+			data = append(data, fmt.Sprintf("%s;%s;%s;%s", h.alpha2, h.country, h.city, h.ip))
+		}
+		err := ioutil.WriteFile("/tmp/mylg.ns", []byte(strings.Join(data, "\n")), 0644)
+		if err != nil {
+			panic(err.Error)
+		}
+		println("write done!")
+	case "validate":
+		f, err := os.Stat("/tmp/mylg.ns")
+		if err != nil {
+			return false
+		}
+		d := time.Since(f.ModTime())
+		if d.Hours() > 48 {
+			return false
+		}
+	}
+	return true
+}
+
+// Fetch name servers from public-dns.info
+func fetchNSHosts() []NSHost {
+	var (
+		hosts   []NSHost
+		counter = make(map[string]int)
+	)
 	resp, err := http.Get("http://public-dns.info/nameservers.csv")
 	if err != nil {
 		println(err.Error())
@@ -82,8 +137,24 @@ func fetchDNSHosts() map[string]DNSHost {
 	for scanner.Scan() {
 		csv := strings.Split(scanner.Text(), ",")
 		if csv[3] != "\"\"" {
-			list[csv[2]+" "+csv[3]] = DNSHost{IP: csv[0], Country: csv[2], City: csv[3]}
+			if name, ok := data.Country[csv[2]]; ok && counter[csv[2]] < 5 {
+				hosts = append(hosts, NSHost{ip: csv[0], alpha2: csv[2], country: name, city: csv[3]})
+				counter[csv[2]]++
+			}
 		}
 	}
-	return list
+	return hosts
+}
+
+// uniqStrSlice return unique slice
+func uniqStrSlice(src []string) []string {
+	var rst []string
+	tmp := make(map[string]struct{})
+	for _, s := range src {
+		tmp[s] = struct{}{}
+	}
+	for s := range tmp {
+		rst = append(rst, s)
+	}
+	return rst
 }
