@@ -27,6 +27,7 @@ type Provider interface {
 }
 
 var (
+	// register looking glass hosts
 	providers = map[string]Provider{"telia": new(lg.Telia), "level3": new(lg.Level3), "cogent": new(lg.Cogent)}
 	pNames    = providerNames()
 	nsr       *ns.Request
@@ -79,6 +80,10 @@ func main() {
 		case request, loop = <-req:
 			if !loop {
 				break
+			}
+			if len(request) < 1 {
+				c.Next()
+				continue
 			}
 			subReq := r.FindStringSubmatch(request)
 			if len(subReq) == 0 {
