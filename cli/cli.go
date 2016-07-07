@@ -26,6 +26,9 @@ func Init(prompt string) *Readline {
 			readline.PcItem("connect"),
 			readline.PcItem("node"),
 			readline.PcItem("local"),
+			readline.PcItem("lg"),
+			readline.PcItem("ns"),
+			readline.PcItem("dig"),
 			readline.PcItem("asn"),
 			readline.PcItem("help"),
 			readline.PcItem("exit"),
@@ -59,6 +62,18 @@ func (r *Readline) RemoveItemCompleter(pcItem string) {
 
 }
 
+// AddCompleter updates subitem(s) from a specific main item
+func (r *Readline) AddCompleter(pcItem string, pcSubItems []string) {
+	var pc readline.PrefixCompleter
+	c := []readline.PrefixCompleterInterface{}
+	for _, item := range pcSubItems {
+		c = append(c, readline.PcItem(item))
+	}
+	pc.Name = []rune(pcItem + " ")
+	pc.Children = c
+	r.completer.Children = append(r.completer.Children, &pc)
+}
+
 // UpdateCompleter updates subitem(s) from a specific main item
 func (r *Readline) UpdateCompleter(pcItem string, pcSubItems []string) {
 	child := []readline.PrefixCompleterInterface{}
@@ -76,7 +91,9 @@ func (r *Readline) UpdateCompleter(pcItem string, pcSubItems []string) {
 			child = append(child, p)
 		}
 	}
-
+	if len(pc.Name) < 1 {
+		// todo adding new
+	}
 	r.completer.Children = child
 }
 
@@ -165,6 +182,10 @@ func (r *Readline) Help() {
 	connect <provider name>     connects to external looking glass, press tab to see the menu
 	node <city/country name>    connects to specific node at current looking glass, press tab to see the available nodes
 	local                       back to local
+	lg                          change mode to extenal looking glass
+	ns                          change mode to name server looking up
 	ping                        ping ip address or domain name
+	asn                         resolve AS number to holder
+	dig                         name server looking up
 	`)
 }
