@@ -82,6 +82,7 @@ func (d *Request) ChkNode(city string) bool {
 	for _, h := range d.hosts {
 		if d.country == h.country && city == h.city {
 			d.host = h.ip
+			d.city = h.city
 		}
 	}
 	return true
@@ -92,12 +93,24 @@ func (d *Request) Dig(args string) {
 	c := new(dns.Client)
 	m := new(dns.Msg)
 
-	m.SetQuestion(dns.Fqdn(args), dns.TypeA)
+	m.SetQuestion(dns.Fqdn(args), dns.TypeANY)
 	m.RecursionDesired = true
+
+	if d.host == "" {
+		config, _ := dns.ClientConfigFromFile("/etc/resolv.conf")
+		d.host = config.Servers[0]
+		d.city = "your local dns server"
+	}
+
+	println("Trying to query server:", d.host, d.country, d.city)
+
+	t := time.Now()
 	r, _, err := c.Exchange(m, d.host+":53")
+	elapsed := time.Now().Sub(t)
 	if err != nil {
 		println(err.Error())
 	}
+	fmt.Printf("Query time: %.4f ms\n", elapsed.Seconds())
 	for _, a := range r.Answer {
 		fmt.Println(a)
 	}
