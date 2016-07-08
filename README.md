@@ -1,4 +1,4 @@
-# myLG [![Build Status](https://travis-ci.org/mehrdadrad/mylg.svg?branch=master)](https://travis-ci.org/mehrdadrad/mylg) [![Go Report Card](https://goreportcard.com/badge/github.com/mehrdadrad/mylg?)](https://goreportcard.com/report/github.com/mehrdadrad/mylg)
+# myLG [![Build Status](https://travis-ci.org/mehrdadrad/mylg.svg?branch=master)](https://travis-ci.org/mehrdadrad/mylg) [![Go Report Card](https://goreportcard.com/badge/github.com/mehrdadrad/mylg?)](https://goreportcard.com/report/github.com/mehrdadrad/mylg)[![license](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://raw.githubusercontent.com/mehrdadrad/mylg/master/LICENSE)
 
 ###Command line looking glass tool - support popular looking glasses 
 
