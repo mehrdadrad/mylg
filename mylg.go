@@ -72,7 +72,7 @@ func main() {
 	c := cli.Init("local")
 	go c.Run(req, nxt)
 
-	r, _ := regexp.Compile(`(ping|lg|ns|dig|asn|connect|node|local|mode|help|exit|quit)\s{0,1}(.*)`)
+	r, _ := regexp.Compile(`(ping|trace|lg|ns|dig|asn|connect|node|local|mode|help|exit|quit)\s{0,1}(.*)`)
 	s := spinner.New(spinner.CharSets[26], 220*time.Millisecond)
 
 	for loop {
@@ -116,6 +116,10 @@ func main() {
 				m, _ := providers[cPName].Ping()
 				s.Stop()
 				println(m)
+				c.Next()
+			case cmd == "trace":
+				trace := icmp.Trace{}
+				trace.Run(args)
 				c.Next()
 			case cmd == "dig":
 				nsr.Dig(args)
