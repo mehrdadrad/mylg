@@ -109,6 +109,7 @@ func (d *Request) Dig(args string) {
 	elapsed := time.Now().Sub(t)
 	if err != nil {
 		println(err.Error())
+		return
 	}
 	fmt.Printf("Query time: %.4f ms\n", elapsed.Seconds())
 	for _, a := range r.Answer {
