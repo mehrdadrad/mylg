@@ -2,10 +2,17 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/mehrdadrad/mylg/banner"
 	"gopkg.in/readline.v1"
+	"io/ioutil"
+	"net/http"
 	"strings"
+)
+
+const (
+	version = "0.1.5"
 )
 
 // Readline structure
@@ -23,6 +30,7 @@ func Init(prompt string) *Readline {
 		err       error
 		completer = readline.NewPrefixCompleter(
 			readline.PcItem("ping"),
+			readline.PcItem("trace"),
 			readline.PcItem("connect"),
 			readline.PcItem("node"),
 			readline.PcItem("local"),
@@ -46,6 +54,7 @@ func Init(prompt string) *Readline {
 		panic(err)
 	}
 	banner.Println()
+	checkUpdate()
 	return &r
 }
 
@@ -188,4 +197,31 @@ func (r *Readline) Help() {
 	asn                         resolve AS number to holder
 	dig                         name server looking up
 	`)
+}
+
+// checkUpdate checks if any new version is available
+func checkUpdate() {
+	type mylg struct {
+		Version string
+	}
+	var appCtl mylg
+	resp, err := http.Get("http://mylg.io/appctl/mylg")
+	if err != nil {
+		println("error: check update has been failed ")
+		return
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		println("error: check update has been failed (2)" + err.Error())
+		return
+	}
+	err = json.Unmarshal(body, &appCtl)
+	if err != nil {
+		println(err.Error())
+		return
+	}
+	if version != appCtl.Version {
+		fmt.Printf("New version is available (v%s) mylg.io/download\n", appCtl.Version)
+	}
 }
