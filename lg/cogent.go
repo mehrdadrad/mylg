@@ -12,9 +12,10 @@ import (
 
 // A Cogent represents a telia looking glass request
 type Cogent struct {
-	Host string
-	IPv  string
-	Node string
+	Host  string
+	IPv   string
+	Node  string
+	Nodes []string
 }
 
 var (
@@ -38,22 +39,45 @@ func (p *Cogent) GetDefaultNode() string {
 
 // GetNodes returns all Cogent nodes (US and International)
 func (p *Cogent) GetNodes() []string {
+	// Memory cache
+	if len(p.Nodes) > 1 {
+		return p.Nodes
+	}
 	cogentNodes = p.FetchNodes()
 	var nodes []string
 	for node := range cogentNodes {
 		nodes = append(nodes, node)
 	}
+	p.Nodes = nodes
 	return nodes
 }
 
 // ChangeNode set new requested node
 func (p *Cogent) ChangeNode(node string) {
-	p.Node = node
+	var valid = false
+	// Validate
+	for _, n := range p.Nodes {
+		if node == n {
+			valid = true
+			break
+		}
+	}
+	if valid {
+		p.Node = node
+	} else {
+		p.Node = "NA"
+		println("Invalid node please press tab after node command to show the valid nodes")
+	}
 }
 
 // Ping tries to connect Cogent's ping looking glass through HTTP
 // Returns the result
 func (p *Cogent) Ping() (string, error) {
+	// Basic validate
+	if p.Node == "NA" || len(p.Host) < 5 {
+		print("Invalid node or host/ip address")
+		return "", errors.New("error")
+	}
 	var cmd = "P4"
 	if p.IPv == "ipv6" {
 		cmd = "P6"
@@ -81,7 +105,7 @@ func (p *Cogent) FetchNodes() map[string]string {
 	var nodes = make(map[string]string, 100)
 	resp, err := http.Get("http://www.cogentco.com/lookingglass.php")
 	if err != nil {
-		println("error: cogent looking glass unreachable (1)" + err.Error())
+		println("error: cogent looking glass unreachable (1)")
 		return map[string]string{}
 	}
 	defer resp.Body.Close()

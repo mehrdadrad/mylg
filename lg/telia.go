@@ -12,9 +12,10 @@ import (
 
 // A Telia represents a telia looking glass request
 type Telia struct {
-	Host string
-	IPv  string
-	Node string
+	Host  string
+	IPv   string
+	Node  string
+	Nodes []string
 }
 
 var teliaDefaultNode = "Los Angeles"
@@ -35,21 +36,44 @@ func (p *Telia) GetDefaultNode() string {
 
 // GetNodes returns all Telia nodes (US and International)
 func (p *Telia) GetNodes() []string {
+	// Memory cache
+	if len(p.Nodes) > 1 {
+		return p.Nodes
+	}
 	var nodes []string
 	for node := range p.FetchNodes() {
 		nodes = append(nodes, node)
 	}
+	p.Nodes = nodes
 	return nodes
 }
 
 // ChangeNode set new requested node
 func (p *Telia) ChangeNode(node string) {
-	p.Node = node
+	var valid = false
+	// Validate
+	for _, n := range p.Nodes {
+		if node == n {
+			valid = true
+			break
+		}
+	}
+	if valid {
+		p.Node = node
+	} else {
+		p.Node = "NA"
+		println("Invalid node please press tab after node command to show the valid nodes")
+	}
 }
 
 // Ping tries to connect Telia's ping looking glass through HTTP
 // Returns the result
 func (p *Telia) Ping() (string, error) {
+	// Basic validate
+	if p.Node == "NA" || len(p.Host) < 5 {
+		print("Invalid node or host/ip address")
+		return "", errors.New("error")
+	}
 	resp, err := http.PostForm("http://looking-glass.telia.net/",
 		url.Values{"query": {"ping"}, "protocol": {p.IPv}, "addr": {p.Host}, "router": {p.Node}})
 	if err != nil {
@@ -73,7 +97,7 @@ func (p *Telia) FetchNodes() map[string]string {
 	var nodes = make(map[string]string, 100)
 	resp, err := http.Get("http://looking-glass.telia.net/")
 	if err != nil {
-		println("error: telia looking glass unreachable (1) " + err.Error())
+		println("error: telia looking glass unreachable (1) ")
 		return map[string]string{}
 	}
 	defer resp.Body.Close()

@@ -17,6 +17,7 @@ type Level3 struct {
 	IPv   string
 	Count string
 	Node  string
+	Nodes []string
 }
 
 var (
@@ -46,22 +47,45 @@ func (p *Level3) GetDefaultNode() string {
 
 // GetNodes returns all level3 nodes (US and International)
 func (p *Level3) GetNodes() []string {
+	// Memory cache
+	if len(p.Nodes) > 1 {
+		return p.Nodes
+	}
 	level3Nodes = p.FetchNodes()
 	var nodes []string
 	for node := range level3Nodes {
 		nodes = append(nodes, node)
 	}
+	p.Nodes = nodes
 	return nodes
 }
 
 // ChangeNode set new requested node
 func (p *Level3) ChangeNode(node string) {
-	p.Node = node
+	var valid = false
+	// Validate
+	for _, n := range p.Nodes {
+		if node == n {
+			valid = true
+			break
+		}
+	}
+	if valid {
+		p.Node = node
+	} else {
+		p.Node = "NA"
+		println("Invalid node please press tab after node command to show the valid nodes")
+	}
 }
 
 // Ping tries to connect Level3's ping looking glass through HTTP
 // Returns the result
 func (p *Level3) Ping() (string, error) {
+	// Basic validate
+	if p.Node == "NA" || len(p.Host) < 5 {
+		print("Invalid node or host/ip address")
+		return "", errors.New("error")
+	}
 	resp, err := http.PostForm("http://lookingglass.level3.net/ping/lg_ping_output.php",
 		url.Values{"count": {p.Count}, "size": {"64"}, "address": {p.Host}, "sitename": {level3Nodes[p.Node]}})
 	if err != nil {
@@ -85,7 +109,7 @@ func (p *Level3) FetchNodes() map[string]string {
 	var nodes = make(map[string]string, 100)
 	resp, err := http.Get("http://lookingglass.level3.net/ping/lg_ping_main.php")
 	if err != nil {
-		println("error: level3 looking glass unreachable (1) " + err.Error())
+		println("error: level3 looking glass unreachable (1)")
 		return map[string]string{}
 	}
 	defer resp.Body.Close()
