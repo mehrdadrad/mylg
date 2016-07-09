@@ -1,8 +1,7 @@
 # myLG [![Build Status](https://travis-ci.org/mehrdadrad/mylg.svg?branch=master)](https://travis-ci.org/mehrdadrad/mylg) [![Go Report Card](https://goreportcard.com/badge/github.com/mehrdadrad/mylg?)](https://goreportcard.com/report/github.com/mehrdadrad/mylg)
 
 ###Command line looking glass tool - support popular looking glasses 
-
-![alt tag](http://www.ippacket.org/img/mylg.png)
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/jQJWcnLH3Fg/0.jpg)](https://www.youtube.com/watch?v=jQJWcnLH3Fg)
 
 ## Features
 * Popular looking glasses like Telia, Level3
