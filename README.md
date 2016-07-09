@@ -5,10 +5,11 @@
 ![alt tag](http://www.ippacket.org/img/mylg.png)
 
 ## Features
-* Support popular looking glasses like Telia, Level3
-* Support more than 200 countries DNS Lookup information 
-* Support local powerful ping command
-* Support RIPE information (ASN)
+* Popular looking glasses like Telia, Level3
+* More than 200 countries DNS Lookup information 
+* Local powerful ping and trace
+* RIPE information (ASN)
+* PeeringDB information
 * Support vi and emacs mode, almost all basic features
 * Auto complete feature
 
