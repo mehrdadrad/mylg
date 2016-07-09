@@ -11,6 +11,7 @@ import (
 	"strconv"
 )
 
+// A Peer represents peeringdb record
 type Peer struct {
 	Name    string `json:"name"`
 	ASN     int    `json:"asn"`
@@ -19,10 +20,13 @@ type Peer struct {
 	IPAddr4 string `json:"ipaddr4"`
 	IPAddr6 string `json:"ipaddr6"`
 }
+
+// Peers represents peeringdb records
 type Peers struct {
 	Data []Peer `json:"data"`
 }
 
+// getData fetchs netixlan data from peeringdb
 func getData() Peers {
 	var peers Peers
 	resp, err := http.Get("https://www.peeringdb.com/api/netixlan")
@@ -38,6 +42,7 @@ func getData() Peers {
 	return peers
 }
 
+// printTable prints peeringdb data as table
 func printTable(data [][]string) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"Name", "Status", "Speed", "IPv4 Addr", "IPv6 Addr"})
@@ -47,6 +52,7 @@ func printTable(data [][]string) {
 	table.Render()
 }
 
+// Search find a key through the records
 func Search(key string) {
 	var result [][]string
 	peers := getData()
@@ -66,6 +72,7 @@ func Search(key string) {
 	}
 }
 
+// isASN checks if the key is number
 func isASN(key string) bool {
 	m, err := regexp.MatchString(`^(?i)\d{2,5}`, key)
 	if err != nil {
@@ -73,45 +80,3 @@ func isASN(key string) bool {
 	}
 	return m
 }
-
-/*
-func cache(r string) string, bool {
-	var fn = "/tmp/mylg.pdb"
-	switch r {
-	case "read":
-		b, err := ioutil.ReadFile(fn)
-		if err != nil {
-			panic(err.Error())
-		}
-		d.hosts = d.hosts[:0]
-		r := bytes.NewBuffer(b)
-		s := bufio.NewScanner(r)
-		for s.Scan() {
-			csv := strings.Split(s.Text(), ";")
-			if len(csv) != 4 {
-				continue
-			}
-			d.hosts = append(d.hosts, Host{alpha2: csv[0], country: csv[1], city: csv[2], ip: csv[3]})
-		}
-	case "write":
-		var data []string
-		for _, h := range d.hosts {
-			data = append(data, fmt.Sprintf("%s;%s;%s;%s", h.alpha2, h.country, h.city, h.ip))
-		}
-		err := ioutil.WriteFile(fn, []byte(strings.Join(data, "\n")), 0644)
-		if err != nil {
-			panic(err.Error())
-		}
-	case "validate":
-		f, err := os.Stat(fn)
-		if err != nil {
-			return false
-		}
-		d := time.Since(f.ModTime())
-		if d.Hours() > 48 {
-			return false
-		}
-	}
-	return true
-}
-*/
