@@ -14,6 +14,7 @@ import (
 	"github.com/mehrdadrad/mylg/icmp"
 	"github.com/mehrdadrad/mylg/lg"
 	"github.com/mehrdadrad/mylg/ns"
+	"github.com/mehrdadrad/mylg/peeringdb"
 	"github.com/mehrdadrad/mylg/ripe"
 )
 
@@ -72,7 +73,7 @@ func main() {
 	c := cli.Init("local")
 	go c.Run(req, nxt)
 
-	r, _ := regexp.Compile(`(ping|trace|lg|ns|dig|asn|connect|node|local|mode|help|exit|quit)\s{0,1}(.*)`)
+	r, _ := regexp.Compile(`(ping|trace|lg|ns|dig|asn|peering|connect|node|local|mode|help|exit|quit)\s{0,1}(.*)`)
 	s := spinner.New(spinner.CharSets[26], 220*time.Millisecond)
 
 	for loop {
@@ -186,6 +187,9 @@ func main() {
 				if asn.GetData() {
 					asn.PrettyPrint()
 				}
+				c.Next()
+			case cmd == "peering":
+				peeringdb.Search(args)
 				c.Next()
 			case cmd == "mode":
 				if args == "vim" {
