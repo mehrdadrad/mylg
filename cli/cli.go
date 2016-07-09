@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	version = "0.1.5"
+	version = "0.1.6"
 )
 
 // Readline structure
@@ -38,6 +38,7 @@ func Init(prompt string) *Readline {
 			readline.PcItem("ns"),
 			readline.PcItem("dig"),
 			readline.PcItem("asn"),
+			readline.PcItem("peering"),
 			readline.PcItem("help"),
 			readline.PcItem("exit"),
 		)
