@@ -14,6 +14,7 @@ type ASN struct {
 	Data   map[string]interface{}
 }
 
+// Prefix represents prefix information
 type Prefix struct {
 	Resource string
 	Data     map[string]interface{}
@@ -52,14 +53,14 @@ func (p *Prefix) PrettyPrint() {
 		println("prefix:", data["resource"].(string))
 		asns := data["asns"].([]interface{})
 		for _, h := range asns {
-			println("holder", h.(map[string]interface{})["holder"].(string))
+			println("holder:", h.(map[string]interface{})["holder"].(string))
 		}
 	} else {
 		println("error")
 	}
 }
 
-//
+// Set ASN
 func (a *ASN) Set(r string) {
 	a.Number = r
 }
@@ -95,8 +96,9 @@ func (a *ASN) PrettyPrint() {
 	}
 }
 
+// IsASN checks if the key is a number
 func IsASN(key string) bool {
-	m, err := regexp.MatchString(`^(?i)\d{2,5}`, key)
+	m, err := regexp.MatchString(`^\d+$`, key)
 	if err != nil {
 		return false
 	}
