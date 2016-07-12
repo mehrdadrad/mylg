@@ -5,12 +5,63 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 )
 
 // ASN represents ASN information
 type ASN struct {
 	Number string
 	Data   map[string]interface{}
+}
+
+type Prefix struct {
+	Resource string
+	Data     map[string]interface{}
+}
+
+//
+func (p *Prefix) Set(r string) {
+	p.Resource = r
+}
+
+// GetData gets prefix information from RIPE NCC
+func (p *Prefix) GetData() bool {
+	if len(p.Resource) < 6 {
+		println("error: prefix invalid")
+		return false
+	}
+	resp, err := http.Get("https://stat.ripe.net/data/prefix-overview/data.json?max_related=50&resource=" + p.Resource)
+	if err != nil {
+		println(err)
+		return false
+	}
+	if resp.StatusCode != 200 {
+		println("error: check your prefix")
+		return false
+	}
+	defer resp.Body.Close()
+	body, _ := ioutil.ReadAll(resp.Body)
+	json.Unmarshal(body, &p.Data)
+	return true
+}
+
+// PrettyPrint print ASN information (holder)
+func (p *Prefix) PrettyPrint() {
+	data, ok := p.Data["data"].(map[string]interface{})
+	if ok {
+		println("prefix:", data["resource"].(string))
+		asns := data["asns"].([]interface{})
+		for _, h := range asns {
+			println("holder", h.(map[string]interface{})["holder"].(string))
+		}
+	} else {
+		println("error")
+	}
+}
+
+//
+func (a *ASN) Set(r string) {
+	a.Number = r
 }
 
 // GetData gets ASN information from RIPE NCC
@@ -42,4 +93,12 @@ func (a *ASN) PrettyPrint() {
 	} else {
 		println("error")
 	}
+}
+
+func IsASN(key string) bool {
+	m, err := regexp.MatchString(`^(?i)\d{2,5}`, key)
+	if err != nil {
+		return false
+	}
+	return m
 }
