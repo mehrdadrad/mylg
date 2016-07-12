@@ -37,7 +37,7 @@ func Init(prompt string) *Readline {
 			readline.PcItem("lg"),
 			readline.PcItem("ns"),
 			readline.PcItem("dig"),
-			readline.PcItem("asn"),
+			readline.PcItem("whois"),
 			readline.PcItem("peering"),
 			readline.PcItem("help"),
 			readline.PcItem("exit"),
@@ -195,8 +195,9 @@ func (r *Readline) Help() {
 	lg                          change mode to extenal looking glass
 	ns                          change mode to name server looking up
 	ping                        ping ip address or domain name
-	asn                         resolve AS number to holder
 	dig                         name server looking up
+	whois                       resolve AS number/IP/CIDR to holder (provides by ripe ncc)
+	peering                     peering information (provides by peeringdb.com)
 	`)
 }
 
