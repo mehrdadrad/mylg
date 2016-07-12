@@ -27,9 +27,16 @@ type Provider interface {
 	Ping() (string, error)
 }
 
+type Whois interface {
+	Set(r string)
+	GetData() bool
+	PrettyPrint()
+}
+
 var (
 	// register looking glass hosts
 	providers = map[string]Provider{"telia": new(lg.Telia), "level3": new(lg.Level3), "cogent": new(lg.Cogent)}
+	whois     = map[string]Whois{"asn": new(ripe.ASN), "prefix": new(ripe.Prefix)}
 	pNames    = providerNames()
 	nsr       *ns.Request
 )
@@ -73,7 +80,7 @@ func main() {
 	c := cli.Init("local")
 	go c.Run(req, nxt)
 
-	r, _ := regexp.Compile(`(ping|trace|lg|ns|dig|asn|peering|connect|node|local|mode|help|exit|quit)\s{0,1}(.*)`)
+	r, _ := regexp.Compile(`(ping|trace|lg|ns|dig|whois|peering|connect|node|local|mode|help|exit|quit)\s{0,1}(.*)`)
 	s := spinner.New(spinner.CharSets[26], 220*time.Millisecond)
 
 	for loop {
@@ -182,10 +189,15 @@ func main() {
 				nsr.SetCountryList(c)
 				c.SetPrompt("ns")
 				c.Next()
-			case cmd == "asn":
-				asn := ripe.ASN{Number: args}
-				if asn.GetData() {
-					asn.PrettyPrint()
+			case cmd == "whois":
+				if ripe.IsASN(args) {
+					whois["asn"].Set(args)
+					whois["asn"].GetData()
+					whois["asn"].PrettyPrint()
+				} else {
+					whois["prefix"].Set(args)
+					whois["prefix"].GetData()
+					whois["prefix"].PrettyPrint()
 				}
 				c.Next()
 			case cmd == "peering":
