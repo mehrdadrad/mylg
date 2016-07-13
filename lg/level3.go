@@ -132,6 +132,11 @@ func (p *Level3) Trace() chan string {
 	return c
 }
 
+func (p *Level3) BGP() chan string {
+	c := make(chan string)
+	return c
+}
+
 //FetchNodes returns all available nodes through HTTP
 func (p *Level3) FetchNodes() map[string]string {
 	var nodes = make(map[string]string, 100)

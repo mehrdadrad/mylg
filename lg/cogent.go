@@ -132,6 +132,11 @@ func (p *Cogent) Trace() chan string {
 	return c
 }
 
+func (p *Cogent) BGP() chan string {
+	c := make(chan string)
+	return c
+}
+
 //FetchNodes returns all available nodes through HTTP
 func (p *Cogent) FetchNodes() map[string]string {
 	var nodes = make(map[string]string, 100)

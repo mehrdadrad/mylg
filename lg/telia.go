@@ -121,6 +121,11 @@ func (p *Telia) Trace() chan string {
 	return c
 }
 
+func (p *Telia) BGP() chan string {
+	c := make(chan string)
+	return c
+}
+
 //FetchNodes returns all available nodes through HTTP
 func (p *Telia) FetchNodes() map[string]string {
 	var nodes = make(map[string]string, 100)

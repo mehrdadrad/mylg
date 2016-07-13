@@ -26,6 +26,7 @@ type Provider interface {
 	ChangeNode(node string)
 	Ping() (string, error)
 	Trace() chan string
+	BGP() chan string
 }
 
 type Whois interface {
@@ -81,7 +82,7 @@ func main() {
 	c := cli.Init("local")
 	go c.Run(req, nxt)
 
-	r, _ := regexp.Compile(`(ping|trace|lg|ns|dig|whois|peering|connect|node|local|mode|help|exit|quit)\s{0,1}(.*)`)
+	r, _ := regexp.Compile(`(ping|trace|bgp|lg|ns|dig|whois|peering|connect|node|local|mode|help|exit|quit)\s{0,1}(.*)`)
 	s := spinner.New(spinner.CharSets[26], 220*time.Millisecond)
 
 	for loop {
@@ -136,6 +137,12 @@ func main() {
 					for l := range providers[cPName].Trace() {
 						println(l)
 					}
+				}
+				c.Next()
+			case cmd == "bgp" && cPName == "lg":
+				providers[cPName].Set(args, "ipv4")
+				for l := range providers[cPName].Trace() {
+					println(l)
 				}
 				c.Next()
 			case cmd == "dig":
