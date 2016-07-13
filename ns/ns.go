@@ -71,6 +71,11 @@ func (d *Request) SetNodeList(c *cli.Readline) {
 	c.UpdateCompleter("node", node)
 }
 
+//
+func (d *Request) ResetNodeList(c *cli.Readline) {
+	c.UpdateCompleter("node", []string{})
+}
+
 // ChkCountry set requested country
 func (d *Request) ChkCountry(country string) bool {
 	d.country = country
@@ -86,6 +91,12 @@ func (d *Request) ChkNode(city string) bool {
 		}
 	}
 	return true
+}
+
+// Local set host to nothing means local
+func (d *Request) Local() {
+	d.host = ""
+	d.country = ""
 }
 
 // Dig look up name server
