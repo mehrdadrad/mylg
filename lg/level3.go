@@ -3,11 +3,13 @@
 package lg
 
 import (
+	"bufio"
 	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -56,6 +58,7 @@ func (p *Level3) GetNodes() []string {
 	for node := range level3Nodes {
 		nodes = append(nodes, node)
 	}
+	sort.Strings(nodes)
 	p.Nodes = nodes
 	return nodes
 }
@@ -90,6 +93,7 @@ func (p *Level3) Ping() (string, error) {
 		url.Values{"count": {p.Count}, "size": {"64"}, "address": {p.Host}, "sitename": {level3Nodes[p.Node]}})
 	if err != nil {
 		println(err)
+		return "", err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
@@ -102,6 +106,30 @@ func (p *Level3) Ping() (string, error) {
 		return sanitize(b[1]), nil
 	}
 	return "", errors.New("error")
+}
+
+// Trace
+func (p *Level3) Trace() chan string {
+	c := make(chan string)
+	resp, err := http.PostForm("http://lookingglass.level3.net/traceroute/lg_tr_output.php",
+		url.Values{"address": {p.Host}, "sitename": {level3Nodes[p.Node]}})
+	if err != nil {
+		println(err)
+	}
+	go func() {
+		defer resp.Body.Close()
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			l := scanner.Text()
+			m, _ := regexp.MatchString(`(?i)(^traceroute|\s+\d{1,2})\s+`, l)
+			if m {
+				l = sanitize(l)
+				c <- l
+			}
+		}
+		close(c)
+	}()
+	return c
 }
 
 //FetchNodes returns all available nodes through HTTP

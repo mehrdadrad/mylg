@@ -3,11 +3,14 @@
 package lg
 
 import (
+	"bufio"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
 )
 
 // A Telia represents a telia looking glass request
@@ -44,6 +47,7 @@ func (p *Telia) GetNodes() []string {
 	for node := range p.FetchNodes() {
 		nodes = append(nodes, node)
 	}
+	sort.Strings(nodes)
 	p.Nodes = nodes
 	return nodes
 }
@@ -78,6 +82,7 @@ func (p *Telia) Ping() (string, error) {
 		url.Values{"query": {"ping"}, "protocol": {p.IPv}, "addr": {p.Host}, "router": {p.Node}})
 	if err != nil {
 		println(err)
+		return "", err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
@@ -90,6 +95,30 @@ func (p *Telia) Ping() (string, error) {
 		return b[1], nil
 	}
 	return "", errors.New("error")
+}
+
+// Trace gets trace information from Telia
+func (p *Telia) Trace() chan string {
+	c := make(chan string)
+	resp, err := http.PostForm("http://looking-glass.telia.net/",
+		url.Values{"query": {"trace"}, "protocol": {p.IPv}, "addr": {p.Host}, "router": {p.Node}})
+	if err != nil {
+		println(err)
+	}
+	go func() {
+		defer resp.Body.Close()
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			l := scanner.Text()
+			m, _ := regexp.MatchString(`^(traceroute|\s*\d{1,2})`, l)
+			if m {
+				l = replaceASNTrace(l)
+				c <- l
+			}
+		}
+		close(c)
+	}()
+	return c
 }
 
 //FetchNodes returns all available nodes through HTTP
@@ -112,4 +141,19 @@ func (p *Telia) FetchNodes() map[string]string {
 		nodes[v[1]] = v[2]
 	}
 	return nodes
+}
+
+//[GOOGLE (ARIN)" HREF="http://www.arin.net/cgi-bin/whois.pl?queryinput=15169" TARGET=_lookup>15169</A>]  1.261 ms 72.14.236.69 (72.14.236.69) [AS  <A title="GOOGLE (ARIN)" HREF="http://www.arin.net/cgi-bin/whois.pl?queryinput=15169" TARGET=_lookup>15169</A>]
+// replaceASNTrace
+func replaceASNTrace(l string) string {
+	m, _ := regexp.MatchString(`\[AS\s+`, l)
+	if !m {
+		return l
+	}
+	r := regexp.MustCompile(`(?i)\[AS\s+<A\s+title="([a-z|\d|\s|\(\)_,-]+)"\s+HREF="[a-z|\/|:.-]+\?\w+=\d+"\s+\w+=_lookup>(\d+)</A>]`)
+	asn := r.FindStringSubmatch(l)
+	if len(asn) == 3 {
+		l = r.ReplaceAllString(l, fmt.Sprintf("[%s (%s)]", asn[1], asn[2]))
+	}
+	return l
 }

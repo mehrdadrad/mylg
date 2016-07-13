@@ -3,11 +3,13 @@
 package lg
 
 import (
+	"bufio"
 	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
 )
 
 // A Cogent represents a telia looking glass request
@@ -48,6 +50,7 @@ func (p *Cogent) GetNodes() []string {
 	for node := range cogentNodes {
 		nodes = append(nodes, node)
 	}
+	sort.Strings(nodes)
 	p.Nodes = nodes
 	return nodes
 }
@@ -86,6 +89,7 @@ func (p *Cogent) Ping() (string, error) {
 		url.Values{"FKT": {"go!"}, "CMD": {cmd}, "DST": {p.Host}, "LOC": {cogentNodes[p.Node]}})
 	if err != nil {
 		println(err)
+		return "", err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
@@ -98,6 +102,34 @@ func (p *Cogent) Ping() (string, error) {
 		return b[1], nil
 	}
 	return "", errors.New("error")
+}
+
+// Trace
+func (p *Cogent) Trace() chan string {
+	c := make(chan string)
+	var cmd = "T4"
+	if p.IPv == "ipv6" {
+		cmd = "T6"
+	}
+	resp, err := http.PostForm("http://www.cogentco.com/lookingglass.php",
+		url.Values{"FKT": {"go!"}, "CMD": {cmd}, "DST": {p.Host}, "LOC": {cogentNodes[p.Node]}})
+	if err != nil {
+		println(err)
+	}
+	go func() {
+		defer resp.Body.Close()
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			l := scanner.Text()
+			m, _ := regexp.MatchString(`^(traceroute|\s*\d{1,2})`, l)
+			if m {
+				l = replaceASNTrace(l)
+				c <- l
+			}
+		}
+		close(c)
+	}()
+	return c
 }
 
 //FetchNodes returns all available nodes through HTTP
