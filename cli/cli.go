@@ -54,8 +54,9 @@ func Init(prompt string) *Readline {
 	if err != nil {
 		panic(err)
 	}
-	banner.Println()
-	checkUpdate()
+	banner.Println()   // print banner
+	checkUpdate()      // check update version
+	r.prompt = "local" // init local prompt
 	return &r
 }
 
