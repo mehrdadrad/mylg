@@ -113,8 +113,8 @@ func cache(r, typ string, data interface{}) (interface{}, bool) {
 				return res, true
 			}
 		}
-	case "validation":
-		f, err := os.Stat("/tmp/mylg." + typ)
+	case "validate":
+		f, err := os.Stat("/tmp/mylg.pdb." + typ)
 		if err != nil {
 			return nil, false
 		}
