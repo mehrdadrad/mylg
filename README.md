@@ -4,13 +4,13 @@
 [![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/jQJWcnLH3Fg/0.jpg)](https://www.youtube.com/watch?v=jQJWcnLH3Fg)
 
 ## Features
-* Popular looking glasses like Telia, Level3
+* Popular looking glasses (ping/trace)like Telia, Level3
 * More than 200 countries DNS Lookup information 
-* Local powerful ping and trace
-* RIPE information (ASN)
+* Local fast ping and trace
+* RIPE information (ASN, IP/CIDR)
 * PeeringDB information
 * Support vi and emacs mode, almost all basic features
-* Auto complete feature
+* CLI auto complete and history features
 
 ## Contribute 
 Welcomes any kind of contribution, please follow the next steps:
