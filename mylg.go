@@ -25,6 +25,7 @@ type Provider interface {
 	GetNodes() []string
 	ChangeNode(node string)
 	Ping() (string, error)
+	Trace() chan string
 }
 
 type Whois interface {
@@ -126,8 +127,16 @@ func main() {
 				println(m)
 				c.Next()
 			case cmd == "trace":
-				trace := icmp.Trace{}
-				trace.Run(args)
+				switch {
+				case strings.HasPrefix(prompt, "local"):
+					trace := icmp.Trace{}
+					trace.Run(args)
+				case strings.HasPrefix(prompt, "lg"):
+					providers[cPName].Set(args, "ipv4")
+					for l := range providers[cPName].Trace() {
+						println(l)
+					}
+				}
 				c.Next()
 			case cmd == "dig":
 				nsr.Dig(args)
@@ -150,6 +159,7 @@ func main() {
 				}
 				c.Next()
 			case cmd == "local":
+				nsr.Local()
 				cPName = "local"
 				c.SetPrompt(cPName)
 				c.Next()
@@ -187,6 +197,7 @@ func main() {
 				c.Next()
 			case cmd == "ns":
 				nsr.SetCountryList(c)
+				nsr.ResetNodeList(c)
 				c.SetPrompt("ns")
 				c.Next()
 			case cmd == "whois":
