@@ -97,7 +97,7 @@ func (p *Telia) Ping() (string, error) {
 	return "", errors.New("error")
 }
 
-// Trace gets trace information from Telia
+// Trace gets traceroute information from Telia
 func (p *Telia) Trace() chan string {
 	c := make(chan string)
 	resp, err := http.PostForm("http://looking-glass.telia.net/",

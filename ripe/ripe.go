@@ -20,7 +20,7 @@ type Prefix struct {
 	Data     map[string]interface{}
 }
 
-//
+// Set sets the resource value
 func (p *Prefix) Set(r string) {
 	p.Resource = r
 }

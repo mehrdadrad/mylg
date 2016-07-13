@@ -108,7 +108,7 @@ func (p *Level3) Ping() (string, error) {
 	return "", errors.New("error")
 }
 
-// Trace
+// Trace gets traceroute information from level3
 func (p *Level3) Trace() chan string {
 	c := make(chan string)
 	resp, err := http.PostForm("http://lookingglass.level3.net/traceroute/lg_tr_output.php",

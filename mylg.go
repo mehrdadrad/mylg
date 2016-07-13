@@ -18,7 +18,7 @@ import (
 	"github.com/mehrdadrad/mylg/ripe"
 )
 
-// Provider is a interface to accessing lg
+// Provider represents looking glass
 type Provider interface {
 	Set(host, version string)
 	GetDefaultNode() string
@@ -29,6 +29,7 @@ type Provider interface {
 	BGP() chan string
 }
 
+// Whois represents whois providers
 type Whois interface {
 	Set(r string)
 	GetData() bool
@@ -43,6 +44,7 @@ var (
 	nsr       *ns.Request
 )
 
+// providerName
 func providerNames() []string {
 	pNames := []string{}
 	for p := range providers {
@@ -51,6 +53,7 @@ func providerNames() []string {
 	return pNames
 }
 
+// validateProvider
 func validateProvider(p string) (string, error) {
 	pNames := []string{}
 	match, _ := regexp.MatchString("("+strings.Join(pNames, "|")+")", p)

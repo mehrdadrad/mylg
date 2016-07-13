@@ -104,7 +104,7 @@ func (p *Cogent) Ping() (string, error) {
 	return "", errors.New("error")
 }
 
-// Trace
+// Trace gets traceroute information from Cogent
 func (p *Cogent) Trace() chan string {
 	c := make(chan string)
 	var cmd = "T4"
