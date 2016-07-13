@@ -139,9 +139,9 @@ func main() {
 					}
 				}
 				c.Next()
-			case cmd == "bgp" && cPName == "lg":
+			case cmd == "bgp":
 				providers[cPName].Set(args, "ipv4")
-				for l := range providers[cPName].Trace() {
+				for l := range providers[cPName].BGP() {
 					println(l)
 				}
 				c.Next()

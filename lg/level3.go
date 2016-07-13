@@ -132,8 +132,23 @@ func (p *Level3) Trace() chan string {
 	return c
 }
 
+// BGP gets bgp information
 func (p *Level3) BGP() chan string {
 	c := make(chan string)
+	resp, err := http.PostForm("http://lookingglass.level3.net/bgp/lg_bgp_output.php",
+		url.Values{"address": {p.Host}, "length": {"24"}, "sitename": {level3Nodes[p.Node]}})
+	if err != nil {
+		println(err)
+	}
+	go func() {
+		defer resp.Body.Close()
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			l := scanner.Text()
+			c <- l
+		}
+		close(c)
+	}()
 	return c
 }
 

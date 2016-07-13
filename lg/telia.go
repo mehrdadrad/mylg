@@ -121,8 +121,25 @@ func (p *Telia) Trace() chan string {
 	return c
 }
 
+// BGP gets bgp informtion from Telia
 func (p *Telia) BGP() chan string {
 	c := make(chan string)
+	resp, err := http.PostForm("http://looking-glass.telia.net/",
+		url.Values{"query": {"bgp"}, "protocol": {p.IPv}, "addr": {p.Host}, "router": {p.Node}})
+	if err != nil {
+		println(err)
+	}
+	go func() {
+		defer resp.Body.Close()
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			l := scanner.Text()
+			l = replaceASNTrace(l)
+			l = sanitize(l)
+			c <- l
+		}
+		close(c)
+	}()
 	return c
 }
 

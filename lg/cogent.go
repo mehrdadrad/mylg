@@ -132,8 +132,23 @@ func (p *Cogent) Trace() chan string {
 	return c
 }
 
+// BGP gets bgp information from cogent
 func (p *Cogent) BGP() chan string {
 	c := make(chan string)
+	resp, err := http.PostForm("http://www.cogentco.com/lookingglass.php",
+		url.Values{"FKT": {"go!"}, "CMD": {"BGP"}, "DST": {p.Host}, "LOC": {cogentNodes[p.Node]}})
+	if err != nil {
+		println(err)
+	}
+	go func() {
+		defer resp.Body.Close()
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			l := scanner.Text()
+			c <- l
+		}
+		close(c)
+	}()
 	return c
 }
 
