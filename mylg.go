@@ -142,7 +142,7 @@ func main() {
 					}
 				}
 				c.Next()
-			case cmd == "bgp":
+			case cmd == "bgp" && cPName != "local":
 				providers[cPName].Set(args, "ipv4")
 				for l := range providers[cPName].BGP() {
 					println(l)
@@ -239,7 +239,9 @@ func main() {
 			case cmd == "exit", cmd == "quit":
 				c.Close(nxt)
 				close(req)
-				// todo
+			// todo
+			default:
+				c.Next()
 			}
 		}
 	}
