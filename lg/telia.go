@@ -130,13 +130,24 @@ func (p *Telia) BGP() chan string {
 		println(err)
 	}
 	go func() {
+		var (
+			parse = false
+			last  string
+		)
 		defer resp.Body.Close()
 		scanner := bufio.NewScanner(resp.Body)
 		for scanner.Scan() {
 			l := scanner.Text()
-			l = replaceASNTrace(l)
 			l = sanitize(l)
+			if m, _ := regexp.MatchString("Telia Carrier", l); !parse && m {
+				parse = true
+				continue
+			}
+			if !parse || (l == last) {
+				continue
+			}
 			c <- l
+			last = l
 		}
 		close(c)
 	}()
