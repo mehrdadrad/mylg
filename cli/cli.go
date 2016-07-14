@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	version = "0.1.6"
+	version = "0.1.7"
 )
 
 // Readline structure
@@ -31,6 +31,7 @@ func Init(prompt string) *Readline {
 		completer = readline.NewPrefixCompleter(
 			readline.PcItem("ping"),
 			readline.PcItem("trace"),
+			readline.PcItem("bgp"),
 			readline.PcItem("connect"),
 			readline.PcItem("node"),
 			readline.PcItem("local"),
