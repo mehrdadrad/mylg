@@ -17,7 +17,7 @@ func Println() {
 	
                  My Looking Glass
                   http://mylg.io
-================== myLG v0.1.6 ==================
+================== myLG v0.1.7 ==================
 	`
 	fmt.Println(b)
 }
