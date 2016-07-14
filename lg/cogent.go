@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"regexp"
 	"sort"
+	"strings"
 )
 
 // A Cogent represents a telia looking glass request
@@ -22,6 +23,7 @@ type Cogent struct {
 
 var (
 	cogentNodes       = map[string]string{}
+	cogentBGPNodes    = map[string]string{}
 	cogentDefaultNode = "US - Los Angeles"
 )
 
@@ -45,7 +47,7 @@ func (p *Cogent) GetNodes() []string {
 	if len(p.Nodes) > 1 {
 		return p.Nodes
 	}
-	cogentNodes = p.FetchNodes()
+	cogentNodes, cogentBGPNodes = p.FetchNodes()
 	var nodes []string
 	for node := range cogentNodes {
 		nodes = append(nodes, node)
@@ -135,8 +137,18 @@ func (p *Cogent) Trace() chan string {
 // BGP gets bgp information from cogent
 func (p *Cogent) BGP() chan string {
 	c := make(chan string)
+	if _, ok := cogentBGPNodes[p.Node]; !ok {
+		println("current node doesn't support bgp, please select one of the below nodes:")
+		go func() {
+			for n, _ := range cogentBGPNodes {
+				println(n)
+			}
+			close(c)
+		}()
+		return c
+	}
 	resp, err := http.PostForm("http://www.cogentco.com/lookingglass.php",
-		url.Values{"FKT": {"go!"}, "CMD": {"BGP"}, "DST": {p.Host}, "LOC": {cogentNodes[p.Node]}})
+		url.Values{"FKT": {"go!"}, "CMD": {"BGP"}, "DST": {p.Host}, "LOC": {cogentBGPNodes[p.Node]}})
 	if err != nil {
 		println(err)
 	}
@@ -153,23 +165,36 @@ func (p *Cogent) BGP() chan string {
 }
 
 //FetchNodes returns all available nodes through HTTP
-func (p *Cogent) FetchNodes() map[string]string {
-	var nodes = make(map[string]string, 100)
+func (p *Cogent) FetchNodes() (map[string]string, map[string]string) {
+	var (
+		nodes    = make(map[string]string, 100)
+		bgpNodes = make(map[string]string, 50)
+	)
 	resp, err := http.Get("http://www.cogentco.com/lookingglass.php")
 	if err != nil {
 		println("error: cogent looking glass unreachable (1)")
-		return map[string]string{}
+		return map[string]string{}, map[string]string{}
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		println("error: cogent looking glass unreachable (2)" + err.Error())
-		return map[string]string{}
+		return map[string]string{}, map[string]string{}
 	}
-	r, _ := regexp.Compile(`(?is)Option\(\"([\w|\s|-]+)\",\"([\w|\d]+)\"`)
-	b := r.FindAllStringSubmatch(string(body), -1)
-	for _, v := range b {
+	body := string(b)
+	// ping, trace nodes
+	i := strings.Index(body, "default:")
+	r, _ := regexp.Compile(`(?is)Option\("([\w|,|\s|-]+)","([\w|\d]+)"`)
+	f := r.FindAllStringSubmatch(body[i:], -1)
+	for _, v := range f {
 		nodes[v[1]] = v[2]
 	}
-	return nodes
+	// bgp nodes
+	r, _ = regexp.Compile(`(?is)Option\("([\w|,|\s|-]+)","([\w|\d]+)"`)
+	f = r.FindAllStringSubmatch(body[:i], -1)
+	for _, v := range f {
+		bgpNodes[v[1]] = v[2]
+	}
+
+	return nodes, bgpNodes
 }
