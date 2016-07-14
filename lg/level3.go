@@ -5,6 +5,7 @@ package lg
 import (
 	"bufio"
 	"errors"
+	"html"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -16,6 +17,7 @@ import (
 // A Level3 represents a telia looking glass request
 type Level3 struct {
 	Host  string
+	CIDR  string
 	IPv   string
 	Count string
 	Node  string
@@ -27,14 +29,24 @@ var (
 	level3DefaultNode = "Los Angeles, CA"
 )
 
+// sanitize removes html tags
 func sanitize(b string) string {
-	re := regexp.MustCompile("<(.*)>")
-	return re.ReplaceAllString(b, "")
+	re := regexp.MustCompile(`<br>`)
+	b = re.ReplaceAllString(b, "\n")
+	re = regexp.MustCompile(`<[^>]*>`)
+	b = re.ReplaceAllString(b, "")
+	return html.UnescapeString(b)
 }
 
 // Set configures host and ip version
 func (p *Level3) Set(host, version string) {
-	p.Host = host
+	if i := strings.Index(host, "/"); i > 0 {
+		p.Host = host[:i]
+		p.CIDR = host[i+1:]
+	} else {
+		p.Host = host
+		p.CIDR = "24"
+	}
 	p.IPv = version
 	p.Count = "5"
 	if p.Node == "" {
@@ -136,15 +148,23 @@ func (p *Level3) Trace() chan string {
 func (p *Level3) BGP() chan string {
 	c := make(chan string)
 	resp, err := http.PostForm("http://lookingglass.level3.net/bgp/lg_bgp_output.php",
-		url.Values{"address": {p.Host}, "length": {"24"}, "sitename": {level3Nodes[p.Node]}})
+		url.Values{"address": {p.Host}, "length": {p.CIDR}, "sitename": {level3Nodes[p.Node]}})
 	if err != nil {
-		println(err)
+		println(err.Error())
+		close(c)
 	}
 	go func() {
 		defer resp.Body.Close()
 		scanner := bufio.NewScanner(resp.Body)
 		for scanner.Scan() {
 			l := scanner.Text()
+			if m, _ := regexp.MatchString("Route results", l); !m {
+				continue
+			}
+			if i := strings.Index(l, "Route results"); i > 0 {
+				l = l[i:]
+			}
+			l = sanitize(l)
 			c <- l
 		}
 		close(c)
