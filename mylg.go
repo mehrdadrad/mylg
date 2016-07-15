@@ -16,6 +16,7 @@ import (
 	"github.com/mehrdadrad/mylg/ns"
 	"github.com/mehrdadrad/mylg/peeringdb"
 	"github.com/mehrdadrad/mylg/ripe"
+	"github.com/mehrdadrad/mylg/scan"
 )
 
 // Provider represents looking glass
@@ -85,7 +86,7 @@ func main() {
 	c := cli.Init("local")
 	go c.Run(req, nxt)
 
-	r, _ := regexp.Compile(`(ping|trace|bgp|lg|ns|dig|whois|peering|connect|node|local|mode|help|exit|quit)\s{0,1}(.*)`)
+	r, _ := regexp.Compile(`(ping|trace|bgp|lg|ns|dig|whois|peering|scan|connect|node|local|mode|help|exit|quit)\s{0,1}(.*)`)
 	s := spinner.New(spinner.CharSets[26], 220*time.Millisecond)
 
 	for loop {
@@ -126,9 +127,13 @@ func main() {
 				s.Prefix = "please wait "
 				s.Start()
 				providers[cPName].Set(args, "ipv4")
-				m, _ := providers[cPName].Ping()
+				m, err := providers[cPName].Ping()
 				s.Stop()
-				println(m)
+				if err != nil {
+					println(err.Error())
+				} else {
+					println(m)
+				}
 				c.Next()
 			case cmd == "trace":
 				switch {
@@ -223,6 +228,9 @@ func main() {
 				c.Next()
 			case cmd == "peering":
 				peeringdb.Search(args)
+				c.Next()
+			case cmd == "scan":
+				scan.Run(args)
 				c.Next()
 			case cmd == "mode":
 				if args == "vim" {
