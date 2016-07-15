@@ -37,6 +37,7 @@ type Peers struct {
 	Data []Peer `json:"data"`
 }
 
+// Nets represents network information data
 type Nets struct {
 	Data []Net `json:"data"`
 }

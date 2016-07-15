@@ -79,6 +79,7 @@ func (p *Ping) parseMessage(m *packet) (*ipv4.Header, *icmp.Message, error) {
 	return h, msg, err
 }
 
+// IP set ip address
 func (p *Ping) IP(ipAddr string) {
 	ip := net.ParseIP(ipAddr)
 	p.mu.Lock()
@@ -99,13 +100,12 @@ func (p *Ping) Network() {
 	//todo
 }
 
-func (p *Ping) SetTTL() {
-	//todo
-}
+// PacketSize set packet size
 func (p *Ping) PacketSize(s int) {
 	p.pSize = s
 }
 
+// listen starts to listen incoming icmp
 func (p *Ping) listen(network string) *icmp.PacketConn {
 	c, err := icmp.ListenPacket(network, p.source)
 	if err != nil {
@@ -114,6 +114,7 @@ func (p *Ping) listen(network string) *icmp.PacketConn {
 	return c
 }
 
+// recv reads icmp message
 func (p *Ping) recv(conn *icmp.PacketConn, rcvdChan chan<- *packet) {
 	var err error
 	bytes := make([]byte, 1500)
