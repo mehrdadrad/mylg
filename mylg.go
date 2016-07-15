@@ -230,7 +230,12 @@ func main() {
 				peeringdb.Search(args)
 				c.Next()
 			case cmd == "scan":
-				scan.Run(args)
+				scan, err := scan.NewScan(args)
+				if err != nil {
+					println(err.Error())
+				} else {
+					scan.Run()
+				}
 				c.Next()
 			case cmd == "mode":
 				if args == "vim" {
