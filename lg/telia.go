@@ -123,7 +123,7 @@ func (p *Telia) Trace() chan string {
 	return c
 }
 
-// BGP gets bgp informtion from Telia
+// BGP gets bgp information from Telia
 func (p *Telia) BGP() chan string {
 	c := make(chan string)
 	resp, err := http.PostForm("http://looking-glass.telia.net/",
