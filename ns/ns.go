@@ -17,6 +17,11 @@ import (
 	"github.com/miekg/dns"
 )
 
+const (
+	publicDNSHost      = "http://public-dns.info"
+	publicDNSNodesPath = "/nameservers.csv"
+)
+
 // A Host represents a name server host
 type Host struct {
 	ip      string
@@ -174,9 +179,14 @@ func fetchNSHosts() []Host {
 		hosts   []Host
 		counter = make(map[string]int)
 	)
-	resp, err := http.Get("http://public-dns.info/nameservers.csv")
+	resp, err := http.Get(publicDNSHost + publicDNSNodesPath)
 	if err != nil {
 		println(err.Error())
+		return []Host{}
+	}
+	if resp.StatusCode != 200 {
+		println("error: public dns is not available")
+		return []Host{}
 	}
 	defer resp.Body.Close()
 	scanner := bufio.NewScanner(resp.Body)
