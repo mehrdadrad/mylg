@@ -9,6 +9,7 @@
 * Local fast ping and trace
 * RIPE information (ASN, IP/CIDR)
 * PeeringDB information
+* Port scanning fast
 * Support vi and emacs mode, almost all basic features
 * CLI auto complete and history features
 
