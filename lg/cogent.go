@@ -90,8 +90,10 @@ func (p *Cogent) Ping() (string, error) {
 	resp, err := http.PostForm("http://www.cogentco.com/lookingglass.php",
 		url.Values{"FKT": {"go!"}, "CMD": {cmd}, "DST": {p.Host}, "LOC": {cogentNodes[p.Node]}})
 	if err != nil {
-		println(err)
 		return "", err
+	}
+	if resp.StatusCode != 200 {
+		return "", errors.New("error: level3 looking glass is not available")
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
