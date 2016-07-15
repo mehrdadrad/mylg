@@ -14,6 +14,13 @@ import (
 	"strings"
 )
 
+const (
+	level3LGURL   = "http://lookingglass.level3.net"
+	level3LGPing  = "/ping/lg_ping_output.php"
+	level3LGTrace = "/traceroute/lg_tr_output.php"
+	level3LGBGP   = "/bgp/lg_bgp_output.php"
+)
+
 // A Level3 represents a telia looking glass request
 type Level3 struct {
 	Host  string
@@ -101,11 +108,13 @@ func (p *Level3) Ping() (string, error) {
 		print("Invalid node or host/ip address")
 		return "", errors.New("error")
 	}
-	resp, err := http.PostForm("http://lookingglass.level3.net/ping/lg_ping_output.php",
+	resp, err := http.PostForm(level3LGURL+level3LGPing,
 		url.Values{"count": {p.Count}, "size": {"64"}, "address": {p.Host}, "sitename": {level3Nodes[p.Node]}})
 	if err != nil {
-		println(err)
 		return "", err
+	}
+	if resp.StatusCode != 200 {
+		return "", errors.New("error: level3 looking glass is not available")
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
@@ -123,7 +132,7 @@ func (p *Level3) Ping() (string, error) {
 // Trace gets traceroute information from level3
 func (p *Level3) Trace() chan string {
 	c := make(chan string)
-	resp, err := http.PostForm("http://lookingglass.level3.net/traceroute/lg_tr_output.php",
+	resp, err := http.PostForm(level3LGURL+level3LGTrace,
 		url.Values{"address": {p.Host}, "sitename": {level3Nodes[p.Node]}})
 	if err != nil {
 		println(err)
@@ -147,7 +156,7 @@ func (p *Level3) Trace() chan string {
 // BGP gets bgp information
 func (p *Level3) BGP() chan string {
 	c := make(chan string)
-	resp, err := http.PostForm("http://lookingglass.level3.net/bgp/lg_bgp_output.php",
+	resp, err := http.PostForm(level3LGURL+level3LGBGP,
 		url.Values{"address": {p.Host}, "length": {p.CIDR}, "sitename": {level3Nodes[p.Node]}})
 	if err != nil {
 		println(err.Error())
