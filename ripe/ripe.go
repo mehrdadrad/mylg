@@ -8,6 +8,12 @@ import (
 	"regexp"
 )
 
+const (
+	RIPEAPI       = "https://stat.ripe.net"
+	RIPEPrefixURL = "/data/prefix-overview/data.json?max_related=50&resource="
+	RIPEASNURL    = "/data/as-overview/data.json?resource=AS"
+)
+
 // ASN represents ASN information
 type ASN struct {
 	Number string
@@ -31,9 +37,9 @@ func (p *Prefix) GetData() bool {
 		println("error: prefix invalid")
 		return false
 	}
-	resp, err := http.Get("https://stat.ripe.net/data/prefix-overview/data.json?max_related=50&resource=" + p.Resource)
+	resp, err := http.Get(RIPEAPI + RIPEPrefixURL + p.Resource)
 	if err != nil {
-		println(err)
+		println(err.Error())
 		return false
 	}
 	if resp.StatusCode != 200 {
@@ -71,7 +77,7 @@ func (a *ASN) GetData() bool {
 		println("error: AS number invalid")
 		return false
 	}
-	resp, err := http.Get("https://stat.ripe.net/data/as-overview/data.json?resource=AS" + a.Number)
+	resp, err := http.Get(RIPEAPI + RIPEASNURL + a.Number)
 	if err != nil {
 		println(err)
 		return false
