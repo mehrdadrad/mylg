@@ -9,9 +9,12 @@ import (
 )
 
 const (
-	RIPEAPI       = "https://stat.ripe.net"
+	// Ripe API URL
+	RIPEAPI = "https://stat.ripe.net"
+	// Ripe prefix path
 	RIPEPrefixURL = "/data/prefix-overview/data.json?max_related=50&resource="
-	RIPEASNURL    = "/data/as-overview/data.json?resource=AS"
+	// Ripe ASN path
+	RIPEASNURL = "/data/as-overview/data.json?resource=AS"
 )
 
 // ASN represents ASN information
