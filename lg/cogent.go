@@ -142,7 +142,7 @@ func (p *Cogent) BGP() chan string {
 	if _, ok := cogentBGPNodes[p.Node]; !ok {
 		println("current node doesn't support bgp, please select one of the below nodes:")
 		go func() {
-			for n, _ := range cogentBGPNodes {
+			for n := range cogentBGPNodes {
 				println(n)
 			}
 			close(c)
