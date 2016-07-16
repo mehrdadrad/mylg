@@ -3,9 +3,13 @@ package ripe
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/olekukonko/tablewriter"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"regexp"
+	"sync"
 )
 
 const (
@@ -15,18 +19,27 @@ const (
 	RIPEPrefixURL = "/data/prefix-overview/data.json?max_related=50&resource="
 	// Ripe ASN path
 	RIPEASNURL = "/data/as-overview/data.json?resource=AS"
+	// Ripe Geo path
+	RIPEGeoURL = "/data/geoloc/data.json?resource=AS"
 )
 
 // ASN represents ASN information
 type ASN struct {
-	Number string
-	Data   map[string]interface{}
+	Number  string
+	Data    map[string]interface{}
+	GeoData map[string]interface{}
 }
 
 // Prefix represents prefix information
 type Prefix struct {
 	Resource string
 	Data     map[string]interface{}
+}
+
+// location represents location information
+type location struct {
+	City    string `json:"city"`
+	Country string `json:"country"`
 }
 
 // Set sets the resource value
@@ -76,6 +89,28 @@ func (a *ASN) Set(r string) {
 
 // GetData gets ASN information from RIPE NCC
 func (a *ASN) GetData() bool {
+	var (
+		wg        sync.WaitGroup
+		rOV, rGeo bool
+	)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		rOV = a.GetOVData()
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		rGeo = a.GetGeoData()
+	}()
+	wg.Wait()
+	return rOV && rGeo
+}
+
+// GetOVData gets ASN overview information from RIPE NCC
+func (a *ASN) GetOVData() bool {
 	if len(a.Number) < 2 {
 		println("error: AS number invalid")
 		return false
@@ -95,14 +130,49 @@ func (a *ASN) GetData() bool {
 	return true
 }
 
+// GetGeoData gets Geo information from RIPE NCC
+func (a *ASN) GetGeoData() bool {
+	if len(a.Number) < 2 {
+		println("error: AS number invalid")
+		return false
+	}
+	resp, err := http.Get(RIPEAPI + RIPEGeoURL + a.Number)
+	if err != nil {
+		println(err)
+		return false
+	}
+	if resp.StatusCode != 200 {
+		println("error: check your AS number")
+		return false
+	}
+	defer resp.Body.Close()
+	body, _ := ioutil.ReadAll(resp.Body)
+	json.Unmarshal(body, &a.GeoData)
+	return true
+}
+
 // PrettyPrint print ASN information (holder)
 func (a *ASN) PrettyPrint() {
-	data, ok := a.Data["data"].(map[string]interface{})
+	var cols = make(map[string]float64)
+	overviewData, ok := a.Data["data"].(map[string]interface{})
 	if ok {
-		println(string(data["holder"].(string)))
-	} else {
-		println("error")
+		println(string(overviewData["holder"].(string)))
 	}
+	geoLocData, ok := a.GeoData["data"].(map[string]interface{})
+	if !ok {
+		return
+	}
+	locs := geoLocData["locations"].([]interface{})
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"Location", "Covered %"})
+	for _, loc := range locs {
+		geoInfo := loc.(map[string]interface{})
+		cols[geoInfo["country"].(string)] = geoInfo["covered_percentage"].(float64)
+	}
+	for country, percent := range cols {
+		table.Append([]string{country, fmt.Sprintf("%.2f", percent)})
+	}
+	table.Render()
 }
 
 // IsASN checks if the key is a number
