@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
 	"sync"
 
 	"github.com/mehrdadrad/mylg/data"
@@ -169,8 +170,12 @@ func (a *ASN) PrettyPrint() {
 		cols[geoInfo["country"].(string)] = geoInfo["covered_percentage"].(float64)
 	}
 	for name, percent := range cols {
-		if country, ok := data.Country[name]; ok {
+		uc := strings.Split(name, "-")
+		if country, ok := data.Country[uc[0]]; ok {
 			name = country
+		}
+		if len(uc) == 2 {
+			name = fmt.Sprintf("%s - %s", name, uc[1])
 		}
 		table.Append([]string{name, fmt.Sprintf("%.2f", percent)})
 	}
