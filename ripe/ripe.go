@@ -10,6 +10,8 @@ import (
 	"os"
 	"regexp"
 	"sync"
+
+	"github.com/mehrdadrad/mylg/data"
 )
 
 const (
@@ -77,8 +79,6 @@ func (p *Prefix) PrettyPrint() {
 		for _, h := range asns {
 			println("holder:", h.(map[string]interface{})["holder"].(string))
 		}
-	} else {
-		println("error")
 	}
 }
 
@@ -106,7 +106,7 @@ func (a *ASN) GetData() bool {
 		rGeo = a.GetGeoData()
 	}()
 	wg.Wait()
-	return rOV && rGeo
+	return rOV || rGeo
 }
 
 // GetOVData gets ASN overview information from RIPE NCC
@@ -117,11 +117,10 @@ func (a *ASN) GetOVData() bool {
 	}
 	resp, err := http.Get(RIPEAPI + RIPEASNURL + a.Number)
 	if err != nil {
-		println(err)
+		println(err.Error())
 		return false
 	}
 	if resp.StatusCode != 200 {
-		println("error: check your AS number")
 		return false
 	}
 	defer resp.Body.Close()
@@ -138,7 +137,7 @@ func (a *ASN) GetGeoData() bool {
 	}
 	resp, err := http.Get(RIPEAPI + RIPEGeoURL + a.Number)
 	if err != nil {
-		println(err)
+		println(err.Error())
 		return false
 	}
 	if resp.StatusCode != 200 {
@@ -169,8 +168,11 @@ func (a *ASN) PrettyPrint() {
 		geoInfo := loc.(map[string]interface{})
 		cols[geoInfo["country"].(string)] = geoInfo["covered_percentage"].(float64)
 	}
-	for country, percent := range cols {
-		table.Append([]string{country, fmt.Sprintf("%.2f", percent)})
+	for name, percent := range cols {
+		if country, ok := data.Country[name]; ok {
+			name = country
+		}
+		table.Append([]string{name, fmt.Sprintf("%.2f", percent)})
 	}
 	table.Render()
 }
