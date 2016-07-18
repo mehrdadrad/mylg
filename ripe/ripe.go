@@ -186,7 +186,7 @@ func (a *ASN) PrettyPrint() {
 		if len(uc) == 2 {
 			name = fmt.Sprintf("%s - %s", name, uc[1])
 		}
-		table.Append([]string{name, fmt.Sprintf("%.2f", percent)})
+		table.Append([]string{name, fmt.Sprintf("%.4f", percent)})
 	}
 	table.Render()
 }
