@@ -4,15 +4,16 @@ package ripe
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/olekukonko/tablewriter"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 
 	"github.com/mehrdadrad/mylg/data"
+	"github.com/olekukonko/tablewriter"
 )
 
 const (
@@ -37,6 +38,12 @@ type ASN struct {
 type Prefix struct {
 	Resource string
 	Data     map[string]interface{}
+}
+
+// kv represents key/value(float64) in sort func
+type kv struct {
+	key   string
+	value float64
 }
 
 // location represents location information
@@ -169,7 +176,9 @@ func (a *ASN) PrettyPrint() {
 		geoInfo := loc.(map[string]interface{})
 		cols[geoInfo["country"].(string)] = geoInfo["covered_percentage"].(float64)
 	}
-	for name, percent := range cols {
+	for _, v := range sortMapFloat(cols) {
+		name := v.key
+		percent := v.value
 		uc := strings.Split(name, "-")
 		if country, ok := data.Country[uc[0]]; ok {
 			name = country
@@ -189,4 +198,26 @@ func IsASN(key string) bool {
 		return false
 	}
 	return m
+}
+
+// sortMapFloat sorts map[string]float64 w/ value
+func sortMapFloat(m map[string]float64) []kv {
+	n := map[float64][]string{}
+	var (
+		a []float64
+		r []kv
+	)
+	for k, v := range m {
+		n[v] = append(n[v], k)
+	}
+	for k := range n {
+		a = append(a, k)
+	}
+	sort.Sort(sort.Reverse(sort.Float64Slice(a)))
+	for _, k := range a {
+		for _, s := range n[k] {
+			r = append(r, kv{s, k})
+		}
+	}
+	return r
 }
