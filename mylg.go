@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/mehrdadrad/mylg/cli"
+	"github.com/mehrdadrad/mylg/http/ping"
 	"github.com/mehrdadrad/mylg/icmp"
 	"github.com/mehrdadrad/mylg/lg"
 	"github.com/mehrdadrad/mylg/ns"
@@ -36,6 +37,10 @@ type Whois interface {
 	GetData() bool
 	PrettyPrint()
 }
+
+const (
+	version = "0.1.7"
+)
 
 var (
 	// register looking glass hosts
@@ -83,10 +88,10 @@ func main() {
 	req := make(chan string, 1)
 	nxt := make(chan struct{}, 1)
 
-	c := cli.Init("local")
+	c := cli.Init("local", version)
 	go c.Run(req, nxt)
 
-	r, _ := regexp.Compile(`(ping|trace|bgp|lg|ns|dig|whois|peering|scan|connect|node|local|mode|help|exit|quit)\s{0,1}(.*)`)
+	r, _ := regexp.Compile(`(ping|trace|bgp|lg|ns|dig|whois|peering|scan|hping|connect|node|local|mode|help|exit|quit)\s{0,1}(.*)`)
 	s := spinner.New(spinner.CharSets[26], 220*time.Millisecond)
 
 	for loop {
@@ -109,6 +114,10 @@ func main() {
 			cmd := strings.TrimSpace(subReq[1])
 			args := strings.TrimSpace(subReq[2])
 			switch {
+			case cmd == "hping" && cPName == "local":
+				p := ping.NewPing(args, 5)
+				p.Run()
+				c.Next()
 			case cmd == "ping" && cPName == "local":
 				p := icmp.NewPing()
 				ra, err := net.ResolveIPAddr("ip", args)
@@ -203,16 +212,15 @@ func main() {
 				case strings.HasPrefix(prompt, "ns"):
 					if !nsr.ChkCountry(args) {
 						println("error: argument is not valid")
-						continue
+					} else {
+						c.SetPrompt("ns/" + args)
+						c.UpdateCompleter("node", nsr.NodeList())
 					}
-					c.SetPrompt("ns/" + args)
-					nsr.SetNodeList(c)
-
 				}
 				c.Next()
 			case cmd == "ns":
-				nsr.SetCountryList(c)
-				nsr.ResetNodeList(c)
+				c.UpdateCompleter("connect", nsr.CountryList())
+				c.UpdateCompleter("node", []string{})
 				c.SetPrompt("ns")
 				c.Next()
 			case cmd == "whois":
