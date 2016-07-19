@@ -90,6 +90,6 @@ func host(ipAddr string, minPort, maxPort int) {
 		println("there isn't any opened port")
 	} else {
 		elapsed := fmt.Sprintf("%.3f seconds", time.Since(tStart).Seconds())
-		println("Scan done:", counter, "opened port found in", elapsed)
+		println("Scan done:", counter, "opened port(s) found in", elapsed)
 	}
 }
