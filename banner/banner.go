@@ -6,7 +6,7 @@ import (
 )
 
 // Println print out banner information
-func Println() {
+func Println(version string) {
 	b := `
 =================================================	
                           _    ___ 
@@ -16,8 +16,10 @@ func Println() {
                       |__/          
 	
                  My Looking Glass
+           Free Network Diagnostic Tool
+             www.facebook.com/mylg.io
                   http://mylg.io
-================== myLG v0.1.7 ==================
+================== myLG v%s ==================
 	`
-	fmt.Println(b)
+	fmt.Printf(b, version)
 }
