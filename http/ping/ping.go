@@ -13,6 +13,7 @@ import (
 type Ping struct {
 	url     string
 	timeout time.Duration
+	rAddr   net.Addr
 	conn    net.Conn
 }
 
@@ -47,6 +48,8 @@ func (p *Ping) ping() (float64, bool) {
 		print(err.Error())
 		return 0, false
 	}
+
+	p.rAddr = p.conn.RemoteAddr()
 	p.conn.Close()
 	return delta, true
 }
@@ -55,9 +58,9 @@ func (p *Ping) ping() (float64, bool) {
 func (p *Ping) pingConn() {
 	for i := 0; i < 4; i++ {
 		if t, ok := p.ping(); ok {
-			fmt.Printf("HTTP Connection seq=%d, time=%.3f ms\n", i, t*1000)
+			fmt.Printf("HTTP Connection from %s seq=%d, time=%.3f ms\n", p.rAddr.String(), i, t*1000)
 		} else {
-			fmt.Println("HTTP Connection seq=%d, timeout", i)
+			fmt.Println("HTTP Connection from %s seq=%d, timeout", p.rAddr.String(), i)
 		}
 	}
 }
