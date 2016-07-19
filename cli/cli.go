@@ -11,10 +11,6 @@ import (
 	"strings"
 )
 
-const (
-	version = "0.1.7"
-)
-
 // Readline structure
 type Readline struct {
 	instance  *readline.Instance
@@ -24,7 +20,7 @@ type Readline struct {
 }
 
 // Init set readline imain items
-func Init(prompt string) *Readline {
+func Init(prompt, version string) *Readline {
 	var (
 		r         Readline
 		err       error
@@ -39,6 +35,7 @@ func Init(prompt string) *Readline {
 			readline.PcItem("ns"),
 			readline.PcItem("dig"),
 			readline.PcItem("whois"),
+			readline.PcItem("scan"),
 			readline.PcItem("peering"),
 			readline.PcItem("help"),
 			readline.PcItem("exit"),
@@ -55,9 +52,9 @@ func Init(prompt string) *Readline {
 	if err != nil {
 		panic(err)
 	}
-	banner.Println()   // print banner
-	checkUpdate()      // check update version
-	r.prompt = "local" // init local prompt
+	banner.Println(version) // print banner
+	checkUpdate(version)    // check update version
+	r.prompt = prompt       // init local prompt
 	return &r
 }
 
@@ -111,6 +108,7 @@ func (r *Readline) UpdateCompleter(pcItem string, pcSubItems []string) {
 
 // SetPrompt set readline prompt and store it
 func (r *Readline) SetPrompt(p string) {
+	p = strings.ToLower(p)
 	r.prompt = p
 	r.instance.SetPrompt(p + "> ")
 }
@@ -118,6 +116,7 @@ func (r *Readline) SetPrompt(p string) {
 // UpdatePromptN appends readline prompt
 func (r *Readline) UpdatePromptN(p string, n int) {
 	var parts []string
+	p = strings.ToLower(p)
 	parts = strings.SplitAfterN(r.prompt, "/", n)
 	if n <= len(parts) && n > -1 {
 		parts[n-1] = p
@@ -199,16 +198,22 @@ func (r *Readline) Help() {
 	ping                        ping ip address or domain name
 	dig                         name server looking up
 	whois                       resolve AS number/IP/CIDR to holder (provides by ripe ncc)
+	scan                        scan tcp ports (you can provide range >scan host minport maxport)
 	peering                     peering information (provides by peeringdb.com)
 	`)
 }
 
 // checkUpdate checks if any new version is available
-func checkUpdate() {
+func checkUpdate(version string) {
 	type mylg struct {
 		Version string
 	}
 	var appCtl mylg
+
+	if version == "test" {
+		return
+	}
+
 	resp, err := http.Get("http://mylg.io/appctl/mylg")
 	if err != nil {
 		println("error: check update has been failed ")
