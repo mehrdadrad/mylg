@@ -35,9 +35,9 @@ func NewScan(args string) (Scan, error) {
 	} else {
 		scan.target = args
 		scan.minPort = 1
-		scan.maxPort = 100
+		scan.maxPort = 500
 	}
-	if !scan.isCIDR() {
+	if !scan.IsCIDR() {
 		ipAddr, err := net.ResolveIPAddr("ip4", scan.target)
 		if err != nil {
 			return scan, err
@@ -48,7 +48,7 @@ func NewScan(args string) (Scan, error) {
 }
 
 // isCIDR checks the target if it's CIDR
-func (s Scan) isCIDR() bool {
+func (s Scan) IsCIDR() bool {
 	_, _, err := net.ParseCIDR(s.target)
 	if err != nil {
 		return false
@@ -58,7 +58,7 @@ func (s Scan) isCIDR() bool {
 
 // Run tries to scan wide range ports (TCP)
 func (s Scan) Run() {
-	if !s.isCIDR() {
+	if !s.IsCIDR() {
 		host(s.target, s.minPort, s.maxPort)
 	}
 }
