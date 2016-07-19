@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mehrdadrad/mylg/cli"
 	"github.com/mehrdadrad/mylg/data"
 	"github.com/miekg/dns"
 )
@@ -24,84 +23,88 @@ const (
 
 // A Host represents a name server host
 type Host struct {
-	ip      string
-	alpha2  string
-	country string
-	city    string
+	IP      string
+	Alpha2  string
+	Country string
+	City    string
 }
 
 // A Request represents a name server request
 type Request struct {
-	country string
-	city    string
-	host    string
-	hosts   []Host
+	Country string
+	City    string
+	Host    string
+	Hosts   []Host
 }
 
 // NewRequest creates a new dns request object
 func NewRequest() *Request {
-	return &Request{host: ""}
+	return &Request{Host: ""}
 }
 
 // Init configure dns command and fetch name servers
 func (d *Request) Init() {
 	if !d.cache("validate") {
-		d.hosts = fetchNSHosts()
+		d.Hosts = fetchNSHosts()
 		d.cache("write")
 	} else {
 		d.cache("read")
 	}
 }
 
-// SetCountryList init the connect contry items
-func (d *Request) SetCountryList(c *cli.Readline) {
+// CountryList init the connect contry items
+func (d *Request) CountryList() []string {
 	var countries []string
-	for _, host := range d.hosts {
-		countries = append(countries, host.country)
+	for _, host := range d.Hosts {
+		countries = append(countries, host.Country)
 	}
 	countries = uniqStrSlice(countries)
 	sort.Strings(countries)
-	c.UpdateCompleter("connect", countries)
+	return countries
 }
 
-// SetNodeList init the node city items
-func (d *Request) SetNodeList(c *cli.Readline) {
+// NodeList gets the node city items
+func (d *Request) NodeList() []string {
 	var node []string
-	for _, host := range d.hosts {
-		if host.country == d.country {
-			node = append(node, host.city)
+	for _, host := range d.Hosts {
+		if host.Country == d.Country {
+			node = append(node, host.City)
 		}
 	}
 	sort.Strings(node)
-	c.UpdateCompleter("node", node)
+	return node
 }
 
-//
-func (d *Request) ResetNodeList(c *cli.Readline) {
-	c.UpdateCompleter("node", []string{})
-}
-
-// ChkCountry set requested country
+// ChkCountry validates and set requested country
 func (d *Request) ChkCountry(country string) bool {
-	d.country = country
-	return true
+	country = strings.ToLower(country)
+	for _, h := range d.Hosts {
+		if country == h.Country {
+			d.Country = country
+			return true
+		}
+	}
+
+	return false
 }
 
 // ChkNode set requested country
 func (d *Request) ChkNode(city string) bool {
-	for _, h := range d.hosts {
-		if d.country == h.country && city == h.city {
-			d.host = h.ip
-			d.city = h.city
+	city = strings.ToLower(city)
+	for _, h := range d.Hosts {
+		if d.Country == h.Country && city == h.City {
+			d.Host = h.IP
+			d.City = h.City
+			return true
 		}
 	}
-	return true
+	return false
 }
 
 // Local set host to nothing means local
 func (d *Request) Local() {
-	d.host = ""
-	d.country = ""
+	d.Host = ""
+	d.Country = ""
 }
 
 // Dig look up name server
@@ -112,16 +115,16 @@ func (d *Request) Dig(args string) {
 	m.SetQuestion(dns.Fqdn(args), dns.TypeANY)
 	m.RecursionDesired = true
 
-	if d.host == "" {
+	if d.Host == "" {
 		config, _ := dns.ClientConfigFromFile("/etc/resolv.conf")
-		d.host = config.Servers[0]
-		d.city = "your local dns server"
+		d.Host = config.Servers[0]
+		d.City = "your local dns server"
 	}
 
-	println("Trying to query server:", d.host, d.country, d.city)
+	println("Trying to query server:", d.Host, d.Country, d.City)
 
 	t := time.Now()
-	r, _, err := c.Exchange(m, d.host+":53")
+	r, _, err := c.Exchange(m, d.Host+":53")
 	elapsed := time.Now().Sub(t)
 	if err != nil {
 		println(err.Error())
@@ -141,7 +144,7 @@ func (d *Request) cache(r string) bool {
 		if err != nil {
 			panic(err.Error())
 		}
-		d.hosts = d.hosts[:0]
+		d.Hosts = d.Hosts[:0]
 		r := bytes.NewBuffer(b)
 		s := bufio.NewScanner(r)
 		for s.Scan() {
@@ -149,12 +152,12 @@ func (d *Request) cache(r string) bool {
 			if len(csv) != 4 {
 				continue
 			}
-			d.hosts = append(d.hosts, Host{alpha2: csv[0], country: csv[1], city: csv[2], ip: csv[3]})
+			d.Hosts = append(d.Hosts, Host{Alpha2: csv[0], Country: csv[1], City: csv[2], IP: csv[3]})
 		}
 	case "write":
 		var data []string
-		for _, h := range d.hosts {
-			data = append(data, fmt.Sprintf("%s;%s;%s;%s", h.alpha2, h.country, h.city, h.ip))
+		for _, h := range d.Hosts {
+			data = append(data, fmt.Sprintf("%s;%s;%s;%s", h.Alpha2, h.Country, h.City, h.IP))
 		}
 		err := ioutil.WriteFile("/tmp/mylg.ns", []byte(strings.Join(data, "\n")), 0644)
 		if err != nil {
@@ -177,7 +180,9 @@ func (d *Request) cache(r string) bool {
 func fetchNSHosts() []Host {
 	var (
 		hosts   []Host
+		city    string
 		counter = make(map[string]int)
+		chkDup  = make(map[string]int)
 	)
 	resp, err := http.Get(publicDNSHost + publicDNSNodesPath)
 	if err != nil {
@@ -194,7 +199,14 @@ func fetchNSHosts() []Host {
 		csv := strings.Split(scanner.Text(), ",")
 		if csv[3] != "\"\"" {
 			if name, ok := data.Country[csv[2]]; ok && counter[csv[2]] < 5 {
-				hosts = append(hosts, Host{ip: csv[0], alpha2: csv[2], country: name, city: csv[3]})
+				name = strings.ToLower(name)
+				city = strings.ToLower(csv[3])
+				chkDup[name+city] += 1
+				if chkDup[name+city] > 1 {
+					city = fmt.Sprintf("%s0%d", city, chkDup[name+city]-1)
+				}
+
+				hosts = append(hosts, Host{IP: csv[0], Alpha2: csv[2], Country: name, City: city})
 				counter[csv[2]]++
 			}
 		}
