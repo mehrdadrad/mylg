@@ -7,6 +7,7 @@
 * Popular looking glasses (ping/trace/bgp) like Telia, Level3
 * More than 200 countries DNS Lookup information 
 * Local fast ping and trace
+* Local HTTP/HTTPS ping
 * RIPE information (ASN, IP/CIDR)
 * PeeringDB information
 * Port scanning fast
