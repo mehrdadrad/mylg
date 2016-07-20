@@ -30,6 +30,7 @@ func Init(prompt, version string) *Readline {
 			readline.PcItem("ping"),
 			readline.PcItem("trace"),
 			readline.PcItem("bgp"),
+			readline.PcItem("hping"),
 			readline.PcItem("connect"),
 			readline.PcItem("node"),
 			readline.PcItem("local"),
@@ -200,6 +201,7 @@ func (r *Readline) Help() {
 	ping                        ping ip address or domain name
 	dig                         name server looking up
 	whois                       resolve AS number/IP/CIDR to holder (provides by ripe ncc)
+	hping						Ping through HTTP/HTTPS w/ GET/HEAD methods
 	scan                        scan tcp ports (you can provide range >scan host minport maxport)
 	peering                     peering information (provides by peeringdb.com)
 	`)
