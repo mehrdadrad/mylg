@@ -102,17 +102,15 @@ func cache(r, typ string, data interface{}) (interface{}, bool) {
 			err := json.Unmarshal(b, &res)
 			if err != nil {
 				return nil, false
-			} else {
-				return res, true
 			}
+			return res, true
 		} else {
 			var res map[string]Net
 			err := json.Unmarshal(b, &res)
 			if err != nil {
 				return nil, false
-			} else {
-				return res, true
 			}
+			return res, true
 		}
 	case "validate":
 		f, err := os.Stat("/tmp/mylg.pdb." + typ)
