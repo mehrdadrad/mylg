@@ -8,6 +8,8 @@ import (
 	"gopkg.in/readline.v1"
 	"io/ioutil"
 	"net/http"
+	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -233,4 +235,47 @@ func checkUpdate(version string) {
 	if version != appCtl.Version {
 		fmt.Printf("New version is available (v%s) mylg.io/download\n", appCtl.Version)
 	}
+}
+
+//Flag parses the command arguments syntax:
+// -flag=x
+// -flag x
+// help
+func Flag(args string) (string, map[string]interface{}) {
+	var (
+		r   = make(map[string]interface{}, 10)
+		err error
+	)
+	args = strings.TrimSpace(args)
+	re := regexp.MustCompile(`(?i)-([a-z]+)={0,1}\s{0,1}([0-9|a-z]+)`)
+	f := re.FindAllStringSubmatch(args, -1)
+	for _, kv := range f {
+		if len(kv) > 1 {
+			r[kv[1]], err = strconv.Atoi(kv[2])
+			if err != nil {
+				r[kv[1]] = kv[2]
+			}
+			args = strings.Replace(args, kv[0], "", -1)
+		}
+	}
+	if m, _ := regexp.MatchString(`(?i)help$`, args); m {
+		r["help"] = true
+	}
+	args = strings.TrimSpace(args)
+	return args, r
+}
+
+// SetFlag
+func SetFlag(flag map[string]interface{}, option string, v interface{}) interface{} {
+	if sValue, ok := flag[option]; ok {
+		switch v.(type) {
+		case int:
+			return sValue.(int)
+		default:
+			return sValue.(string)
+		}
+	} else {
+		return v
+	}
+	return nil
 }
