@@ -115,8 +115,12 @@ func main() {
 			args := strings.TrimSpace(subReq[2])
 			switch {
 			case cmd == "hping" && cPName == "local":
-				p := ping.NewPing(args, 5)
-				p.Run()
+				p, err := ping.NewPing(args, 5)
+				if err != nil {
+					println(err.Error())
+				} else {
+					p.Run()
+				}
 				c.Next()
 			case cmd == "ping" && cPName == "local":
 				p := icmp.NewPing()
