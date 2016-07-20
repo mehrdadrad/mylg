@@ -92,11 +92,8 @@ func (p *Ping) IP(ipAddr string) {
 	}
 }
 
+// DelIP removes ip adrress
 func (p *Ping) DelIP(ipAddr string) {
-	//todo
-}
-
-func (p *Ping) Network() {
 	//todo
 }
 
