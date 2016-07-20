@@ -104,14 +104,14 @@ func cache(r, typ string, data interface{}) (interface{}, bool) {
 				return nil, false
 			}
 			return res, true
-		} else {
-			var res map[string]Net
-			err := json.Unmarshal(b, &res)
-			if err != nil {
-				return nil, false
-			}
-			return res, true
 		}
+		// net type
+		var res map[string]Net
+		err = json.Unmarshal(b, &res)
+		if err != nil {
+			return nil, false
+		}
+		return res, true
 	case "validate":
 		f, err := os.Stat("/tmp/mylg.pdb." + typ)
 		if err != nil {
