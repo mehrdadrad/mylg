@@ -184,6 +184,7 @@ func (p *Ping) send(conn *icmp.PacketConn) {
 	wg.Wait()
 }
 
+// Ping tries to send and receive a packet
 func (p *Ping) Ping(out chan string) {
 	var (
 		conn     *icmp.PacketConn
@@ -234,14 +235,11 @@ func (p *Ping) Ping(out chan string) {
 
 }
 
+// getTimeStamp
 func getTimeStamp(m []byte) int64 {
 	var ts int64
 	for i := uint(0); i < 8; i++ {
 		ts += int64(m[uint(len(m))-8+i]) << (i * 8)
 	}
 	return ts
-}
-
-func (p *Ping) Start() {
-
 }
