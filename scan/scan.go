@@ -47,7 +47,7 @@ func NewScan(args string) (Scan, error) {
 	return scan, nil
 }
 
-// isCIDR checks the target if it's CIDR
+// IsCIDR checks the target if it's CIDR
 func (s Scan) IsCIDR() bool {
 	_, _, err := net.ParseCIDR(s.target)
 	if err != nil {

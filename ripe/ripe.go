@@ -17,13 +17,13 @@ import (
 )
 
 const (
-	// Ripe API URL
+	// RIPEAPI holds RIPE API URL
 	RIPEAPI = "https://stat.ripe.net"
-	// Ripe prefix path
+	// RIPEPrefixURL holds RIPE prefix path
 	RIPEPrefixURL = "/data/prefix-overview/data.json?max_related=50&resource="
-	// Ripe ASN path
+	// RIPEASNURL holds RIPE ASN path
 	RIPEASNURL = "/data/as-overview/data.json?resource=AS"
-	// Ripe Geo path
+	// RIPEGeoURL holds Geo path
 	RIPEGeoURL = "/data/geoloc/data.json?resource=AS"
 )
 

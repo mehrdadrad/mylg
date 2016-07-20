@@ -265,7 +265,7 @@ func Flag(args string) (string, map[string]interface{}) {
 	return args, r
 }
 
-// SetFlag
+// SetFlag returns command option(s)
 func SetFlag(flag map[string]interface{}, option string, v interface{}) interface{} {
 	if sValue, ok := flag[option]; ok {
 		switch v.(type) {
