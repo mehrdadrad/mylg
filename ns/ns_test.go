@@ -10,7 +10,7 @@ var r *ns.Request
 
 func init() {
 	r = ns.NewRequest()
-	r.Hosts = append(r.Hosts, ns.Host{"127.0.0.1", "us", "united states", "los angeles"})
+	r.Hosts = append(r.Hosts, ns.Host{IP: "127.0.0.1", Alpha2: "us", Country: "united states", City: "los angeles"})
 }
 
 func TestNodeList(t *testing.T) {
