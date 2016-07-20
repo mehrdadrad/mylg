@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/mehrdadrad/mylg/cli"
 )
 
 // Scan represents the scan parameters
@@ -21,21 +23,28 @@ type Scan struct {
 func NewScan(args string) (Scan, error) {
 	var (
 		scan Scan
+		flag map[string]interface{}
 		err  error
 	)
-	re := regexp.MustCompile(`([^\s]+)\s+(\d+)\s+(\d+)`)
-	f := re.FindStringSubmatch(args)
-	if len(f) == 4 {
-		scan.target = f[1]
-		scan.minPort, err = strconv.Atoi(f[2])
-		scan.maxPort, err = strconv.Atoi(f[3])
+
+	args, flag = cli.Flag(args)
+	// help
+	if _, ok := flag["help"]; ok {
+		help()
+		return scan, fmt.Errorf("")
+	}
+
+	pRange := cli.SetFlag(flag, "p", "1-500").(string)
+
+	re := regexp.MustCompile(`(\d+)-(\d+)`)
+	f := re.FindStringSubmatch(pRange)
+	if len(f) == 3 {
+		scan.target = args
+		scan.minPort, err = strconv.Atoi(f[1])
+		scan.maxPort, err = strconv.Atoi(f[2])
 		if err != nil {
 			return scan, err
 		}
-	} else {
-		scan.target = args
-		scan.minPort = 1
-		scan.maxPort = 500
 	}
 	if !scan.IsCIDR() {
 		ipAddr, err := net.ResolveIPAddr("ip4", scan.target)
@@ -95,4 +104,14 @@ func host(ipAddr string, minPort, maxPort int) {
 		elapsed := fmt.Sprintf("%.3f seconds", time.Since(tStart).Seconds())
 		println("Scan done:", counter, "opened port(s) found in", elapsed)
 	}
+}
+
+// help represents guide to user
+func help() {
+	println(`
+    usage:
+          scan ip/host [-p portrange]
+    example:
+          scan www.google.com -p 1-500
+	`)
 }
