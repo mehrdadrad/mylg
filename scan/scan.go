@@ -81,7 +81,10 @@ func host(ipAddr string, minPort, maxPort int) {
 			counter++
 			fmt.Printf("%d/tcp open\n", i)
 			wg.Done()
-			conn.Close()
+			err = conn.Close()
+			if err != nil {
+				println(err.Error())
+			}
 		}(i)
 		time.Sleep(8 * time.Millisecond)
 	}
