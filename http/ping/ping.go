@@ -28,6 +28,7 @@ type Ping struct {
 	conn    net.Conn
 }
 
+// Result holds Ping result
 type Result struct {
 	StatusCode int
 	ConnTime   float64
@@ -72,7 +73,7 @@ func NewPing(URL string, timeout time.Duration) (*Ping, error) {
 	return p, nil
 }
 
-// Normalize
+// Normalize fixes scheme
 func Normalize(URL string) string {
 	re := regexp.MustCompile(`(?i)https{0,1}://`)
 	if !re.MatchString(URL) {
@@ -215,6 +216,7 @@ func (p *Ping) pingNetHead() (Result, bool) {
 
 }
 
+// Run tries to run ping loop based on the method
 func (p *Ping) Run() {
 	switch p.method {
 	case "HEAD":
@@ -224,6 +226,7 @@ func (p *Ping) Run() {
 	}
 }
 
+// help shows ping help
 func help() {
 	println(`
     usage:
