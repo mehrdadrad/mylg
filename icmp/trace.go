@@ -139,29 +139,3 @@ func (i *Trace) Run(ip string) {
 	}
 	trace.Done(fd)
 }
-
-// header returns icmp header
-func (i *Trace) header() []byte {
-	icmp := []byte{
-		8, 0, // echo request, 8bit: type=8, 8bit: code=0
-		0, 0, // 16bit: check sum=0(init)
-		0, 0, 0, 0, // 32bit: not used=0
-	}
-	cs := checkSum(icmp)
-	icmp[2] = byte(cs)
-	icmp[3] = byte(cs >> 8)
-	return icmp
-}
-
-// checksum calculates header checksum
-func checkSum(value []byte) uint16 {
-	sum := uint32(0)
-
-	for i, n := 0, len(value); i < n; i += 2 {
-		sum += uint32(value[i+1]<<8) + uint32(value[i])
-	}
-
-	sum = (sum >> 16) + (sum & 0xffff)
-	sum += (sum >> 16)
-	return uint16(^sum)
-}
