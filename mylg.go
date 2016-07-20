@@ -47,7 +47,15 @@ var (
 	providers = map[string]Provider{"telia": new(lg.Telia), "level3": new(lg.Level3), "cogent": new(lg.Cogent)}
 	whois     = map[string]Whois{"asn": new(ripe.ASN), "prefix": new(ripe.Prefix)}
 	pNames    = providerNames()
+	rep       = make(chan string, 1)
+	req       = make(chan string, 1)
+	nxt       = make(chan struct{}, 1)
+	spin      = spinner.New(spinner.CharSets[26], 220*time.Millisecond)
+	args      string
+	prompt    string
+	cPName    string
 	nsr       *ns.Request
+	c         *cli.Readline
 )
 
 // providerName
@@ -71,28 +79,23 @@ func validateProvider(p string) (string, error) {
 
 }
 func init() {
-	// Initialize name server data
+	// initialize cli
+	c = cli.Init("local", version)
+	go c.Run(req, nxt)
+	// initialize name server
 	nsr = ns.NewRequest()
 	go nsr.Init()
+	// set default provider
+	cPName = "local"
 }
 
 func main() {
 	var (
-		err     error
 		request string
 		loop    = true
-		cPName  = "local"
 	)
 
-	rep := make(chan string, 1)
-	req := make(chan string, 1)
-	nxt := make(chan struct{}, 1)
-
-	c := cli.Init("local", version)
-	go c.Run(req, nxt)
-
 	r, _ := regexp.Compile(`(ping|trace|bgp|lg|ns|dig|whois|peering|scan|hping|connect|node|local|mode|help|exit|quit)\s{0,1}(.*)`)
-	s := spinner.New(spinner.CharSets[26], 220*time.Millisecond)
 
 	for loop {
 		select {
@@ -110,164 +113,201 @@ func main() {
 				c.Next()
 				continue
 			}
-			prompt := c.GetPrompt()
+			prompt = c.GetPrompt()
+			args = strings.TrimSpace(subReq[2])
 			cmd := strings.TrimSpace(subReq[1])
-			args := strings.TrimSpace(subReq[2])
 			switch {
 			case cmd == "hping" && cPName == "local":
-				p, err := ping.NewPing(args, 5)
-				if err != nil {
-					println(err.Error())
-				} else {
-					p.Run()
-				}
-				c.Next()
+				hping()
 			case cmd == "ping" && cPName == "local":
-				p := icmp.NewPing()
-				ra, err := net.ResolveIPAddr("ip", args)
-				if err != nil {
-					println("cannot resolve", args, ": Unknown host")
-					c.Next()
-					continue
-				}
-				p.IP(ra.String())
-				for n := 0; n < 4; n++ {
-					p.Ping(rep)
-					println(<-rep)
-				}
-				c.Next()
+				pingLocal()
 			case cmd == "ping":
-				s.Prefix = "please wait "
-				s.Start()
-				providers[cPName].Set(args, "ipv4")
-				m, err := providers[cPName].Ping()
-				s.Stop()
-				if err != nil {
-					println(err.Error())
-				} else {
-					println(m)
-				}
-				c.Next()
+				pingLG()
 			case cmd == "trace":
-				switch {
-				case strings.HasPrefix(prompt, "local"):
-					trace := icmp.Trace{}
-					trace.Run(args)
-				case strings.HasPrefix(prompt, "lg"):
-					providers[cPName].Set(args, "ipv4")
-					for l := range providers[cPName].Trace() {
-						println(l)
-					}
-				}
-				c.Next()
-			case cmd == "bgp" && cPName != "local":
-				providers[cPName].Set(args, "ipv4")
-				for l := range providers[cPName].BGP() {
-					println(l)
-				}
-				c.Next()
+				trace()
+			case cmd == "bgp":
+				BGP()
 			case cmd == "dig":
 				nsr.Dig(args)
-				c.Next()
 			case cmd == "node":
-				switch {
-				case strings.HasPrefix(prompt, "lg"):
-					if _, ok := providers[cPName]; ok {
-						providers[cPName].ChangeNode(args)
-						c.UpdatePromptN(args, 3)
-					} else {
-						println("the specified node doesn't support")
-					}
-				case strings.HasPrefix(prompt, "ns"):
-					if !nsr.ChkNode(args) {
-						println("error: argument is not valid")
-						continue
-					}
-					c.UpdatePromptN(args, 3)
-				}
-				c.Next()
+				node()
 			case cmd == "local":
 				nsr.Local()
 				cPName = "local"
 				c.SetPrompt(cPName)
-				c.Next()
+			case cmd == "connect":
+				connect()
 			case cmd == "lg":
 				c.SetPrompt("lg")
 				c.UpdateCompleter("connect", pNames)
-				c.Next()
-			case cmd == "connect":
-				switch {
-				case strings.HasPrefix(prompt, "lg"):
-					var pName string
-					if pName, err = validateProvider(args); err != nil {
-						println("provider not available")
-						c.Next()
-						continue
-					}
-					cPName = pName
-					if _, ok := providers[cPName]; ok {
-						c.UpdatePromptN(cPName+"/"+providers[cPName].GetDefaultNode(), 2)
-						go func() {
-							c.UpdateCompleter("node", providers[cPName].GetNodes())
-						}()
-					} else {
-						println("it doesn't support")
-					}
-				case strings.HasPrefix(prompt, "ns"):
-					if !nsr.ChkCountry(args) {
-						println("error: argument is not valid")
-					} else {
-						c.SetPrompt("ns/" + args)
-						c.UpdateCompleter("node", nsr.NodeList())
-					}
-				}
-				c.Next()
 			case cmd == "ns":
 				c.UpdateCompleter("connect", nsr.CountryList())
 				c.UpdateCompleter("node", []string{})
 				c.SetPrompt("ns")
-				c.Next()
 			case cmd == "whois":
-				if ripe.IsASN(args) {
-					whois["asn"].Set(args)
-					whois["asn"].GetData()
-					whois["asn"].PrettyPrint()
-				} else {
-					whois["prefix"].Set(args)
-					whois["prefix"].GetData()
-					whois["prefix"].PrettyPrint()
-				}
-				c.Next()
+				whoIs()
 			case cmd == "peering":
 				peeringdb.Search(args)
-				c.Next()
 			case cmd == "scan":
-				scan, err := scan.NewScan(args)
-				if err != nil {
-					println(err.Error())
-				} else {
-					scan.Run()
-				}
-				c.Next()
+				scanPorts()
 			case cmd == "mode":
-				if args == "vim" {
-					c.SetVim()
-				} else if args == "emacs" {
-					c.SetEmacs()
-				} else {
-					println("the request mode doesn't support")
-				}
-				c.Next()
+				mode()
 			case cmd == "help":
 				c.Help()
-				c.Next()
 			case cmd == "exit", cmd == "quit":
 				c.Close(nxt)
 				close(req)
-			// todo
-			default:
-				c.Next()
 			}
+			// next line
+			c.Next()
 		}
+	}
+}
+
+// node handles node cmd
+func node() {
+	switch {
+	case strings.HasPrefix(prompt, "lg"):
+		if _, ok := providers[cPName]; ok {
+			providers[cPName].ChangeNode(args)
+			c.UpdatePromptN(args, 3)
+		} else {
+			println("the specified node doesn't support")
+		}
+	case strings.HasPrefix(prompt, "ns"):
+		if !nsr.ChkNode(args) {
+			println("error: argument is not valid")
+		} else {
+			c.UpdatePromptN(args, 3)
+		}
+	}
+}
+
+// connect handles connect cmd
+func connect() {
+	var (
+		pName string
+		err   error
+	)
+	switch {
+	case strings.HasPrefix(prompt, "lg"):
+		if pName, err = validateProvider(args); err != nil {
+			println("provider not available")
+			c.Next()
+			return
+		}
+		cPName = pName
+		if _, ok := providers[cPName]; ok {
+			c.UpdatePromptN(cPName+"/"+providers[cPName].GetDefaultNode(), 2)
+			go func() {
+				c.UpdateCompleter("node", providers[cPName].GetNodes())
+			}()
+		} else {
+			println("it doesn't support")
+		}
+	case strings.HasPrefix(prompt, "ns"):
+		if !nsr.ChkCountry(args) {
+			println("error: argument is not valid")
+		} else {
+			c.SetPrompt("ns/" + args)
+			c.UpdateCompleter("node", nsr.NodeList())
+		}
+	}
+}
+func whoIs() {
+	if ripe.IsASN(args) {
+		whois["asn"].Set(args)
+		whois["asn"].GetData()
+		whois["asn"].PrettyPrint()
+	} else {
+		whois["prefix"].Set(args)
+		whois["prefix"].GetData()
+		whois["prefix"].PrettyPrint()
+	}
+}
+
+// mode set editor mode
+func mode() {
+	if args == "vim" {
+		c.SetVim()
+	} else if args == "emacs" {
+		c.SetEmacs()
+	} else {
+		println("the request mode doesn't support")
+	}
+}
+
+// trace tries to trace from local and lg
+func trace() {
+	switch {
+	case strings.HasPrefix(prompt, "local"):
+		trace := icmp.Trace{}
+		trace.Run(args)
+	case strings.HasPrefix(prompt, "lg"):
+		providers[cPName].Set(args, "ipv4")
+		for l := range providers[cPName].Trace() {
+			println(l)
+		}
+	}
+}
+
+// hping tries to ping a web server by http
+func hping() {
+	p, err := ping.NewPing(args, 5)
+	if err != nil {
+		println(err.Error())
+	} else {
+		p.Run()
+	}
+}
+
+// pingLG tries to ping through a looking glass
+func pingLG() {
+	spin.Prefix = "please wait "
+	spin.Start()
+	providers[cPName].Set(args, "ipv4")
+	m, err := providers[cPName].Ping()
+	spin.Stop()
+	if err != nil {
+		println(err.Error())
+	} else {
+		println(m)
+	}
+}
+
+// pingLocal tries to ping from local source ip
+func pingLocal() {
+	p := icmp.NewPing()
+	ra, err := net.ResolveIPAddr("ip", args)
+	if err != nil {
+		println("cannot resolve", args, ": Unknown host")
+		return
+	}
+	p.IP(ra.String())
+	for n := 0; n < 4; n++ {
+		p.Ping(rep)
+		println(<-rep)
+	}
+}
+
+// scanPorts tries to scan tcp/ip ports
+func scanPorts() {
+	scan, err := scan.NewScan(args)
+	if err != nil {
+		println(err.Error())
+	} else {
+		scan.Run()
+	}
+}
+
+// BGP tries to get BGP lookup from a LG
+func BGP() {
+	if cPName == "local" {
+		println("no provider selected")
+		return
+	}
+	providers[cPName].Set(args, "ipv4")
+	for l := range providers[cPName].BGP() {
+		println(l)
 	}
 }
