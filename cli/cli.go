@@ -277,5 +277,4 @@ func SetFlag(flag map[string]interface{}, option string, v interface{}) interfac
 	} else {
 		return v
 	}
-	return nil
 }
