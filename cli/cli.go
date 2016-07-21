@@ -201,7 +201,7 @@ func (r *Readline) Help() {
 	ping                        ping ip address or domain name
 	dig                         name server looking up
 	whois                       resolve AS number/IP/CIDR to holder (provides by ripe ncc)
-	hping						Ping through HTTP/HTTPS w/ GET/HEAD methods
+	hping                       Ping through HTTP/HTTPS w/ GET/HEAD methods
 	scan                        scan tcp ports (you can provide range >scan host minport maxport)
 	peering                     peering information (provides by peeringdb.com)
 	`)
