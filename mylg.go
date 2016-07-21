@@ -214,6 +214,9 @@ func connect() {
 		}
 	}
 }
+
+// whoIs tries to get whois information
+// ASN and prefix/ip information
 func whoIs() {
 	if ripe.IsASN(args) {
 		whois["asn"].Set(args)
