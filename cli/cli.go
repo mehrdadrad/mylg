@@ -249,7 +249,7 @@ func Flag(args string) (string, map[string]interface{}) {
 		err error
 	)
 	args = strings.TrimSpace(args)
-	re := regexp.MustCompile(`(?i)-([a-z]+)={0,1}\s{0,1}([0-9|a-z|-]+)`)
+	re := regexp.MustCompile(`(?i)-([a-z]+)={0,1}\s{0,1}([0-9|a-z|-|'"{}:]+)`)
 	f := re.FindAllStringSubmatch(args, -1)
 	for _, kv := range f {
 		if len(kv) > 1 {
