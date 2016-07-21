@@ -5,12 +5,14 @@ package ping
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
 	"reflect"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/mehrdadrad/mylg/cli"
@@ -23,6 +25,7 @@ type Ping struct {
 	timeout time.Duration
 	count   int
 	method  string
+	buf     io.Reader
 	rAddr   net.Addr
 	nsTime  time.Duration
 	conn    net.Conn
@@ -65,11 +68,14 @@ func NewPing(URL string, timeout time.Duration) (*Ping, error) {
 		nsTime:  time.Since(sTime),
 		timeout: timeout,
 	}
+
 	// set count
 	p.count = cli.SetFlag(flag, "c", 4).(int)
 	// set method
 	p.method = cli.SetFlag(flag, "m", "HEAD").(string)
-
+	// set buff (post)
+	buf := cli.SetFlag(flag, "d", "mylg").(string)
+	p.buf = strings.NewReader(buf)
 	return p, nil
 }
 
@@ -107,26 +113,41 @@ func (p *Ping) pingConn() (Result, bool) {
 // with header information
 func (p *Ping) pingHeadLoop() {
 	pStrPrefix := "HTTP Response seq=%d, "
-	pStrPostfix := "proto=%s, status=%d, time=%.3f ms\n"
+	pStrSuffix := "proto=%s, status=%d, time=%.3f ms\n"
 	fmt.Printf("HPING %s (%s), Method: HEAD, DNSLookup: %.4f ms\n", p.host, p.rAddr, p.nsTime.Seconds()*1000)
 	for i := 0; i < p.count; i++ {
 		if r, ok := p.pingHead(); ok {
-			fmt.Printf(pStrPrefix+pStrPostfix, i, r.Proto, r.StatusCode, r.TotalTime*1000)
+			fmt.Printf(pStrPrefix+pStrSuffix, i, r.Proto, r.StatusCode, r.TotalTime*1000)
 		} else {
 			fmt.Printf(pStrPrefix+"timeout\n", i)
 		}
 	}
 }
 
-// pingHeadLoop tries number of connection
+// pingGetLoop tries number of connection
 // with header information
 func (p *Ping) pingGetLoop() {
 	pStrPrefix := "HTTP Response seq=%d, "
-	pStrPostfix := "proto=%s, status=%d, size=%d Bytes, time=%.3f ms\n"
+	pStrSuffix := "proto=%s, status=%d, size=%d Bytes, time=%.3f ms\n"
 	fmt.Printf("HPING %s (%s), Method: GET, DNSLookup: %.4f ms\n", p.host, p.rAddr, p.nsTime.Seconds()*1000)
 	for i := 0; i < p.count; i++ {
 		if r, ok := p.pingGet(); ok {
-			fmt.Printf(pStrPrefix+pStrPostfix, i, r.Proto, r.StatusCode, r.Size, r.TotalTime*1000)
+			fmt.Printf(pStrPrefix+pStrSuffix, i, r.Proto, r.StatusCode, r.Size, r.TotalTime*1000)
+		} else {
+			fmt.Printf(pStrPrefix+"timeout\n", i)
+		}
+	}
+}
+
+// pingGetLoop tries number of connection
+// with header information
+func (p *Ping) pingPostLoop() {
+	pStrPrefix := "HTTP Response seq=%d, "
+	pStrSuffix := "proto=%s, status=%d, size=%d Bytes, time=%.3f ms\n"
+	fmt.Printf("HPING %s (%s), Method: POST, DNSLookup: %.4f ms\n", p.host, 0, p.nsTime.Seconds()*1000)
+	for i := 0; i < p.count; i++ {
+		if r, ok := p.pingPost(); ok {
+			fmt.Printf(pStrPrefix+pStrSuffix, i, r.Proto, r.StatusCode, r.Size, r.TotalTime*1000)
 		} else {
 			fmt.Printf(pStrPrefix+"timeout\n", i)
 		}
@@ -168,6 +189,28 @@ func (p *Ping) pingHead() (Result, bool) {
 	client := &http.Client{Timeout: 2 * time.Second}
 	sTime = time.Now()
 	resp, err := client.Head(p.url)
+	if err != nil {
+		return r, false
+	}
+	r.TotalTime = time.Since(sTime).Seconds()
+	if err != nil {
+		return r, false
+	}
+	r.StatusCode = resp.StatusCode
+	r.Proto = resp.Proto
+	return r, true
+}
+
+// pingPost tries to ping a web server through http
+func (p *Ping) pingPost() (Result, bool) {
+	var (
+		r     Result
+		sTime time.Time
+	)
+
+	client := &http.Client{Timeout: 2 * time.Second}
+	sTime = time.Now()
+	resp, err := client.Post(p.url, "text/plain", p.buf)
 	if err != nil {
 		return r, false
 	}
@@ -223,6 +266,8 @@ func (p *Ping) Run() {
 		p.pingHeadLoop()
 	case "GET":
 		p.pingGetLoop()
+	case "POST":
+		p.pingPostLoop()
 	}
 }
 
@@ -230,6 +275,11 @@ func (p *Ping) Run() {
 func help() {
 	println(`
     usage:
-          hping [-c count][-m method] url
+          hping [-c count][-m method][-d data] url
+
+    options:		  
+          -c count       Send 'count' requests (default: 4)
+          -m method      HTTP methods: GET/POST/HEAD (default: HEAD)
+          -d data        Sending the given data (text/json) (default: "mylg")
 	`)
 }
