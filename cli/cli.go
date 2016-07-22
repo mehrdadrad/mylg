@@ -13,6 +13,23 @@ import (
 	"strings"
 )
 
+const usage = `Usage:
+	The myLG tool developed to troubleshoot networking situations.
+	The vi/emacs mode,almost all basic features is supported. press tab to see what options are available.
+
+	connect <provider name>     connects to external looking glass, press tab to see the menu
+	node <city/country name>    connects to specific node at current looking glass, press tab to see the available nodes
+	local                       back to local
+	lg                          change mode to extenal looking glass
+	ns                          change mode to name server looking up
+	ping                        ping ip address or domain name
+	dig                         name server looking up
+	whois                       resolve AS number/IP/CIDR to holder (provides by ripe ncc)
+	hping                       Ping through HTTP/HTTPS w/ GET/HEAD methods
+	scan                        scan tcp ports (you can provide range >scan host minport maxport)
+	peering                     peering information (provides by peeringdb.com)
+	`
+
 // Readline structure
 type Readline struct {
 	instance  *readline.Instance
@@ -189,22 +206,7 @@ func (r *Readline) Close(next chan struct{}) {
 
 // Help print out the main help
 func (r *Readline) Help() {
-	fmt.Println(`Usage:
-	The myLG tool developed to troubleshoot networking situations.
-	The vi/emacs mode,almost all basic features is supported. press tab to see what options are available.
-
-	connect <provider name>     connects to external looking glass, press tab to see the menu
-	node <city/country name>    connects to specific node at current looking glass, press tab to see the available nodes
-	local                       back to local
-	lg                          change mode to extenal looking glass
-	ns                          change mode to name server looking up
-	ping                        ping ip address or domain name
-	dig                         name server looking up
-	whois                       resolve AS number/IP/CIDR to holder (provides by ripe ncc)
-	hping                       Ping through HTTP/HTTPS w/ GET/HEAD methods
-	scan                        scan tcp ports (you can provide range >scan host minport maxport)
-	peering                     peering information (provides by peeringdb.com)
-	`)
+	fmt.Println(usage)
 }
 
 // checkUpdate checks if any new version is available
