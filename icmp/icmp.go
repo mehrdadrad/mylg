@@ -87,12 +87,12 @@ func (p *Ping) Run() {
 	}
 }
 
-// isIPv4 returns true if ip version is v4
+// IsIPv4 returns true if ip version is v4
 func IsIPv4(ip net.IP) bool {
 	return len(ip.To4()) == net.IPv4len
 }
 
-// isIPv6 returns true if ip version is v6
+// IsIPv6 returns true if ip version is v6
 func IsIPv6(ip net.IP) bool {
 	return len(ip) == net.IPv6len
 }
