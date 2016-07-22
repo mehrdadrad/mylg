@@ -13,6 +13,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/mehrdadrad/mylg/cli"
 )
 
 // IANA ICMP
@@ -34,6 +36,7 @@ type Ping struct {
 	id        int
 	seq       int
 	pSize     int
+	count     int
 	addr      *net.IPAddr
 	isV4Avail bool
 	isV6Avail bool
@@ -44,24 +47,53 @@ type Ping struct {
 }
 
 // NewPing creates a new ping object
-func NewPing() *Ping {
-	return &Ping{
+func NewPing(args string) (*Ping, error) {
+	target, flag := cli.Flag(args)
+
+	// show help
+	if _, ok := flag["help"]; ok || len(target) < 3 {
+		help()
+		return nil, fmt.Errorf("help showed up")
+	}
+
+	ra, err := net.ResolveIPAddr("ip", target)
+	if err != nil {
+		println("cannot resolve", args, ": Unknown host")
+		return nil, err
+	}
+
+	p := Ping{
 		id:        rand.Intn(0xffff),
 		seq:       -1,
 		pSize:     64,
+		count:     cli.SetFlag(flag, "c", 4).(int),
 		isV4Avail: false,
 		isV6Avail: false,
 		network:   "ip",
 		source:    "",
 		MaxRTT:    time.Second,
 	}
+
+	p.SetIP(ra.String())
+	return &p, nil
 }
 
-func isIPv4(ip net.IP) bool {
+// Run loops the ping and print it out
+func (p *Ping) Run() {
+	var rep = make(chan string, 1)
+	for n := 0; n < p.count; n++ {
+		p.Ping(rep)
+		println(<-rep)
+	}
+}
+
+// isIPv4 returns true if ip version is v4
+func IsIPv4(ip net.IP) bool {
 	return len(ip.To4()) == net.IPv4len
 }
 
-func isIPv6(ip net.IP) bool {
+// isIPv6 returns true if ip version is v6
+func IsIPv6(ip net.IP) bool {
 	return len(ip) == net.IPv6len
 }
 
@@ -79,13 +111,13 @@ func (p *Ping) parseMessage(m *packet) (*ipv4.Header, *icmp.Message, error) {
 	return h, msg, err
 }
 
-// IP set ip address
-func (p *Ping) IP(ipAddr string) {
+// SetIP set ip address
+func (p *Ping) SetIP(ipAddr string) {
 	ip := net.ParseIP(ipAddr)
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.addr = &net.IPAddr{IP: ip}
-	if isIPv4(ip) {
+	if IsIPv4(ip) {
 		p.isV4Avail = true
 	} else {
 		p.isV6Avail = true
@@ -146,9 +178,9 @@ func (p *Ping) send(conn *icmp.PacketConn) {
 		wg sync.WaitGroup
 	)
 	var icmpType icmp.Type
-	if isIPv4(p.addr.IP) {
+	if IsIPv4(p.addr.IP) {
 		icmpType = ipv4.ICMPTypeEcho
-	} else if isIPv6(p.addr.IP) {
+	} else if IsIPv6(p.addr.IP) {
 		icmpType = ipv6.ICMPTypeEchoRequest
 	}
 
@@ -242,4 +274,19 @@ func getTimeStamp(m []byte) int64 {
 		ts += int64(m[uint(len(m))-8+i]) << (i * 8)
 	}
 	return ts
+}
+
+// help represents ping help
+func help() {
+	println(`
+    usage:
+          ping IP address / domain name
+    options:		  
+          -c count       Send 'count' requests (default: 4)
+ 
+    Example:
+          ping 8.8.8.8
+          ping 8.8.8.8 -c 10
+          ping mylg.io
+	`)
 }
