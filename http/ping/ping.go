@@ -3,13 +3,11 @@
 package ping
 
 import (
-	"bufio"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
-	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -42,8 +40,8 @@ type Result struct {
 }
 
 // NewPing validate and constructs request object
-func NewPing(URL string, timeout time.Duration) (*Ping, error) {
-	URL, flag := cli.Flag(URL)
+func NewPing(args string) (*Ping, error) {
+	URL, flag := cli.Flag(args)
 	// help
 	if _, ok := flag["help"]; ok || URL == "" {
 		help()
@@ -61,15 +59,17 @@ func NewPing(URL string, timeout time.Duration) (*Ping, error) {
 	}
 
 	p := &Ping{
-		url:     URL,
-		host:    u.Host,
-		rAddr:   ipAddr,
-		nsTime:  time.Since(sTime),
-		timeout: timeout,
+		url:    URL,
+		host:   u.Host,
+		rAddr:  ipAddr,
+		nsTime: time.Since(sTime),
 	}
 
 	// set count
 	p.count = cli.SetFlag(flag, "c", 4).(int)
+	// set timeout
+	timeout := cli.SetFlag(flag, "t", 2).(int)
+	p.timeout = time.Duration(timeout)
 	// set method
 	p.method = cli.SetFlag(flag, "m", "HEAD").(string)
 	// set buff (post)
@@ -87,27 +87,6 @@ func Normalize(URL string) string {
 	return URL
 }
 
-// ping tries to create a TCP connection
-func (p *Ping) pingConn() (Result, bool) {
-	var (
-		r     Result
-		err   error
-		sTime time.Time
-	)
-
-	sTime = time.Now()
-	p.conn, err = net.DialTimeout("tcp", p.url, p.timeout*time.Second)
-	r.ConnTime = time.Since(sTime).Seconds()
-	if err != nil {
-		print(err.Error())
-		return r, false
-	}
-
-	p.rAddr = p.conn.RemoteAddr()
-	p.conn.Close()
-	return r, true
-}
-
 // pingHeadLoop tries number of connection
 // with header information
 func (p *Ping) pingHeadLoop() {
@@ -115,7 +94,7 @@ func (p *Ping) pingHeadLoop() {
 	pStrSuffix := "proto=%s, status=%d, time=%.3f ms\n"
 	fmt.Printf("HPING %s (%s), Method: HEAD, DNSLookup: %.4f ms\n", p.host, p.rAddr, p.nsTime.Seconds()*1000)
 	for i := 0; i < p.count; i++ {
-		if r, ok := p.pingHead(); ok {
+		if r, ok := p.PingHead(); ok {
 			fmt.Printf(pStrPrefix+pStrSuffix, i, r.Proto, r.StatusCode, r.TotalTime*1000)
 		} else {
 			fmt.Printf(pStrPrefix+"timeout\n", i)
@@ -130,7 +109,7 @@ func (p *Ping) pingGetLoop() {
 	pStrSuffix := "proto=%s, status=%d, size=%d Bytes, time=%.3f ms\n"
 	fmt.Printf("HPING %s (%s), Method: GET, DNSLookup: %.4f ms\n", p.host, p.rAddr, p.nsTime.Seconds()*1000)
 	for i := 0; i < p.count; i++ {
-		if r, ok := p.pingGet(); ok {
+		if r, ok := p.PingGet(); ok {
 			fmt.Printf(pStrPrefix+pStrSuffix, i, r.Proto, r.StatusCode, r.Size, r.TotalTime*1000)
 		} else {
 			fmt.Printf(pStrPrefix+"timeout\n", i)
@@ -145,7 +124,7 @@ func (p *Ping) pingPostLoop() {
 	pStrSuffix := "proto=%s, status=%d, size=%d Bytes, time=%.3f ms\n"
 	fmt.Printf("HPING %s (%s), Method: POST, DNSLookup: %.4f ms\n", p.host, p.rAddr, p.nsTime.Seconds()*1000)
 	for i := 0; i < p.count; i++ {
-		if r, ok := p.pingPost(); ok {
+		if r, ok := p.PingPost(); ok {
 			fmt.Printf(pStrPrefix+pStrSuffix, i, r.Proto, r.StatusCode, r.Size, r.TotalTime*1000)
 		} else {
 			fmt.Printf(pStrPrefix+"timeout\n", i)
@@ -153,14 +132,14 @@ func (p *Ping) pingPostLoop() {
 	}
 }
 
-// pingGet tries to ping a web server through http
-func (p *Ping) pingGet() (Result, bool) {
+// PingGet tries to ping a web server through http
+func (p *Ping) PingGet() (Result, bool) {
 	var (
 		r     Result
 		sTime time.Time
 	)
 
-	client := &http.Client{Timeout: 2 * time.Second}
+	client := &http.Client{Timeout: p.timeout * time.Second}
 	sTime = time.Now()
 	resp, err := client.Get(p.url)
 	if err != nil {
@@ -178,14 +157,14 @@ func (p *Ping) pingGet() (Result, bool) {
 	return r, true
 }
 
-// pingHead tries to ping a web server through http
-func (p *Ping) pingHead() (Result, bool) {
+// PingHead tries to ping a web server through http
+func (p *Ping) PingHead() (Result, bool) {
 	var (
 		r     Result
 		sTime time.Time
 	)
 
-	client := &http.Client{Timeout: 2 * time.Second}
+	client := &http.Client{Timeout: p.timeout * time.Second}
 	sTime = time.Now()
 	resp, err := client.Head(p.url)
 	if err != nil {
@@ -200,14 +179,14 @@ func (p *Ping) pingHead() (Result, bool) {
 	return r, true
 }
 
-// pingPost tries to ping a web server through http
-func (p *Ping) pingPost() (Result, bool) {
+// PingPost tries to ping a web server through http
+func (p *Ping) PingPost() (Result, bool) {
 	var (
 		r     Result
 		sTime time.Time
 	)
 
-	client := &http.Client{Timeout: 2 * time.Second}
+	client := &http.Client{Timeout: p.timeout * time.Second}
 	sTime = time.Now()
 	r.Size = len(p.buf)
 	reader := strings.NewReader(p.buf)
@@ -222,42 +201,6 @@ func (p *Ping) pingPost() (Result, bool) {
 	r.StatusCode = resp.StatusCode
 	r.Proto = resp.Proto
 	return r, true
-}
-
-// pingNetHead tries to execute head command
-func (p *Ping) pingNetHead() (Result, bool) {
-	var (
-		r     Result
-		b     = make([]byte, 512)
-		err   error
-		sTime time.Time
-	)
-
-	sTime = time.Now()
-	p.conn, err = net.DialTimeout("tcp", p.host+":80", p.timeout*time.Second)
-
-	if err != nil {
-		print(err.Error())
-		return r, false
-	}
-
-	fmt.Fprintf(p.conn, "HEAD / HTTP/1.1\r\n\r\n")
-	reader := bufio.NewReader(p.conn)
-	n, _ := reader.Read(b)
-	for key, regex := range map[string]string{"Proto": `(HTTP/\d\.\d)`, "Status": `HTTP/\d\.\d\s+(\d+)`, "Server": `server:\s+(.*)\n`} {
-		re := regexp.MustCompile(regex)
-		a := re.FindSubmatch(b[:n])
-		if len(a) == 2 {
-			f := reflect.ValueOf(&r).Elem().FieldByName(key)
-			f.SetString(string(a[1]))
-		}
-	}
-	r.TotalTime = time.Since(sTime).Seconds()
-
-	p.rAddr = p.conn.RemoteAddr()
-	p.conn.Close()
-	return r, true
-
 }
 
 // Run tries to run ping loop based on the method
@@ -276,10 +219,11 @@ func (p *Ping) Run() {
 func help() {
 	println(`
     usage:
-          hping [-c count][-m method][-d data] url
+          hping [-c count][-t timeout][-m method][-d data] url
 
     options:		  
           -c count       Send 'count' requests (default: 4)
+          -t timeout     Specifies a time limit for requests in second (default is 2) 
           -m method      HTTP methods: GET/POST/HEAD (default: HEAD)
           -d data        Sending the given data (text/json) (default: "mylg")
 	`)
