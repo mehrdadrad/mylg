@@ -5,7 +5,6 @@ package main
 import (
 	"errors"
 	"github.com/briandowns/spinner"
-	"net"
 	"regexp"
 	"strings"
 	"time"
@@ -16,8 +15,8 @@ import (
 	"github.com/mehrdadrad/mylg/lg"
 	"github.com/mehrdadrad/mylg/ns"
 	"github.com/mehrdadrad/mylg/peeringdb"
-	"github.com/mehrdadrad/mylg/ripe"
 	"github.com/mehrdadrad/mylg/scan"
+	"github.com/mehrdadrad/mylg/whois"
 )
 
 // Provider represents looking glass
@@ -31,13 +30,6 @@ type Provider interface {
 	BGP() chan string
 }
 
-// Whois represents whois providers
-type Whois interface {
-	Set(r string)
-	GetData() bool
-	PrettyPrint()
-}
-
 const (
 	version = "0.1.8"
 )
@@ -45,9 +37,7 @@ const (
 var (
 	// register looking glass hosts
 	providers = map[string]Provider{"telia": new(lg.Telia), "level3": new(lg.Level3), "cogent": new(lg.Cogent)}
-	whois     = map[string]Whois{"asn": new(ripe.ASN), "prefix": new(ripe.Prefix)}
 	pNames    = providerNames()
-	rep       = make(chan string, 1)
 	req       = make(chan string, 1)
 	nxt       = make(chan struct{}, 1)
 	spin      = spinner.New(spinner.CharSets[26], 220*time.Millisecond)
@@ -145,7 +135,7 @@ func main() {
 				c.UpdateCompleter("node", []string{})
 				c.SetPrompt("ns")
 			case cmd == "whois":
-				whoIs()
+				whois.Lookup(args)
 			case cmd == "peering":
 				peeringdb.Search(args)
 			case cmd == "scan":
@@ -215,20 +205,6 @@ func connect() {
 	}
 }
 
-// whoIs tries to get whois information
-// ASN and prefix/ip information
-func whoIs() {
-	if ripe.IsASN(args) {
-		whois["asn"].Set(args)
-		whois["asn"].GetData()
-		whois["asn"].PrettyPrint()
-	} else {
-		whois["prefix"].Set(args)
-		whois["prefix"].GetData()
-		whois["prefix"].PrettyPrint()
-	}
-}
-
 // mode set editor mode
 func mode() {
 	if args == "vim" {
@@ -280,17 +256,11 @@ func pingLG() {
 
 // pingLocal tries to ping from local source ip
 func pingLocal() {
-	p := icmp.NewPing()
-	ra, err := net.ResolveIPAddr("ip", args)
+	p, err := icmp.NewPing(args)
 	if err != nil {
-		println("cannot resolve", args, ": Unknown host")
 		return
 	}
-	p.IP(ra.String())
-	for n := 0; n < 4; n++ {
-		p.Ping(rep)
-		println(<-rep)
-	}
+	p.Run()
 }
 
 // scanPorts tries to scan tcp/ip ports
