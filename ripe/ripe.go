@@ -81,13 +81,17 @@ func (p *Prefix) GetData() bool {
 // PrettyPrint print ASN information (holder)
 func (p *Prefix) PrettyPrint() {
 	data, ok := p.Data["data"].(map[string]interface{})
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"Prefix", "Holder"})
 	if ok {
-		println("prefix:", data["resource"].(string))
+		resource := data["resource"].(string)
 		asns := data["asns"].([]interface{})
 		for _, h := range asns {
-			println("holder:", h.(map[string]interface{})["holder"].(string))
+			holder := h.(map[string]interface{})["holder"].(string)
+			table.Append([]string{resource, holder})
 		}
 	}
+	table.Render()
 }
 
 // Set ASN
