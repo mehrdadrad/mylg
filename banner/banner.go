@@ -5,9 +5,7 @@ import (
 	"fmt"
 )
 
-// Println print out banner information
-func Println(version string) {
-	b := `
+const b = `
 =================================================	
                           _    ___ 
                 _ __ _  _| |  / __|
@@ -21,5 +19,8 @@ func Println(version string) {
                   http://mylg.io
 ================== myLG v%s ==================
 	`
+
+// Println print out banner information
+func Println(version string) {
 	fmt.Printf(b, version)
 }
