@@ -5,7 +5,6 @@ package ping
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -25,7 +24,7 @@ type Ping struct {
 	timeout time.Duration
 	count   int
 	method  string
-	buf     io.Reader
+	buf     string
 	rAddr   net.Addr
 	nsTime  time.Duration
 	conn    net.Conn
@@ -75,7 +74,7 @@ func NewPing(URL string, timeout time.Duration) (*Ping, error) {
 	p.method = cli.SetFlag(flag, "m", "HEAD").(string)
 	// set buff (post)
 	buf := cli.SetFlag(flag, "d", "mylg").(string)
-	p.buf = strings.NewReader(buf)
+	p.buf = buf
 	return p, nil
 }
 
@@ -144,7 +143,7 @@ func (p *Ping) pingGetLoop() {
 func (p *Ping) pingPostLoop() {
 	pStrPrefix := "HTTP Response seq=%d, "
 	pStrSuffix := "proto=%s, status=%d, size=%d Bytes, time=%.3f ms\n"
-	fmt.Printf("HPING %s (%s), Method: POST, DNSLookup: %.4f ms\n", p.host, 0, p.nsTime.Seconds()*1000)
+	fmt.Printf("HPING %s (%s), Method: POST, DNSLookup: %.4f ms\n", p.host, p.rAddr, p.nsTime.Seconds()*1000)
 	for i := 0; i < p.count; i++ {
 		if r, ok := p.pingPost(); ok {
 			fmt.Printf(pStrPrefix+pStrSuffix, i, r.Proto, r.StatusCode, r.Size, r.TotalTime*1000)
@@ -210,7 +209,9 @@ func (p *Ping) pingPost() (Result, bool) {
 
 	client := &http.Client{Timeout: 2 * time.Second}
 	sTime = time.Now()
-	resp, err := client.Post(p.url, "text/plain", p.buf)
+	r.Size = len(p.buf)
+	reader := strings.NewReader(p.buf)
+	resp, err := client.Post(p.url, "text/plain", reader)
 	if err != nil {
 		return r, false
 	}
