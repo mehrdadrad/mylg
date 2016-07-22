@@ -35,7 +35,7 @@ func TestGetNetIXLAN(t *testing.T) {
 	// test none 200 HTTP code
 	gock.New(peeringdb.APINetIXLAN).
 		Reply(403)
-	ix, err = peeringdb.GetNetIXLAN()
+	_, err = peeringdb.GetNetIXLAN()
 	if err == nil {
 		t.Error("")
 	}
