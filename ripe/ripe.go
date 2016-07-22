@@ -200,7 +200,7 @@ func IsASN(key string) bool {
 	return m
 }
 
-// IsIP
+// IsIP return true if key is IPv4/6
 func IsIP(key string) bool {
 	var regex = map[string]string{
 		"IPv4": `^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$`,
