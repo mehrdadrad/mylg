@@ -12,6 +12,13 @@ import (
 	"time"
 )
 
+const (
+	// APINetIXLAN holds net ix lan API
+	APINetIXLAN = "https://www.peeringdb.com/api/netixlan"
+	// APINet holds net API
+	APINet = "https://www.peeringdb.com/api/net"
+)
+
 // A Peer represents peeringdb record
 type Peer struct {
 	Name    string `json:"name"`
@@ -42,12 +49,15 @@ type Nets struct {
 	Data []Net `json:"data"`
 }
 
-// getNetIXLan fetchs netixlan data from peeringdb
-func getNetIXLan() (interface{}, error) {
+// GetNetIXLAN fetchs netixlan data from peeringdb
+func GetNetIXLAN() (interface{}, error) {
 	var peers Peers
-	resp, err := http.Get("https://www.peeringdb.com/api/netixlan")
+	resp, err := http.Get(APINetIXLAN)
 	if err != nil {
 		return peers, fmt.Errorf("peeringdb.com is unreachable (1)")
+	}
+	if resp.StatusCode != 200 {
+		return peers, fmt.Errorf("peeringdb.com returns none 200 HTTP code")
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
@@ -58,15 +68,18 @@ func getNetIXLan() (interface{}, error) {
 	return peers, nil
 }
 
-// getNet fetchs net information from peeringdb
-func getNet() (interface{}, error) {
+// GetNet fetchs net information from peeringdb
+func GetNet() (interface{}, error) {
 	var (
 		nets Nets
 		res  = make(map[string]Net)
 	)
-	resp, err := http.Get("https://www.peeringdb.com/api/net")
+	resp, err := http.Get(APINet)
 	if err != nil {
 		return nil, fmt.Errorf("peeringdb.com is unreachable (1)")
+	}
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("peeringdb.com returns none 200 HTTP code")
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
@@ -154,13 +167,13 @@ func Search(key string) {
 	if _, ok := cache("validate", "ix", nil); ok {
 		peers, _ = cache("read", "ix", nil)
 	} else {
-		peers, err = getNetIXLan()
+		peers, err = GetNetIXLAN()
 		cache("write", "ix", peers)
 	}
 	if _, ok := cache("validate", "net", nil); ok {
 		nets, _ = cache("read", "net", nil)
 	} else {
-		nets, err = getNet()
+		nets, err = GetNet()
 		cache("write", "net", nets)
 	}
 	if err != nil {
@@ -169,7 +182,7 @@ func Search(key string) {
 	}
 
 	switch {
-	case isASN(key):
+	case IsASN(key):
 		ASN = key
 		for _, p := range peers.(Peers).Data {
 			if strconv.Itoa(p.ASN) == key {
@@ -185,8 +198,8 @@ func Search(key string) {
 	}
 }
 
-// isASN checks if the key is number
-func isASN(key string) bool {
+// IsASN checks if the key is number
+func IsASN(key string) bool {
 	m, err := regexp.MatchString(`^(?i)\d{2,5}`, key)
 	if err != nil {
 		return false
