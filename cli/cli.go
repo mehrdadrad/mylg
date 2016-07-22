@@ -253,6 +253,9 @@ func Flag(args string) (string, map[string]interface{}) {
 	f := re.FindAllStringSubmatch(args, -1)
 	for _, kv := range f {
 		if len(kv) > 1 {
+			// trim extra characters (' and ") from value
+			kv[2] = strings.Trim(kv[2], "'")
+			kv[2] = strings.Trim(kv[2], `"`)
 			r[kv[1]], err = strconv.Atoi(kv[2])
 			if err != nil {
 				r[kv[1]] = kv[2]
