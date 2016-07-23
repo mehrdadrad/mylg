@@ -4,12 +4,14 @@ package scan
 import (
 	"fmt"
 	"net"
+	"os"
 	"regexp"
 	"strconv"
 	"sync"
 	"time"
 
 	"github.com/mehrdadrad/mylg/cli"
+	"github.com/olekukonko/tablewriter"
 )
 
 // Scan represents the scan parameters
@@ -79,6 +81,10 @@ func host(ipAddr string, minPort, maxPort int) {
 		tStart  = time.Now()
 		counter int
 	)
+
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"Protocol", "Port", "Status", "Description"})
+
 	for i := minPort; i <= maxPort; i++ {
 		wg.Add(1)
 		go func(i int) {
@@ -88,7 +94,7 @@ func host(ipAddr string, minPort, maxPort int) {
 				return
 			}
 			counter++
-			fmt.Printf("%d/tcp open\n", i)
+			table.Append([]string{"TCP", fmt.Sprintf("%d", i), "Open", ""})
 			wg.Done()
 			err = conn.Close()
 			if err != nil {
@@ -97,7 +103,10 @@ func host(ipAddr string, minPort, maxPort int) {
 		}(i)
 		time.Sleep(8 * time.Millisecond)
 	}
+
 	wg.Wait()
+	table.Render()
+
 	if counter == 0 {
 		println("there isn't any opened port")
 	} else {
