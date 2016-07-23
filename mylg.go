@@ -24,7 +24,7 @@ type Provider interface {
 	Set(host, version string)
 	GetDefaultNode() string
 	GetNodes() []string
-	ChangeNode(node string)
+	ChangeNode(node string) bool
 	Ping() (string, error)
 	Trace() chan string
 	BGP() chan string
@@ -156,14 +156,18 @@ func main() {
 
 // node handles node cmd
 func node() {
+	if cPName == "local" {
+		println("local doesn't support node")
+	}
 	switch {
 	case strings.HasPrefix(prompt, "lg"):
 		if _, ok := providers[cPName]; ok {
-			providers[cPName].ChangeNode(args)
-			c.UpdatePromptN(args, 3)
-		} else {
-			println("the specified node doesn't support")
+			if providers[cPName].ChangeNode(args) {
+				c.UpdatePromptN(args, 3)
+				return
+			}
 		}
+		println("the specified node doesn't support")
 	case strings.HasPrefix(prompt, "ns"):
 		if !nsr.ChkNode(args) {
 			println("error: argument is not valid")
@@ -232,7 +236,7 @@ func trace() {
 
 // hping tries to ping a web server by http
 func hping() {
-	p, err := ping.NewPing(args, 5)
+	p, err := ping.NewPing(args)
 	if err != nil {
 		println(err.Error())
 	} else {
