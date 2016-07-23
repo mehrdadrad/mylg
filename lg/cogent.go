@@ -58,21 +58,15 @@ func (p *Cogent) GetNodes() []string {
 }
 
 // ChangeNode set new requested node
-func (p *Cogent) ChangeNode(node string) {
-	var valid = false
+func (p *Cogent) ChangeNode(node string) bool {
 	// Validate
 	for _, n := range p.Nodes {
 		if node == n {
-			valid = true
-			break
+			p.Node = node
+			return true
 		}
 	}
-	if valid {
-		p.Node = node
-	} else {
-		p.Node = "NA"
-		println("Invalid node please press tab after node command to show the valid nodes")
-	}
+	return false
 }
 
 // Ping tries to connect Cogent's ping looking glass through HTTP
