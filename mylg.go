@@ -156,9 +156,6 @@ func main() {
 
 // node handles node cmd
 func node() {
-	if cPName == "local" {
-		println("local doesn't support node")
-	}
 	switch {
 	case strings.HasPrefix(prompt, "lg"):
 		if _, ok := providers[cPName]; ok {
@@ -174,6 +171,11 @@ func node() {
 		} else {
 			c.UpdatePromptN(args, 3)
 		}
+	default:
+		if cPName == "local" {
+			println("local doesn't support node")
+		}
+
 	}
 }
 
