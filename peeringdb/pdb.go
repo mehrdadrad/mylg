@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/mehrdadrad/mylg/cli"
 )
 
 const (
@@ -164,6 +166,13 @@ func Search(key string) {
 		err    error
 	)
 
+	key, flag := cli.Flag(key)
+	// help
+	if _, ok := flag["help"]; ok {
+		help()
+		return
+	}
+
 	if _, ok := cache("validate", "ix", nil); ok {
 		peers, _ = cache("read", "ix", nil)
 	} else {
@@ -205,4 +214,14 @@ func IsASN(key string) bool {
 		return false
 	}
 	return m
+}
+
+// help represents guide to user
+func help() {
+	println(`
+    usage:
+          peering AS.Number
+    example:
+          peering 577
+	`)
 }
