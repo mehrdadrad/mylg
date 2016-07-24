@@ -217,7 +217,7 @@ func (p *Ping) Run() {
 
 // help shows ping help
 func help() {
-	println(`
+	fmt.Println(`
     usage:
           hping [-c count][-t timeout][-m method][-d data] url
 
