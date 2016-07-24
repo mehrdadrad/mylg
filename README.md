@@ -1,13 +1,15 @@
 # myLG [![Build Status](https://travis-ci.org/mehrdadrad/mylg.svg?branch=master)](https://travis-ci.org/mehrdadrad/mylg) [![Go Report Card](https://goreportcard.com/badge/github.com/mehrdadrad/mylg)](https://goreportcard.com/report/github.com/mehrdadrad/mylg) [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/mehrdadrad/mylg?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge) 
 
 ###Command line Network Diagnostic Tool
+myLG, originally named my looking glass which combines the functions of the different network probes in one network diagnostic tool.
+
 [![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/jQJWcnLH3Fg/0.jpg)](https://www.youtube.com/watch?v=Aoh4HS5w3vU)
 
 ## Features
 * Popular looking glasses (ping/trace/bgp) like Telia, Level3
 * More than 200 countries DNS Lookup information 
 * Local fast ping and trace
-* Local HTTP/HTTPS ping (HEAD, GET)
+* Local HTTP/HTTPS ping (HEAD, GET,POST)
 * RIPE information (ASN, IP/CIDR)
 * PeeringDB information
 * Port scanning fast
