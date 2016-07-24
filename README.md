@@ -57,9 +57,13 @@ BACOM - Bell Canada, CA
 | Canada - NS        |    0.0000 |
 +--------------------+-----------+
 local> scan www.google.com -p 1-500
-80/tcp open
-443/tcp open
-Scan done: 2 opened port(s) found in 5.438 seconds
++----------+------+--------+-------------+
+| PROTOCOL | PORT | STATUS | DESCRIPTION |
++----------+------+--------+-------------+
+| TCP      |   80 | Open   |             |
+| TCP      |  443 | Open   |             |
++----------+------+--------+-------------+
+Scan done: 2 opened port(s) found in 5.605 seconds
 lg/telia/los angeles> bgp 8.8.8.0/24
 Telia Carrier Looking Glass - show route protocol bgp 8.8.8.0/24 table inet.0
 
