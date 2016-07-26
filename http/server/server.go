@@ -6,6 +6,8 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+
+	"github.com/mehrdadrad/mylg/icmp"
 )
 
 // Route represents a HTTP route
@@ -41,7 +43,13 @@ func API(w http.ResponseWriter, r *http.Request) {
 	var f = mux.Vars(r)["name"]
 	switch f {
 	case "ping":
-		w.Write([]byte(`{"rtt": 10,"pl":0}`))
+		p, err := icmp.NewPing("8.8.8.8 -c 1")
+		if err != nil {
+			return
+		}
+		resp := p.Run()
+		r := <-resp
+		w.Write([]byte(fmt.Sprintf(`{"rtt": %.2f,"pl":0}`, r.RTT)))
 	}
 }
 
