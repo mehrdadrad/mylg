@@ -4,6 +4,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"github.com/briandowns/spinner"
 	"regexp"
 	"strings"
@@ -265,11 +266,20 @@ func pingLG() {
 
 // pingLocal tries to ping from local source ip
 func pingLocal() {
+	pFmt := "%d bytes from %s icmp_seq=%d time=%f ms"
 	p, err := icmp.NewPing(args)
 	if err != nil {
 		return
 	}
-	p.Run()
+	resp := p.Run()
+	for r := range resp {
+		if r.Error != nil {
+			println(r.Error.Error())
+			continue
+		}
+		msg := fmt.Sprintf(pFmt, r.Size, r.Addr, r.Sequence, r.RTT)
+		println(msg)
+	}
 }
 
 // scanPorts tries to scan tcp/ip ports
