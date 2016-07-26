@@ -11,6 +11,7 @@ import (
 
 	"github.com/mehrdadrad/mylg/cli"
 	"github.com/mehrdadrad/mylg/http/ping"
+	"github.com/mehrdadrad/mylg/http/server"
 	"github.com/mehrdadrad/mylg/icmp"
 	"github.com/mehrdadrad/mylg/lg"
 	"github.com/mehrdadrad/mylg/ns"
@@ -75,6 +76,8 @@ func init() {
 	// initialize name server
 	nsr = ns.NewRequest()
 	go nsr.Init()
+	// start web server
+	go server.Run()
 	// set default provider
 	cPName = "local"
 }
