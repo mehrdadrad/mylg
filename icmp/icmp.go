@@ -89,14 +89,15 @@ func NewPing(args string) (*Ping, error) {
 }
 
 // Run loops the ping and print it out
-func (p *Ping) Run() {
-	var rep = make(chan Response, 1)
-	for n := 0; n < p.count; n++ {
-		p.Ping(rep)
-		r := <-rep
-		msg := fmt.Sprintf("%d bytes from %s icmp_seq=%d time=%f ms", r.Size, r.Addr, r.Sequence, r.RTT)
-		println(msg)
-	}
+func (p *Ping) Run() chan Response {
+	var r = make(chan Response, 1)
+	go func() {
+		for n := 0; n < p.count; n++ {
+			p.Ping(r)
+		}
+		close(r)
+	}()
+	return r
 }
 
 // IsIPv4 returns true if ip version is v4
@@ -277,8 +278,8 @@ func (p *Ping) Ping(out chan Response) {
 			Addr:     rm.addr.String(),
 			RTT:      rtt,
 			Sequence: p.seq,
+			Error:    nil,
 		}
-		//out <- fmt.Sprintf("%d bytes from %s icmp_seq=%d time=%f ms", len(rm.bytes), rm.addr, p.seq, rtt)
 	default:
 		log.Println("error")
 	}
