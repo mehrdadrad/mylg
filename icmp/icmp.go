@@ -30,7 +30,7 @@ type packet struct {
 	err   error
 }
 
-// Ping represents ping fields
+// Ping represents ping request
 type Ping struct {
 	m         icmp.Message
 	id        int
@@ -44,6 +44,16 @@ type Ping struct {
 	source    string
 	MaxRTT    time.Duration
 	mu        sync.RWMutex
+}
+
+// Result represent ping response
+type Response struct {
+	RTT      float64
+	Size     int
+	Sequence int
+	Addr     string
+	Timeout  bool
+	Error    error
 }
 
 // NewPing creates a new ping object
@@ -80,10 +90,12 @@ func NewPing(args string) (*Ping, error) {
 
 // Run loops the ping and print it out
 func (p *Ping) Run() {
-	var rep = make(chan string, 1)
+	var rep = make(chan Response, 1)
 	for n := 0; n < p.count; n++ {
 		p.Ping(rep)
-		println(<-rep)
+		r := <-rep
+		msg := fmt.Sprintf("%d bytes from %s icmp_seq=%d time=%f ms", r.Size, r.Addr, r.Sequence, r.RTT)
+		println(msg)
 	}
 }
 
@@ -217,7 +229,7 @@ func (p *Ping) send(conn *icmp.PacketConn) {
 }
 
 // Ping tries to send and receive a packet
-func (p *Ping) Ping(out chan string) {
+func (p *Ping) Ping(out chan Response) {
 	var (
 		conn     *icmp.PacketConn
 		rcvdChan chan *packet = make(chan *packet, 1)
@@ -242,12 +254,12 @@ func (p *Ping) Ping(out chan string) {
 	rm := <-rcvdChan
 
 	if rm.err != nil {
-		out <- fmt.Sprintf("%s", rm.err)
+		out <- Response{Error: rm.err}
 		return
 	}
 	_, m, err := p.parseMessage(rm)
 	if err != nil {
-		out <- fmt.Sprintf("%s", err)
+		out <- Response{Error: err}
 		return
 	}
 
@@ -260,7 +272,13 @@ func (p *Ping) Ping(out chan string) {
 		log.Println("unreachable")
 	case *icmp.Echo:
 		rtt := float64(time.Now().UnixNano()-getTimeStamp(rm.bytes)) / 1000000
-		out <- fmt.Sprintf("%d bytes from %s icmp_seq=%d time=%f ms", len(rm.bytes), rm.addr, p.seq, rtt)
+		out <- Response{
+			Size:     len(rm.bytes),
+			Addr:     rm.addr.String(),
+			RTT:      rtt,
+			Sequence: p.seq,
+		}
+		//out <- fmt.Sprintf("%d bytes from %s icmp_seq=%d time=%f ms", len(rm.bytes), rm.addr, p.seq, rtt)
 	default:
 		log.Println("error")
 	}
