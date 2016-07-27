@@ -194,7 +194,7 @@ func web() {
 	if runtime.GOOS != "darwin" {
 		openCmd = "xdg-open"
 	}
-	cmd := exec.Command(openCmd, "http://localhost:8080/dashboard")
+	cmd := exec.Command(openCmd, "http://localhost:8080")
 	err := cmd.Start()
 	if err != nil {
 		println("error opening default browser")
