@@ -1,13 +1,14 @@
 // Package server provides web service
-package server
+package httpd
 
 import (
 	"fmt"
+	"github.com/gorilla/mux"
+	"github.com/rakyll/statik/fs"
 	"net/http"
 
-	"github.com/gorilla/mux"
-
 	"github.com/mehrdadrad/mylg/icmp"
+	_ "github.com/mehrdadrad/mylg/services/dashboard/statik"
 )
 
 // Route represents a HTTP route
@@ -57,6 +58,7 @@ func API(w http.ResponseWriter, r *http.Request) {
 
 // Run starts web service
 func Run() {
+	statikFS, _ := fs.New()
 	router := mux.NewRouter().StrictSlash(true)
 	for _, route := range routes {
 		router.
@@ -65,6 +67,8 @@ func Run() {
 			Name(route.Name).
 			Handler(route.HandlerFunc)
 	}
-	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./html/")))
+	//router.PathPrefix("/").Handler(http.FileServer(http.Dir("./html/")))
+
+	router.PathPrefix("/").Handler(http.FileServer(statikFS))
 	http.ListenAndServe("127.0.0.1:8080", router)
 }

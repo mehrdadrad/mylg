@@ -2,6 +2,7 @@ $(function() {
     var d = new Date(),
     host = "",
     stop = true,
+    counter = 0,
     chart = c3.generate({
     bindto: '#chart',
     size: {
@@ -50,8 +51,12 @@ point: {
           }    
       }
   },
+  zoom: {
+    enabled: true
+  },
   subchart: {
-    show: true
+    show: true,
+    length:0
   }
 });
 var gauge = c3.generate({
@@ -67,18 +72,43 @@ var gauge = c3.generate({
     }
 })
 function update() {
+    var len = 0,
+        gap = [];
     if (host == "" || !stop) {
         return
     }
+    if (counter == 0) {
+        gap['x'] = ['x']
+        gap['host'] = [host]    
+        var t = new Date();
+        for (var i=1;i<=10;i++) {
+            t.setSeconds(t.getSeconds() - i);
+            gap['host'].push(null);
+            gap['x'].push(new Date (t));  
+        }
+        chart.flow({
+                columns: [
+                    gap['host'],
+                    gap['x'],
+                ],
+        });
+
+    }
     $.post( "/api/ping",{host: host},function( data ) {
+        counter++;
+        if (counter > 120) {
+            len = 1;
+        } else {
+            len = 0;
+        }
         var d = new Date()
             chart.flow({
                     columns: [
                         [host, data.rtt],
                         ['x', d],
                     ],
-                    length:0,
-                });
+                    length:len,
+            });
             if (data.rtt == 0) {
               chart.xgrids.add({value: d, text: 'timeout', class: 'red'});
             }
