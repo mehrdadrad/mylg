@@ -14,12 +14,12 @@ import (
 
 	"github.com/mehrdadrad/mylg/cli"
 	"github.com/mehrdadrad/mylg/http/ping"
-	"github.com/mehrdadrad/mylg/http/server"
 	"github.com/mehrdadrad/mylg/icmp"
 	"github.com/mehrdadrad/mylg/lg"
 	"github.com/mehrdadrad/mylg/ns"
 	"github.com/mehrdadrad/mylg/peeringdb"
 	"github.com/mehrdadrad/mylg/scan"
+	"github.com/mehrdadrad/mylg/services/httpd"
 	"github.com/mehrdadrad/mylg/whois"
 )
 
@@ -80,7 +80,7 @@ func init() {
 	nsr = ns.NewRequest()
 	go nsr.Init()
 	// start web server
-	go server.Run()
+	go httpd.Run()
 	// set default provider
 	cPName = "local"
 }
