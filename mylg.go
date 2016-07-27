@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/briandowns/spinner"
+	"os/exec"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 
@@ -89,7 +91,7 @@ func main() {
 		loop    = true
 	)
 
-	r, _ := regexp.Compile(`(ping|trace|bgp|lg|ns|dig|whois|peering|scan|hping|connect|node|local|mode|help|exit|quit)\s{0,1}(.*)`)
+	r, _ := regexp.Compile(`(ping|trace|bgp|lg|ns|dig|whois|peering|scan|hping|connect|node|local|mode|help|web|exit|quit)\s{0,1}(.*)`)
 
 	for loop {
 		select {
@@ -146,6 +148,8 @@ func main() {
 				scanPorts()
 			case cmd == "mode":
 				mode()
+			case cmd == "web":
+				web()
 			case cmd == "help":
 				c.Help()
 			case cmd == "exit", cmd == "quit":
@@ -181,6 +185,21 @@ func node() {
 		}
 
 	}
+}
+
+// web tries to open web interface at default web browser
+func web() {
+	var openCmd = "open"
+	println("opening default web broswer ...")
+	if runtime.GOOS != "darwin" {
+		openCmd = "xdg-open"
+	}
+	cmd := exec.Command(openCmd, "http://localhost:8080/dashboard")
+	err := cmd.Start()
+	if err != nil {
+		println("error opening default browser")
+	}
+
 }
 
 // connect handles connect cmd
