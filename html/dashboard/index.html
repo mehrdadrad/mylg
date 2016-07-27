@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <!-- css -->
+        <link rel="stylesheet" href="/css/c3.min.css">
+        <!-- js -->
+        <script src="/js/jquery.min.js"></script>
+        <script src="/js/d3.min.js"></script>
+        <script src="/js/c3.min.js"></script>
+        <script src="/js/ping.js"></script>
+
+        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+        <link rel="stylesheet" href="https://code.getmdl.io/1.1.3/material.indigo-blue.min.css">
+        <script defer src="https://code.getmdl.io/1.1.3/material.min.js"></script>
+
+        <title>myLG</title>
+
+        <style>
+            #chart svg {
+              height: 400px;
+            }
+        </style>
+
+    </head>
+
+    <body>
+       <!-- Always shows a header, even in smaller screens. -->
+    <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
+      <header class="mdl-layout__header">
+        <div class="mdl-layout__header-row">
+          <!-- Title -->
+          <span class="mdl-layout-title">myLG</span>
+          <!-- Add spacer, to align navigation to the right -->
+          <div class="mdl-layout-spacer"></div>
+          <!-- Navigation. We hide it in small screens. -->
+          <nav class="mdl-navigation mdl-layout--large-screen-only">
+            <!-- adding h.links -->
+          </nav>
+        </div>
+      </header>
+      <div class="mdl-layout__drawer">
+        <span class="mdl-layout-title">myLG</span>
+        <nav class="mdl-navigation">
+          <a class="mdl-navigation__link" href="">Ping (local)</a>
+        </nav>
+      </div>
+      <main class="mdl-layout__content" style="padding:20px;">
+        <div class="page-content">
+            <!-- switch -->
+            <div style="width:80px;">
+            <label class="mdl-switch mdl-js-switch mdl-js-ripple-effect" for="pingswitch" >
+              <input type="checkbox" id="pingswitch" class="mdl-switch__input" checked>
+              <span class="mdl-switch__label">PING</span>
+            </label>
+            </div>
+
+              <!-- Textfield -->
+              <div class="mdl-textfield mdl-js-textfield">
+                <input class="mdl-textfield__input" type="text" id="pinghost">
+                <label class="mdl-textfield__label" for="pinghost">Enter host</label>
+              </div>
+              
+                <br><br>
+            <!-- chart and gauges -->
+            <div id="chart"></div> 
+            <div id="gauge" style="display: none;"></div> 
+            <!-- end of content -->
+        </div>
+      </main>
+    </div>
+
+    </body>
+</html>
