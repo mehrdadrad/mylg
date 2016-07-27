@@ -70,7 +70,6 @@ function update() {
     if (host == "" || !stop) {
         return
     }
-    console.log(host);
     $.post( "/api/ping",{host: host},function( data ) {
         var d = new Date()
             chart.flow({
@@ -79,14 +78,10 @@ function update() {
                         ['x', d],
                     ],
                     length:0,
-                    grid: {
-                        x: {
-                            lines: [
-                                {value: d, text: 'Lable 1'}
-                            ]
-                        }
-                    },    
                 });
+            if (data.rtt == 0) {
+              chart.xgrids.add({value: d, text: 'timeout', class: 'red'});
+            }
             gauge.flow({
                 columns:[['packet loss', data.pl]] 
             });
