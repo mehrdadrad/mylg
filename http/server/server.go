@@ -43,7 +43,9 @@ func API(w http.ResponseWriter, r *http.Request) {
 	var f = mux.Vars(r)["name"]
 	switch f {
 	case "ping":
-		p, err := icmp.NewPing("8.8.8.8 -c 1")
+		r.ParseForm()
+		host := r.FormValue("host")
+		p, err := icmp.NewPing(host + " -c 1")
 		if err != nil {
 			return
 		}
