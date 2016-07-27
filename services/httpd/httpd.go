@@ -1,4 +1,4 @@
-// Package server provides web service
+// Package httpd provides web service
 package httpd
 
 import (
