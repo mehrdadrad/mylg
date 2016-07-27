@@ -26,17 +26,6 @@ var routes = []Route{
 		"/api/{name}",
 		API,
 	},
-	{
-		"root",
-		"GET",
-		"/",
-		Root,
-	},
-}
-
-// Root handles root request
-func Root(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, r.URL.Path)
 }
 
 // API handles API routes
@@ -67,8 +56,6 @@ func Run() {
 			Name(route.Name).
 			Handler(route.HandlerFunc)
 	}
-	//router.PathPrefix("/").Handler(http.FileServer(http.Dir("./html/")))
-
 	router.PathPrefix("/").Handler(http.FileServer(statikFS))
 	http.ListenAndServe("127.0.0.1:8080", router)
 }
