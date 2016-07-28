@@ -28,6 +28,7 @@ const usage = `Usage:
 	hping                       Ping through HTTP/HTTPS w/ GET/HEAD methods
 	scan                        scan tcp ports (you can provide range >scan host minport maxport)
 	peering                     peering information (provides by peeringdb.com)
+	web                         web dashboard - opens dashboard at your default browser
 	`
 
 // Readline structure
@@ -58,6 +59,7 @@ func Init(prompt, version string) *Readline {
 			readline.PcItem("scan"),
 			readline.PcItem("peering"),
 			readline.PcItem("help"),
+			readline.PcItem("web"),
 			readline.PcItem("exit"),
 		)
 	)
