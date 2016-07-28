@@ -9,12 +9,15 @@ myLG, my looking glass is software utility which combines the functions of the d
 * Popular looking glasses (ping/trace/bgp) like Telia, Level3
 * More than 200 countries DNS Lookup information 
 * Local fast ping and trace
-* Local HTTP/HTTPS ping (HEAD, GET,POST)
+* Local HTTP/HTTPS ping (GET, POST, HEAD)
 * RIPE information (ASN, IP/CIDR)
 * PeeringDB information
 * Port scanning fast
+* Web dashboard
 * Support vi and emacs mode, almost all basic features
 * CLI auto complete and history features
+
+![IMAGE ALT TEXT HERE](http://mylg.io/wp-content/uploads/2016/07/mylg_dashboard-e1469682631215.png)
 
 ### Usage
 
