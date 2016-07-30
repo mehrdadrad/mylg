@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
+	"os/signal"
 	"time"
 
 	"github.com/google/gopacket"
@@ -53,7 +55,14 @@ func NewPacket() *Packet {
 
 // Open is a loop over packets
 func (p *Packet) Open() chan *Packet {
-	c := make(chan *Packet, 1)
+	var (
+		c    = make(chan *Packet, 1)
+		s    = make(chan os.Signal, 1)
+		loop = true
+	)
+	// capture interrupt w/ s channel
+	signal.Notify(s, os.Interrupt)
+
 	go func() {
 		handle, err = pcap.OpenLive(device, snapshotLen, promiscuous, timeout)
 		if err != nil {
@@ -62,14 +71,23 @@ func (p *Packet) Open() chan *Packet {
 		if err := handle.SetBPFFilter(""); err != nil {
 			log.Fatal(err)
 		}
+
 		defer handle.Close()
+		defer close(s)
+		defer close(c)
+
 		packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
-		for {
+		for loop {
 			packet, err := packetSource.NextPacket()
 			if err != nil {
 				continue
 			}
-			c <- GetPacketInfo(packet)
+			select {
+			case <-s:
+				loop = false
+				signal.Stop(s)
+			case c <- GetPacketInfo(packet):
+			}
 		}
 	}()
 	return c
@@ -92,7 +110,7 @@ func (p *Packet) PrintPretty() {
 	}
 }
 
-// PrintIPv4 ---------
+// PrintIPv4 prints IPv4 packets
 func (p *Packet) PrintIPv4() {
 	switch {
 	case p.Proto == layers.IPProtocolTCP:
