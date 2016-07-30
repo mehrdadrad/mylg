@@ -75,7 +75,7 @@ func Init(prompt, version string) *Readline {
 		panic(err)
 	}
 	banner.Println(version) // print banner
-	checkUpdate(version)    // check update version
+	go checkUpdate(version) // check update version
 	r.prompt = prompt       // init local prompt
 	return &r
 }
