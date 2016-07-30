@@ -14,37 +14,22 @@ import (
 	"github.com/google/gopacket/pcap"
 )
 
-// TCPFlags holds TCP flags
-type TCPFlags struct {
-	FIN, SYN, RST, PSH, ACK, URG, ECE, CWR, NS bool
-}
-
 // Packet holds all layers information
 type Packet struct {
-	EthType     layers.EthernetType
-	SrcMAC      net.HardwareAddr
-	DstMAC      net.HardwareAddr
-	Src         net.IP
-	Dst         net.IP
-	SrcHost     []string
-	DstHost     []string
-	Proto       layers.IPProtocol
-	Checksum    uint16
-	Flags       TCPFlags
-	SrcPort     int
-	DstPort     int
-	Seq         uint32
-	Ack         uint32
-	Window      uint16
-	Urgent      uint16
-	TCPChecksum uint16
-	Payload     string
-	DataOffset  uint8
+	EthType layers.EthernetType
+	SrcMAC  net.HardwareAddr
+	DstMAC  net.HardwareAddr
+	IPv4    *layers.IPv4
+	TCP     *layers.TCP
+	UDP     *layers.UDP
+	SrcHost []string
+	DstHost []string
+	Payload string
 }
 
 var (
 	device            = "en0"
-	snapshotLen int32 = 1024
+	snapLen     int32 = 1024
 	promiscuous       = false
 	err         error
 	timeout     = 100 * time.Nanosecond
@@ -67,7 +52,7 @@ func (p *Packet) Open() chan *Packet {
 	signal.Notify(s, os.Interrupt)
 
 	go func() {
-		handle, err = pcap.OpenLive(device, snapshotLen, promiscuous, timeout)
+		handle, err = pcap.OpenLive(device, snapLen, promiscuous, timeout)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -115,11 +100,13 @@ func (p *Packet) PrintPretty() {
 
 // PrintIPv4 prints IPv4 packets
 func (p *Packet) PrintIPv4() {
+	//p.SrcHost, _ = net.LookupHost(ip.SrcIP.String())
+	//p.DstHost, _ = net.LookupHost(ip.DstIP.String())
 	switch {
-	case p.Proto == layers.IPProtocolTCP:
-		log.Printf("IP %s > %s , %s length: %d\n", p.Src, p.Dst, p.Proto, len(p.Payload))
-	case p.Proto == layers.IPProtocolUDP:
-		log.Printf("IP %s > %s , %s length: %d\n", p.Src, p.Dst, p.Proto, len(p.Payload))
+	case p.IPv4.Protocol == layers.IPProtocolTCP:
+		log.Printf("IP %s > %s , %s length: %d\n", p.IPv4.SrcIP, p.IPv4.DstIP, p.IPv4.Protocol, len(p.Payload))
+	case p.IPv4.Protocol == layers.IPProtocolUDP:
+		log.Printf("IP %s > %s , %s length: %d\n", p.IPv4.SrcIP, p.IPv4.DstIP, p.IPv4.Protocol, len(p.Payload))
 	}
 }
 
@@ -137,42 +124,18 @@ func GetPacketInfo(packet gopacket.Packet) *Packet {
 	// IP Address V4
 	ipLayer := packet.Layer(layers.LayerTypeIPv4)
 	if ipLayer != nil {
-		ip, _ := ipLayer.(*layers.IPv4)
-		// Version
-		// IHL
-		// TOS, Length, Id, Flags, FragOffset
-		// TTL, Protocol (TCP?),
-		p.Src = ip.SrcIP
-		p.Dst = ip.DstIP
-		p.SrcHost, _ = net.LookupHost(ip.SrcIP.String())
-		p.DstHost, _ = net.LookupHost(ip.DstIP.String())
-		p.Proto = ip.Protocol
-		p.Checksum = ip.Checksum
+		p.IPv4, _ = ipLayer.(*layers.IPv4)
 	}
 
 	// TCP
 	tcpLayer := packet.Layer(layers.LayerTypeTCP)
 	if tcpLayer != nil {
-		tcp, _ := tcpLayer.(*layers.TCP)
-
-		p.Flags = TCPFlags{tcp.FIN, tcp.SYN, tcp.RST, tcp.PSH, tcp.ACK, tcp.URG, tcp.ECE, tcp.CWR, tcp.NS}
-
-		p.Seq = tcp.Seq
-		p.Ack = tcp.Ack
-		p.Window = tcp.Window
-		p.Urgent = tcp.Urgent
-		p.TCPChecksum = tcp.Checksum
-		p.DataOffset = tcp.DataOffset
-		p.SrcPort = int(tcp.SrcPort)
-		p.DstPort = int(tcp.DstPort)
-
+		p.TCP, _ = tcpLayer.(*layers.TCP)
 	} else {
 		// UDP
 		udpLayer := packet.Layer(layers.LayerTypeUDP)
 		if udpLayer != nil {
-			udp, _ := udpLayer.(*layers.UDP)
-			p.SrcPort = int(udp.SrcPort)
-			p.DstPort = int(udp.DstPort)
+			p.UDP, _ = udpLayer.(*layers.UDP)
 		}
 	}
 
