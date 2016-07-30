@@ -21,22 +21,25 @@ type TCPFlags struct {
 
 // Packet holds all layers information
 type Packet struct {
-	EthType    layers.EthernetType
-	SrcMAC     net.HardwareAddr
-	DstMAC     net.HardwareAddr
-	Src        net.IP
-	Dst        net.IP
-	Proto      layers.IPProtocol
-	Flags      TCPFlags
-	SrcPort    int
-	DstPort    int
-	Seq        uint32
-	Ack        uint32
-	Window     uint16
-	Urgent     uint16
-	Checksum   uint16
-	Payload    string
-	DataOffset uint8
+	EthType     layers.EthernetType
+	SrcMAC      net.HardwareAddr
+	DstMAC      net.HardwareAddr
+	Src         net.IP
+	Dst         net.IP
+	SrcHost     []string
+	DstHost     []string
+	Proto       layers.IPProtocol
+	Checksum    uint16
+	Flags       TCPFlags
+	SrcPort     int
+	DstPort     int
+	Seq         uint32
+	Ack         uint32
+	Window      uint16
+	Urgent      uint16
+	TCPChecksum uint16
+	Payload     string
+	DataOffset  uint8
 }
 
 var (
@@ -120,7 +123,7 @@ func (p *Packet) PrintIPv4() {
 	}
 }
 
-// GetPacketInfo -------
+// GetPacketInfo decodes layers
 func GetPacketInfo(packet gopacket.Packet) *Packet {
 	var p Packet
 	// Ethernet
@@ -135,14 +138,16 @@ func GetPacketInfo(packet gopacket.Packet) *Packet {
 	ipLayer := packet.Layer(layers.LayerTypeIPv4)
 	if ipLayer != nil {
 		ip, _ := ipLayer.(*layers.IPv4)
-		// IP layer variables:
-		// Version (Either 4 or 6)
-		// IHL (IP Header Length in 32-bit words)
-		// TOS, Length, Id, Flags, FragOffset, TTL, Protocol (TCP?),
-		// Checksum, SrcIP, DstIP
+		// Version
+		// IHL
+		// TOS, Length, Id, Flags, FragOffset
+		// TTL, Protocol (TCP?),
 		p.Src = ip.SrcIP
 		p.Dst = ip.DstIP
+		p.SrcHost, _ = net.LookupHost(ip.SrcIP.String())
+		p.DstHost, _ = net.LookupHost(ip.DstIP.String())
 		p.Proto = ip.Protocol
+		p.Checksum = ip.Checksum
 	}
 
 	// TCP
@@ -156,7 +161,7 @@ func GetPacketInfo(packet gopacket.Packet) *Packet {
 		p.Ack = tcp.Ack
 		p.Window = tcp.Window
 		p.Urgent = tcp.Urgent
-		p.Checksum = tcp.Checksum
+		p.TCPChecksum = tcp.Checksum
 		p.DataOffset = tcp.DataOffset
 		p.SrcPort = int(tcp.SrcPort)
 		p.DstPort = int(tcp.DstPort)
@@ -170,11 +175,6 @@ func GetPacketInfo(packet gopacket.Packet) *Packet {
 			p.DstPort = int(udp.DstPort)
 		}
 	}
-	// Iterate over all layers, printing out each layer type
-	//fmt.Println("All packet layers:")
-	//for _, layer := range packet.Layers() {
-	//	fmt.Println("- ", layer.LayerType())
-	//}
 
 	// Application
 	applicationLayer := packet.ApplicationLayer()
