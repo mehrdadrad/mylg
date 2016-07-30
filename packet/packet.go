@@ -150,25 +150,17 @@ func GetPacketInfo(packet gopacket.Packet) *Packet {
 	if tcpLayer != nil {
 		tcp, _ := tcpLayer.(*layers.TCP)
 
+		p.Flags = TCPFlags{tcp.FIN, tcp.SYN, tcp.RST, tcp.PSH, tcp.ACK, tcp.URG, tcp.ECE, tcp.CWR, tcp.NS}
+
 		p.Seq = tcp.Seq
 		p.Ack = tcp.Ack
 		p.Window = tcp.Window
 		p.Urgent = tcp.Urgent
 		p.Checksum = tcp.Checksum
 		p.DataOffset = tcp.DataOffset
-
-		p.Flags.FIN = tcp.FIN
-		p.Flags.SYN = tcp.SYN
-		p.Flags.RST = tcp.RST
-		p.Flags.PSH = tcp.PSH
-		p.Flags.ACK = tcp.ACK
-		p.Flags.URG = tcp.URG
-		p.Flags.ECE = tcp.ECE
-		p.Flags.CWR = tcp.CWR
-		p.Flags.NS = tcp.NS
-
 		p.SrcPort = int(tcp.SrcPort)
 		p.DstPort = int(tcp.DstPort)
+
 	} else {
 		// UDP
 		udpLayer := packet.Layer(layers.LayerTypeUDP)
