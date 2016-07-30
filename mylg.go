@@ -17,6 +17,7 @@ import (
 	"github.com/mehrdadrad/mylg/icmp"
 	"github.com/mehrdadrad/mylg/lg"
 	"github.com/mehrdadrad/mylg/ns"
+	"github.com/mehrdadrad/mylg/packet"
 	"github.com/mehrdadrad/mylg/peeringdb"
 	"github.com/mehrdadrad/mylg/scan"
 	"github.com/mehrdadrad/mylg/services/httpd"
@@ -91,7 +92,7 @@ func main() {
 		loop    = true
 	)
 
-	r, _ := regexp.Compile(`(ping|trace|bgp|lg|ns|dig|whois|peering|scan|hping|connect|node|local|mode|help|web|exit|quit)\s{0,1}(.*)`)
+	r, _ := regexp.Compile(`(ping|trace|bgp|lg|ns|dig|dump|whois|peering|scan|hping|connect|node|local|mode|help|web|exit|quit)\s{0,1}(.*)`)
 
 	for loop {
 		select {
@@ -150,6 +151,8 @@ func main() {
 				mode()
 			case cmd == "web":
 				web()
+			case cmd == "dump":
+				dump()
 			case cmd == "help":
 				c.Help()
 			case cmd == "exit", cmd == "quit":
@@ -200,6 +203,14 @@ func web() {
 		println("error opening default browser")
 	}
 
+}
+
+// dump provides decoding packets
+func dump() {
+	p := packet.NewPacket()
+	for l := range p.Open() {
+		l.PrintPretty()
+	}
 }
 
 // connect handles connect cmd
