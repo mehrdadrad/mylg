@@ -1,4 +1,4 @@
-// packet is a wrapper for GoPacket and sub packages
+// Package packet is a wrapper for GoPacket and sub packages
 package packet
 
 import (
@@ -174,4 +174,17 @@ func GetPacketInfo(packet gopacket.Packet) *Packet {
 func lookup(ip net.IP) []string {
 	host, _ := net.LookupAddr(ip.String())
 	return host
+}
+
+func getIFAddrs() map[string]struct{} {
+	var r = make(map[string]struct{}, 20)
+
+	ifs, _ := net.Interfaces()
+	for _, i := range ifs {
+		addrs, _ := i.Addrs()
+		for _, addr := range addrs {
+			r[addr.String()] = struct{}{}
+		}
+	}
+	return r
 }
