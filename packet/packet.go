@@ -88,7 +88,6 @@ func (p *Packet) PrintPretty() {
 		p.PrintIPv4()
 	case layers.EthernetTypeIPv6:
 		println("IPV6")
-		p.PrintIPv4()
 	case layers.EthernetTypeARP:
 		println("ARP")
 	default:
@@ -99,11 +98,26 @@ func (p *Packet) PrintPretty() {
 
 // PrintIPv4 prints IPv4 packets
 func (p *Packet) PrintIPv4() {
+	var src, dst string
+
+	if len(p.SrcHost) > 0 {
+		src = p.SrcHost[0]
+	} else {
+		src = p.IPv4.SrcIP.String()
+	}
+	if len(p.DstHost) > 0 {
+		dst = p.DstHost[0]
+	} else {
+		dst = p.IPv4.DstIP.String()
+	}
+
 	switch {
 	case p.IPv4.Protocol == layers.IPProtocolTCP:
-		log.Printf("IP %s > %s , %s length: %d\n", p.IPv4.SrcIP, p.IPv4.DstIP, p.IPv4.Protocol, len(p.Payload))
+		log.Printf("IP/%s %s:%s > %s:%s , len: %d\n",
+			p.IPv4.Protocol, src, p.TCP.SrcPort, dst, p.TCP.DstPort, len(p.Payload))
 	case p.IPv4.Protocol == layers.IPProtocolUDP:
-		log.Printf("IP %s > %s , %s length: %d\n", p.IPv4.SrcIP, p.IPv4.DstIP, p.IPv4.Protocol, len(p.Payload))
+		log.Printf("IP/%s %s:%s > %s:%s , len: %d\n",
+			p.IPv4.Protocol, src, p.UDP.SrcPort, dst, p.UDP.DstPort, len(p.Payload))
 	}
 }
 
@@ -120,15 +134,15 @@ func GetPacketInfo(packet gopacket.Packet) *Packet {
 	ipLayer := packet.Layer(layers.LayerTypeIPv4)
 	if ipLayer != nil {
 		p.IPv4, _ = ipLayer.(*layers.IPv4)
-		p.SrcHost, _ = net.LookupHost(p.IPv4.SrcIP.String())
-		p.DstHost, _ = net.LookupHost(p.IPv4.DstIP.String())
+		p.SrcHost = lookup(p.IPv4.SrcIP)
+		p.DstHost = lookup(p.IPv4.DstIP)
 	} else {
 		// IP Address V6
 		ipLayer := packet.Layer(layers.LayerTypeIPv6)
 		if ipLayer != nil {
 			p.IPv6, _ = ipLayer.(*layers.IPv6)
-			p.SrcHost, _ = net.LookupHost(p.IPv6.SrcIP.String())
-			p.DstHost, _ = net.LookupHost(p.IPv6.DstIP.String())
+			p.SrcHost = lookup(p.IPv6.SrcIP)
+			p.DstHost = lookup(p.IPv6.DstIP)
 		}
 	}
 
@@ -155,4 +169,9 @@ func GetPacketInfo(packet gopacket.Packet) *Packet {
 		fmt.Println("Error decoding some part of the packet:", err)
 	}
 	return &p
+}
+
+func lookup(ip net.IP) []string {
+	host, _ := net.LookupAddr(ip.String())
+	return host
 }
