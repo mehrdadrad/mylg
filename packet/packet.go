@@ -73,7 +73,7 @@ func (p *Packet) Open() chan *Packet {
 			case <-s:
 				loop = false
 				signal.Stop(s)
-			case c <- GetPacketInfo(packet):
+			case c <- ParsePacketLayers(packet):
 			}
 		}
 	}()
@@ -88,6 +88,7 @@ func (p *Packet) PrintPretty() {
 		p.PrintIPv4()
 	case layers.EthernetTypeIPv6:
 		println("IPV6")
+		p.PrintIPv6()
 	case layers.EthernetTypeARP:
 		println("ARP")
 	default:
@@ -113,16 +114,41 @@ func (p *Packet) PrintIPv4() {
 
 	switch {
 	case p.IPv4.Protocol == layers.IPProtocolTCP:
-		log.Printf("IP/%s %s:%s > %s:%s , len: %d\n",
+		log.Printf("IP4/%s %s:%s > %s:%s , len: %d\n",
 			p.IPv4.Protocol, src, p.TCP.SrcPort, dst, p.TCP.DstPort, len(p.Payload))
 	case p.IPv4.Protocol == layers.IPProtocolUDP:
-		log.Printf("IP/%s %s:%s > %s:%s , len: %d\n",
+		log.Printf("IP4/%s %s:%s > %s:%s , len: %d\n",
 			p.IPv4.Protocol, src, p.UDP.SrcPort, dst, p.UDP.DstPort, len(p.Payload))
 	}
 }
 
-// GetPacketInfo decodes layers
-func GetPacketInfo(packet gopacket.Packet) *Packet {
+// PrintIPv6 prints IPv6 packets
+func (p *Packet) PrintIPv6() {
+	var src, dst string
+
+	if len(p.SrcHost) > 0 {
+		src = p.SrcHost[0]
+	} else {
+		src = p.IPv6.SrcIP.String()
+	}
+	if len(p.DstHost) > 0 {
+		dst = p.DstHost[0]
+	} else {
+		dst = p.IPv6.DstIP.String()
+	}
+
+	switch {
+	case p.IPv6.NextHeader == layers.IPProtocolTCP:
+		log.Printf("IP6/%s %s:%s > %s:%s , len: %d\n",
+			p.IPv6.NextHeader, src, p.TCP.SrcPort, dst, p.TCP.DstPort, len(p.Payload))
+	case p.IPv6.NextHeader == layers.IPProtocolUDP:
+		log.Printf("IP6/%s %s:%s > %s:%s , len: %d\n",
+			p.IPv6.NextHeader, src, p.UDP.SrcPort, dst, p.UDP.DstPort, len(p.Payload))
+	}
+}
+
+// ParsePacketLayers decodes layers
+func ParsePacketLayers(packet gopacket.Packet) *Packet {
 	var p Packet
 	// Ethernet
 	ethernetLayer := packet.Layer(layers.LayerTypeEthernet)
