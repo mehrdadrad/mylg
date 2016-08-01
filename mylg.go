@@ -207,7 +207,10 @@ func web() {
 
 // dump provides decoding packets
 func dump() {
-	p := packet.NewPacket()
+	p, err := packet.NewPacket(args)
+	if err != nil {
+		return
+	}
 	for l := range p.Open() {
 		l.PrintPretty()
 	}

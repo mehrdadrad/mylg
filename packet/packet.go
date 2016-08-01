@@ -13,6 +13,8 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
+
+	"github.com/mehrdadrad/mylg/cli"
 )
 
 // Packet holds all layers information
@@ -37,8 +39,16 @@ var (
 )
 
 // NewPacket creates an empty packet info
-func NewPacket() *Packet {
-	return &Packet{}
+func NewPacket(args string) (*Packet, error) {
+
+	_, flag := cli.Flag(args)
+	// help
+	if _, ok := flag["help"]; ok {
+		println("help")
+		return nil, fmt.Errorf("help")
+	}
+
+	return &Packet{}, nil
 }
 
 // Open is a loop over packets
@@ -51,6 +61,7 @@ func (p *Packet) Open() chan *Packet {
 	// capture interrupt w/ s channel
 	signal.Notify(s, os.Interrupt)
 	getIFAddrs()
+
 	go func() {
 		handle, err = pcap.OpenLive(device, snapLen, promiscuous, timeout)
 		if err != nil {
