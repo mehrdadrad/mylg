@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"github.com/google/gopacket"
@@ -49,7 +50,7 @@ func (p *Packet) Open() chan *Packet {
 	)
 	// capture interrupt w/ s channel
 	signal.Notify(s, os.Interrupt)
-
+	getIFAddrs()
 	go func() {
 		handle, err = pcap.OpenLive(device, snapLen, promiscuous, timeout)
 		if err != nil {
@@ -114,12 +115,43 @@ func (p *Packet) PrintIPv4() {
 
 	switch {
 	case p.IPv4.Protocol == layers.IPProtocolTCP:
-		log.Printf("IP4/%s %s:%s > %s:%s , len: %d\n",
-			p.IPv4.Protocol, src, p.TCP.SrcPort, dst, p.TCP.DstPort, len(p.Payload))
+		log.Printf("IP4/%s %s:%s > %s:%s [%s], len: %d\n",
+			p.IPv4.Protocol, src, p.TCP.SrcPort, dst, p.TCP.DstPort, p.flags(), len(p.Payload))
 	case p.IPv4.Protocol == layers.IPProtocolUDP:
 		log.Printf("IP4/%s %s:%s > %s:%s , len: %d\n",
 			p.IPv4.Protocol, src, p.UDP.SrcPort, dst, p.UDP.DstPort, len(p.Payload))
 	}
+}
+
+// flags returns flags string except ack
+func (p *Packet) flags() string {
+	var f []string
+	if p.TCP.FIN {
+		f = append(f, "F")
+	}
+	if p.TCP.SYN {
+		f = append(f, "S")
+	}
+	if p.TCP.RST {
+		f = append(f, "R")
+	}
+	if p.TCP.PSH {
+		f = append(f, "P")
+	}
+	if p.TCP.URG {
+		f = append(f, "U")
+	}
+	if p.TCP.ECE {
+		f = append(f, "E")
+	}
+	if p.TCP.CWR {
+		f = append(f, "C")
+	}
+	if p.TCP.NS {
+		f = append(f, "N")
+	}
+	f = append(f, ".")
+	return strings.Join(f, "")
 }
 
 // PrintIPv6 prints IPv6 packets
