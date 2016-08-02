@@ -28,6 +28,7 @@ type Packet struct {
 	TCP    *layers.TCP
 	UDP    *layers.UDP
 	ICMPv4 *layers.ICMPv4
+	ICMPv6 *layers.ICMPv6
 
 	SrcHost []string
 	DstHost []string
@@ -200,6 +201,10 @@ func (p *Packet) PrintIPv6() {
 		log.Printf("%s %s:%s > %s:%s , len: %d\n",
 			czStr("IPv6/UDP ", color.FgBlack, color.BgHiCyan),
 			src, p.UDP.SrcPort, dst, p.UDP.DstPort, len(p.Payload))
+	case p.IPv6.NextHeader == layers.IPProtocolICMPv6:
+		log.Printf("%s %s > %s: %s, len: %d\n",
+			czStr("IPv6/ICMP", color.FgBlack, color.BgYellow),
+			src, dst, p.ICMPv6.TypeCode.String(), len(p.Payload))
 	}
 
 }
@@ -249,6 +254,12 @@ func ParsePacketLayers(packet gopacket.Packet) *Packet {
 	icmpLayer := packet.Layer(layers.LayerTypeICMPv4)
 	if icmpLayer != nil {
 		p.ICMPv4, _ = icmpLayer.(*layers.ICMPv4)
+	} else {
+		// ICMPv6
+		icmpv6Layer := packet.Layer(layers.LayerTypeICMPv6)
+		if icmpv6Layer != nil {
+			p.ICMPv6, _ = icmpv6Layer.(*layers.ICMPv6)
+		}
 	}
 
 	// Application
