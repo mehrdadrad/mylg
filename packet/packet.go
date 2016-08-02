@@ -57,8 +57,10 @@ var (
 
 // NewPacket creates an empty packet info
 func NewPacket(args string) (*Packet, error) {
+	var flag map[string]interface{}
 
-	_, flag := cli.Flag(args)
+	filter, flag = cli.Flag(args)
+
 	// help
 	if _, ok := flag["help"]; ok {
 		help()
@@ -66,7 +68,6 @@ func NewPacket(args string) (*Packet, error) {
 	}
 
 	noColor = cli.SetFlag(flag, "nc", false).(bool)
-	filter = cli.SetFlag(flag, "f", "").(string)
 	count = cli.SetFlag(flag, "c", 1000000).(int)
 
 	if err != nil {
@@ -335,9 +336,8 @@ func help() {
           dump [-f filter][-c count][-nc]
     options:		  
           -c count       Stop after receiving count packets (default: 1M)
-          -f filter      The filter expression (BPF) consists of one or more primitives.          		   
           -nc            Shows dumps without color
     Example:
-          dump -f "tcp and port 443" -c 1000		
+          dump tcp and port 443 -c 1000
 	`)
 }
