@@ -92,8 +92,6 @@ func main() {
 		loop    = true
 	)
 
-	r, _ := regexp.Compile(`(ping|trace|bgp|lg|ns|dig|dump|whois|peering|scan|hping|connect|node|local|mode|help|web|exit|quit)\s{0,1}(.*)`)
-
 	for loop {
 		select {
 		case request, loop = <-req:
@@ -104,7 +102,7 @@ func main() {
 				c.Next()
 				continue
 			}
-			subReq := r.FindStringSubmatch(request)
+			subReq := cli.CMDReg.FindStringSubmatch(request)
 			if len(subReq) == 0 {
 				println("syntax error")
 				c.Next()
