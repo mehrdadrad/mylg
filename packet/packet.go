@@ -154,10 +154,11 @@ func (p *Packet) PrintIPv4() {
 
 	switch {
 	case p.IPv4.Protocol == layers.IPProtocolTCP:
-		log.Printf("%s %s:%s > %s:%s [%s], len: %d\n",
+		log.Printf("%s %s:%s > %s:%s [%s], win %d, len: %d\n",
 			czStr("IPv4/TCP ", color.FgBlack, color.BgWhite),
 			src, p.TCP.SrcPort, dst, p.TCP.DstPort,
-			czStr(p.flagsString(), color.Bold), len(p.Payload))
+			czStr(p.flagsString(), color.Bold),
+			p.TCP.Window, len(p.Payload))
 	case p.IPv4.Protocol == layers.IPProtocolUDP:
 		log.Printf("%s %s:%s > %s:%s , len: %d\n",
 			czStr("IPv4/UDP ", color.FgBlack, color.BgCyan),
