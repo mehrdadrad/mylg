@@ -36,7 +36,7 @@ type Provider interface {
 }
 
 const (
-	version = "0.1.9"
+	version = "0.2.0"
 )
 
 var (
