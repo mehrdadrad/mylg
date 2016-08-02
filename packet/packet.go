@@ -14,28 +14,44 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 
+	"github.com/fatih/color"
+
 	"github.com/mehrdadrad/mylg/cli"
 )
 
 // Packet holds all layers information
 type Packet struct {
-	Eth     *layers.Ethernet
-	IPv4    *layers.IPv4
-	IPv6    *layers.IPv6
-	TCP     *layers.TCP
-	UDP     *layers.UDP
+	// packet layers data
+	Eth    *layers.Ethernet
+	IPv4   *layers.IPv4
+	IPv6   *layers.IPv6
+	TCP    *layers.TCP
+	UDP    *layers.UDP
+	ICMPv4 *layers.ICMPv4
+
 	SrcHost []string
 	DstHost []string
 	Payload string
+	// info
+	device string
+}
+
+// logWriter represents custom writer
+type logWriter struct {
 }
 
 var (
-	device            = "en0"
-	snapLen     int32 = 1024
+	snapLen     int32 = 6 * 1024
 	promiscuous       = false
 	err         error
 	timeout     = 100 * time.Nanosecond
 	handle      *pcap.Handle
+	addrs       = make(map[string]struct{}, 20)
+	ifName      string
+
+	noColor bool
+	filter  string
+	count   int
 )
 
 // NewPacket creates an empty packet info
@@ -44,11 +60,24 @@ func NewPacket(args string) (*Packet, error) {
 	_, flag := cli.Flag(args)
 	// help
 	if _, ok := flag["help"]; ok {
-		println("help")
+		help()
 		return nil, fmt.Errorf("help")
 	}
 
-	return &Packet{}, nil
+	noColor = cli.SetFlag(flag, "nc", false).(bool)
+	filter = cli.SetFlag(flag, "f", "").(string)
+	count = cli.SetFlag(flag, "c", 1000000).(int)
+
+	if err != nil {
+		return nil, err
+	}
+
+	log.SetFlags(0)
+	log.SetOutput(new(logWriter))
+
+	return &Packet{
+		device: cli.SetFlag(flag, "i", "").(string),
+	}, nil
 }
 
 // Open is a loop over packets
@@ -60,32 +89,40 @@ func (p *Packet) Open() chan *Packet {
 	)
 	// capture interrupt w/ s channel
 	signal.Notify(s, os.Interrupt)
-	getIFAddrs()
+
+	// return first available interface and all ip addresses
+	ifName, addrs = lookupDev()
+	if p.device == "" {
+		p.device = ifName
+	}
 
 	go func() {
-		handle, err = pcap.OpenLive(device, snapLen, promiscuous, timeout)
-		if err != nil {
-			log.Fatal(err)
-		}
-		if err := handle.SetBPFFilter(""); err != nil {
-			log.Fatal(err)
-		}
-
-		defer handle.Close()
+		var counter int
+		defer signal.Stop(s)
 		defer close(s)
 		defer close(c)
 
+		handle, err = pcap.OpenLive(p.device, snapLen, promiscuous, timeout)
+		if err != nil {
+			log.Println(err.Error())
+			return
+		}
+		if err := handle.SetBPFFilter(filter); err != nil {
+			log.Println(err.Error())
+			return
+		}
+
+		defer handle.Close()
 		packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 		for loop {
-			packet, err := packetSource.NextPacket()
-			if err != nil {
-				continue
-			}
 			select {
+			case packet := <-packetSource.Packets():
+				c <- ParsePacketLayers(packet)
+				if counter++; counter > count-1 {
+					loop = false
+				}
 			case <-s:
 				loop = false
-				signal.Stop(s)
-			case c <- ParsePacketLayers(packet):
 			}
 		}
 	}()
@@ -99,95 +136,75 @@ func (p *Packet) PrintPretty() {
 	case layers.EthernetTypeIPv4:
 		p.PrintIPv4()
 	case layers.EthernetTypeIPv6:
-		println("IPV6")
 		p.PrintIPv6()
 	case layers.EthernetTypeARP:
-		println("ARP")
+		// todo
 	default:
-		println("unknown")
-
+		// todo
 	}
 }
 
 // PrintIPv4 prints IPv4 packets
 func (p *Packet) PrintIPv4() {
-	var src, dst string
 
-	if len(p.SrcHost) > 0 {
-		src = p.SrcHost[0]
-	} else {
-		src = p.IPv4.SrcIP.String()
-	}
-	if len(p.DstHost) > 0 {
-		dst = p.DstHost[0]
-	} else {
-		dst = p.IPv4.DstIP.String()
-	}
+	src := czIP(p.IPv4.SrcIP, p.SrcHost, color.FgGreen)
+	dst := czIP(p.IPv4.DstIP, p.DstHost, color.FgGreen)
 
 	switch {
 	case p.IPv4.Protocol == layers.IPProtocolTCP:
-		log.Printf("IP4/%s %s:%s > %s:%s [%s], len: %d\n",
-			p.IPv4.Protocol, src, p.TCP.SrcPort, dst, p.TCP.DstPort, p.flags(), len(p.Payload))
+		log.Printf("%s %s:%s > %s:%s [%s], len: %d\n",
+			czStr("IPv4/TCP ", color.FgBlack, color.BgWhite),
+			src, p.TCP.SrcPort, dst, p.TCP.DstPort,
+			czStr(p.flagsString(), color.Bold), len(p.Payload))
 	case p.IPv4.Protocol == layers.IPProtocolUDP:
-		log.Printf("IP4/%s %s:%s > %s:%s , len: %d\n",
-			p.IPv4.Protocol, src, p.UDP.SrcPort, dst, p.UDP.DstPort, len(p.Payload))
+		log.Printf("%s %s:%s > %s:%s , len: %d\n",
+			czStr("IPv4/UDP ", color.FgBlack, color.BgCyan),
+			src, p.UDP.SrcPort, dst, p.UDP.DstPort, len(p.Payload))
+	case p.IPv4.Protocol == layers.IPProtocolICMPv4:
+		log.Printf("%s %s > %s , len: %d\n",
+			czStr("IPv4/ICMP", color.FgBlack, color.BgYellow),
+			src, dst, len(p.Payload))
 	}
 }
 
 // flags returns flags string except ack
-func (p *Packet) flags() string {
-	var f []string
-	if p.TCP.FIN {
-		f = append(f, "F")
+func (p *Packet) flagsString() string {
+	var (
+		r     []string
+		flags = []bool{p.TCP.FIN, p.TCP.SYN, p.TCP.RST, p.TCP.PSH, p.TCP.URG, p.TCP.ECE, p.TCP.NS}
+		sign  = "FSRPUECN"
+	)
+	for i, flag := range flags {
+		if flag {
+			r = append(r, string(sign[i]))
+		}
 	}
-	if p.TCP.SYN {
-		f = append(f, "S")
-	}
-	if p.TCP.RST {
-		f = append(f, "R")
-	}
-	if p.TCP.PSH {
-		f = append(f, "P")
-	}
-	if p.TCP.URG {
-		f = append(f, "U")
-	}
-	if p.TCP.ECE {
-		f = append(f, "E")
-	}
-	if p.TCP.CWR {
-		f = append(f, "C")
-	}
-	if p.TCP.NS {
-		f = append(f, "N")
-	}
-	f = append(f, ".")
-	return strings.Join(f, "")
+	r = append(r, ".")
+	return strings.Join(r, "")
 }
 
 // PrintIPv6 prints IPv6 packets
 func (p *Packet) PrintIPv6() {
-	var src, dst string
 
-	if len(p.SrcHost) > 0 {
-		src = p.SrcHost[0]
-	} else {
-		src = p.IPv6.SrcIP.String()
-	}
-	if len(p.DstHost) > 0 {
-		dst = p.DstHost[0]
-	} else {
-		dst = p.IPv6.DstIP.String()
-	}
+	src := czIP(p.IPv6.SrcIP, p.SrcHost, color.FgGreen)
+	dst := czIP(p.IPv6.DstIP, p.DstHost, color.FgGreen)
 
 	switch {
 	case p.IPv6.NextHeader == layers.IPProtocolTCP:
-		log.Printf("IP6/%s %s:%s > %s:%s , len: %d\n",
-			p.IPv6.NextHeader, src, p.TCP.SrcPort, dst, p.TCP.DstPort, len(p.Payload))
+		log.Printf("%s %s:%s > %s:%s , len: %d\n",
+			czStr("IPv6/TCP ", color.FgBlack, color.BgHiWhite),
+			src, p.TCP.SrcPort, dst, p.TCP.DstPort,
+			len(p.Payload))
 	case p.IPv6.NextHeader == layers.IPProtocolUDP:
-		log.Printf("IP6/%s %s:%s > %s:%s , len: %d\n",
-			p.IPv6.NextHeader, src, p.UDP.SrcPort, dst, p.UDP.DstPort, len(p.Payload))
+		log.Printf("%s %s:%s > %s:%s , len: %d\n",
+			czStr("IPv6/UDP ", color.FgBlack, color.BgHiCyan),
+			src, p.UDP.SrcPort, dst, p.UDP.DstPort, len(p.Payload))
 	}
+
+}
+
+func (writer logWriter) Write(bytes []byte) (int, error) {
+	return fmt.Printf("%s %s", time.Now().Format("15:04:05.000"), string(bytes))
 }
 
 // ParsePacketLayers decodes layers
@@ -227,6 +244,12 @@ func ParsePacketLayers(packet gopacket.Packet) *Packet {
 		}
 	}
 
+	// ICMPv4
+	icmpLayer := packet.Layer(layers.LayerTypeICMPv4)
+	if icmpLayer != nil {
+		p.ICMPv4, _ = icmpLayer.(*layers.ICMPv4)
+	}
+
 	// Application
 	applicationLayer := packet.ApplicationLayer()
 	if applicationLayer != nil {
@@ -235,9 +258,40 @@ func ParsePacketLayers(packet gopacket.Packet) *Packet {
 
 	// Check for errors
 	if err := packet.ErrorLayer(); err != nil {
-		fmt.Println("Error decoding some part of the packet:", err)
+		//fmt.Println("Error decoding some part of the packet:", err)
+		// todo
 	}
 	return &p
+}
+
+// czIP makes colorize IP/Host
+func czIP(ip net.IP, host []string, attr ...color.Attribute) string {
+	var (
+		src string
+	)
+	if _, ok := addrs[ip.String()]; ok && !noColor {
+		if len(host) > 0 {
+			src = czStr(host[0], attr...)
+		} else {
+			src = czStr(ip.String(), attr...)
+		}
+	} else {
+		if len(host) > 0 {
+			src = host[0]
+		} else {
+			src = ip.String()
+		}
+	}
+	return src
+}
+
+// czStr makes colorize string
+func czStr(i string, attr ...color.Attribute) string {
+	c := color.New(attr...).SprintfFunc()
+	if !noColor {
+		return c(i)
+	}
+	return i
 }
 
 func lookup(ip net.IP) []string {
@@ -245,15 +299,33 @@ func lookup(ip net.IP) []string {
 	return host
 }
 
-func getIFAddrs() map[string]struct{} {
-	var r = make(map[string]struct{}, 20)
-
+func lookupDev() (string, map[string]struct{}) {
+	var (
+		ips    = make(map[string]struct{}, 20)
+		ifName = ""
+	)
 	ifs, _ := net.Interfaces()
 	for _, i := range ifs {
 		addrs, _ := i.Addrs()
+		if i.Flags == 19 && ifName == "" {
+			ifName = i.Name
+		}
 		for _, addr := range addrs {
-			r[addr.String()] = struct{}{}
+			ips[strings.Split(addr.String(), "/")[0]] = struct{}{}
 		}
 	}
-	return r
+	return ifName, ips
+}
+
+func help() {
+	fmt.Println(`
+    usage:
+          dump [-f filter][-c count][-nc]
+    options:		  
+          -c count       Stop after receiving count packets (default: 1M)
+          -f filter      The filter expression (BPF) consists of one or more primitives.          		   
+          -nc            Shows dumps without color
+    Example:
+          dump -f "tcp and port 443" -c 1000		
+	`)
 }
