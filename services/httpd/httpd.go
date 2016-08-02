@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/mehrdadrad/mylg/icmp"
+	// statik is single binary including all web stuff
 	_ "github.com/mehrdadrad/mylg/services/dashboard/statik"
 )
 

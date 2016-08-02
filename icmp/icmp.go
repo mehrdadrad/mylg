@@ -46,7 +46,7 @@ type Ping struct {
 	mu        sync.RWMutex
 }
 
-// Result represent ping response
+// Response represent ping response
 type Response struct {
 	RTT      float64
 	Size     int
