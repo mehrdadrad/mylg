@@ -39,6 +39,10 @@ type Readline struct {
 	next      chan struct{}
 }
 
+var (
+	CMDReg, _ = regexp.Compile(`(ping|trace|bgp|lg|ns|dig|dump|whois|peering|scan|hping|connect|node|local|mode|help|web|exit|quit)\s{0,1}(.*)`)
+)
+
 // Init set readline imain items
 func Init(prompt, version string) *Readline {
 	var (
@@ -57,6 +61,7 @@ func Init(prompt, version string) *Readline {
 			readline.PcItem("dig"),
 			readline.PcItem("whois"),
 			readline.PcItem("scan"),
+			readline.PcItem("dump"),
 			readline.PcItem("peering"),
 			readline.PcItem("help"),
 			readline.PcItem("web"),
@@ -253,7 +258,7 @@ func Flag(args string) (string, map[string]interface{}) {
 		err error
 	)
 	args = strings.TrimSpace(args)
-	re := regexp.MustCompile(`(?i)-([a-z]+)={0,1}\s{0,1}([0-9|a-z|\-|'"{}:]+)`)
+	re := regexp.MustCompile(`(?i)-([a-z]+)={0,1}\s{0,1}([0-9|a-z|\-|'"{}:]*)`)
 	f := re.FindAllStringSubmatch(args, -1)
 	for _, kv := range f {
 		if len(kv) > 1 {
@@ -280,6 +285,10 @@ func SetFlag(flag map[string]interface{}, option string, v interface{}) interfac
 		switch v.(type) {
 		case int:
 			return sValue.(int)
+		case string:
+			return sValue.(string)
+		case bool:
+			return true
 		default:
 			return sValue.(string)
 		}
