@@ -161,9 +161,10 @@ func (p *Packet) PrintIPv4() {
 			czStr("IPv4/UDP ", color.FgBlack, color.BgCyan),
 			src, p.UDP.SrcPort, dst, p.UDP.DstPort, len(p.Payload))
 	case p.IPv4.Protocol == layers.IPProtocolICMPv4:
-		log.Printf("%s %s > %s , len: %d\n",
+		log.Printf("%s %s > %s: %s id %d, seq %d, len: %d\n",
 			czStr("IPv4/ICMP", color.FgBlack, color.BgYellow),
-			src, dst, len(p.Payload))
+			src, dst, p.ICMPv4.TypeCode.String(), p.ICMPv4.Id,
+			p.ICMPv4.Seq, len(p.Payload))
 	}
 }
 
