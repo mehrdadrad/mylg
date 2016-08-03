@@ -149,8 +149,8 @@ func (p *Packet) PrintPretty() {
 // PrintIPv4 prints IPv4 packets
 func (p *Packet) PrintIPv4() {
 
-	src := czIP(p.IPv4.SrcIP, p.SrcHost, color.FgGreen)
-	dst := czIP(p.IPv4.DstIP, p.DstHost, color.FgGreen)
+	src := czIP(p.IPv4.SrcIP, p.SrcHost, color.Bold)
+	dst := czIP(p.IPv4.DstIP, p.DstHost, color.Bold)
 
 	switch {
 	case p.IPv4.Protocol == layers.IPProtocolTCP:
@@ -190,17 +190,17 @@ func (p *Packet) flagsString() string {
 // PrintIPv6 prints IPv6 packets
 func (p *Packet) PrintIPv6() {
 
-	src := czIP(p.IPv6.SrcIP, p.SrcHost, color.FgGreen)
-	dst := czIP(p.IPv6.DstIP, p.DstHost, color.FgGreen)
+	src := czIP(p.IPv6.SrcIP, p.SrcHost, color.Bold)
+	dst := czIP(p.IPv6.DstIP, p.DstHost, color.Bold)
 
 	switch {
 	case p.IPv6.NextHeader == layers.IPProtocolTCP:
-		log.Printf("%s %s:%s > %s:%s , len: %d\n",
+		log.Printf("%s %s:%s > %s:%s, len: %d\n",
 			czStr("IPv6/TCP ", color.FgBlack, color.BgHiWhite),
 			src, p.TCP.SrcPort, dst, p.TCP.DstPort,
 			len(p.Payload))
 	case p.IPv6.NextHeader == layers.IPProtocolUDP:
-		log.Printf("%s %s:%s > %s:%s , len: %d\n",
+		log.Printf("%s %s:%s > %s:%s, len: %d\n",
 			czStr("IPv6/UDP ", color.FgBlack, color.BgHiCyan),
 			src, p.UDP.SrcPort, dst, p.UDP.DstPort, len(p.Payload))
 	case p.IPv6.NextHeader == layers.IPProtocolICMPv6:
@@ -334,7 +334,7 @@ func lookupDev() (string, map[string]struct{}) {
 func help() {
 	fmt.Println(`
     usage:
-          dump [-f filter][-c count][-nc]
+          dump [-c count][-nc]
     options:		  
           -c count       Stop after receiving count packets (default: 1M)
           -nc            Shows dumps without color
