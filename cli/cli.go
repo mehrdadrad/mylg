@@ -27,6 +27,7 @@ const usage = `Usage:
 	whois                       resolve AS number/IP/CIDR to holder (provides by ripe ncc)
 	hping                       Ping through HTTP/HTTPS w/ GET/HEAD methods
 	scan                        scan tcp ports (you can provide range >scan host minport maxport)
+	dump                        prints out a description of the contents of packets on a network interface
 	peering                     peering information (provides by peeringdb.com)
 	web                         web dashboard - opens dashboard at your default browser
 	`
