@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/mehrdadrad/mylg/cli"
+	"github.com/mehrdadrad/mylg/disc"
 	"github.com/mehrdadrad/mylg/http/ping"
 	"github.com/mehrdadrad/mylg/icmp"
 	"github.com/mehrdadrad/mylg/lg"
@@ -151,6 +152,8 @@ func main() {
 				web()
 			case cmd == "dump":
 				dump()
+			case cmd == "disc":
+				discovery()
 			case cmd == "help":
 				c.Help()
 			case cmd == "exit", cmd == "quit":
@@ -333,4 +336,14 @@ func BGP() {
 	for l := range providers[cPName].BGP() {
 		println(l)
 	}
+}
+
+func discovery() {
+	d := disc.New()
+	d.PingLan()
+	if err := d.GetARPTable(); err != nil {
+		println(err.Error())
+		return
+	}
+	d.PrintPretty()
 }
