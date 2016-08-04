@@ -13,12 +13,14 @@ myLG, my looking glass is software utility which combines the functions of the d
 * RIPE information (ASN, IP/CIDR)
 * PeeringDB information
 * Port scanning fast
+* Network LAN Discovery
 * Web dashboard
 * Support vi and emacs mode, almost all basic features
 * CLI auto complete and history features
 
-![IMAGE ALT TEXT HERE](http://mylg.io/img/mylg_dashboard.png)
 ![IMAGE ALT TEXT HERE](http://mylg.io/img/packet_analyzer.png)
+![IMAGE ALT TEXT HERE](http://mylg.io/img/mylg_dashboard.png)
+
 ### Usage
 
 ```
@@ -135,6 +137,16 @@ The data provided from www.peeringdb.com
 | Equinix Toronto  | ok     |  10000 | 198.32.181.50   | 2001:504:d:80::6327:1   |
 +------------------+--------+--------+-----------------+-------------------------+
 
+local> disc
+Network LAN Discovery
++---------------+-------------------+------+-----------+--------------------------------+
+|      IP       |        MAC        | HOST | INTERFACE |       ORGANIZATION NAME        |
++---------------+-------------------+------+-----------+--------------------------------+
+| 192.168.0.1   | a4:2b:b0:eb:9a:b4 | NA   | en0       | TP-LINK TECHNOLOGIES CO.,LTD.  |
+| 192.168.0.103 | ac:bc:32:b4:33:23 | NA   | en0       | Apple, Inc.                    |
+| 192.168.0.105 | 40:b8:9a:60:55:9e | NA   | en0       | Hon Hai Precision Ind.         |
+| 224.0.0.251   | 1:0:5e:0:0:fb     | NA   | en0       | NA                             |
++---------------+-------------------+------+-----------+--------------------------------+
 ```
 
 ## Contribute 
