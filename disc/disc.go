@@ -2,6 +2,7 @@
 package disc
 
 import (
+	"encoding/csv"
 	"fmt"
 	"github.com/olekukonko/tablewriter"
 	"io/ioutil"
@@ -12,11 +13,12 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
+	"time"
 )
 
 const (
 	// IEEEOUI holds ieee oui csv file url
-	IEEEOUI = "standards.ieee.org/develop/regauth/oui/oui.csv"
+	IEEEOUI = "http://standards.ieee.org/develop/regauth/oui/oui.csv"
 )
 
 // ARP holds ARP information
@@ -30,12 +32,13 @@ type ARP struct {
 type disc struct {
 	Table []ARP
 	IPs   []string
+	OUI   map[string]string
 	IsMac bool
 }
 
 // New creates new discovery object
 func New() *disc {
-	return &disc{IsMac: IsMac()}
+	return &disc{IsMac: IsMac(), OUI: make(map[string]string, 25000)}
 }
 
 // WalkIP tries to salk through subnet as generator
@@ -146,33 +149,107 @@ func (a *disc) GetMACOSARPTable() error {
 	return nil
 }
 
+// LoadOUI
+func (a *disc) LoadOUI() bool {
+	if _, ok := cache("validate", nil); ok {
+		if c, ok := cache("read", nil); ok {
+			r := csv.NewReader(strings.NewReader(c))
+			records, _ := r.ReadAll()
+			for _, record := range records {
+				if len(record) > 2 {
+					a.OUI[record[1]] = record[2]
+				}
+			}
+			return true
+		}
+
+	} else {
+		b, err := GetOUILive()
+		if err != nil {
+			println(err.Error())
+			return false
+		}
+		if c, ok := cache("write", b); ok {
+			r := csv.NewReader(strings.NewReader(c))
+			records, _ := r.ReadAll()
+			for _, record := range records {
+				if len(record) > 2 {
+					a.OUI[record[1]] = record[2]
+				}
+			}
+			return true
+		}
+	}
+	return false
+}
+
 // GETOUI gets oui info from iEEE
-func GetOUI() (string, error) {
+func GetOUILive() ([]byte, error) {
 	resp, err := http.Get(IEEEOUI)
 	if err != nil {
-		return "", fmt.Errorf("regauth.standards.ieee.org is unreachable (1)")
+		return []byte{}, fmt.Errorf("regauth.standards.ieee.org is unreachable (1)")
 	}
 	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("regauth.standards.ieee.org returns none 200 HTTP code")
+		return []byte{}, fmt.Errorf("regauth.standards.ieee.org returns none 200 HTTP code")
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("peeringdb.com is unreachable (2)  %s", err.Error())
+		return []byte{}, fmt.Errorf("peeringdb.com is unreachable (2)  %s", err.Error())
 	}
-	return string(body), nil
+	return body, nil
+}
+func cache(r string, b []byte) (string, bool) {
+	var (
+		err error
+		res string
+	)
+	switch r {
+	case "write":
+		err = ioutil.WriteFile("/tmp/mylg.disc", b, 0644)
+		if err != nil {
+			return "", false
+		}
+		res = string(b)
+		return res, true
+	case "read":
+		b, err := ioutil.ReadFile("/tmp/mylg.disc")
+		if err != nil {
+			return "", false
+		}
+		res = string(b)
+		return res, true
+	case "validate":
+		f, err := os.Stat("/tmp/mylg.disc")
+		if err != nil {
+			return "", false
+		}
+		d := time.Since(f.ModTime())
+		if d.Hours() > 24*10 {
+			return "", false
+		}
+	}
+
+	return "", true
 }
 
 // PrintPretty prints ARP table
 func (a *disc) PrintPretty() {
+	var orgName string
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"IP", "MAC", "Host", "Interface"})
+	table.SetHeader([]string{"IP", "MAC", "Host", "Interface", "Organization Name"})
 	for _, arp := range a.Table {
 		host, _ := net.LookupAddr(arp.IP)
-		if len(host) == 0 {
-			table.Append([]string{arp.IP, arp.MAC, "NA", arp.Interface})
+		if name, ok := a.OUI[strings.ToUpper(strings.Replace(arp.MAC, ":", "", -1))[:6]]; ok {
+			orgName = name
 		} else {
-			table.Append([]string{arp.IP, arp.MAC, host[0], arp.Interface})
+			orgName = "NA"
+		}
+
+		if len(host) == 0 {
+			table.Append([]string{arp.IP, arp.MAC, "NA", arp.Interface, orgName})
+		} else {
+			table.Append([]string{arp.IP, arp.MAC, host[0], arp.Interface, orgName})
 		}
 	}
 	table.Render()

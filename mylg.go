@@ -345,5 +345,6 @@ func discovery() {
 		println(err.Error())
 		return
 	}
+	d.LoadOUI()
 	d.PrintPretty()
 }
