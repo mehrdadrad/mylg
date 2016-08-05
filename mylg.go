@@ -38,7 +38,7 @@ type Provider interface {
 }
 
 const (
-	version = "0.2.0"
+	version = "0.2.1"
 )
 
 var (
@@ -346,10 +346,15 @@ func discovery() {
 		//ts = time.Now()
 	)
 
+	d := disc.New(args)
+	// help requested
+	if d == nil {
+		return
+	}
+
 	spin.Prefix = "please wait "
 	spin.Start()
 
-	d := disc.New(args)
 	// load OUI async
 	go func() {
 		wg.Add(1)
