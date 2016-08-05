@@ -82,13 +82,14 @@ func (p *Prefix) GetData() bool {
 func (p *Prefix) PrettyPrint() {
 	data, ok := p.Data["data"].(map[string]interface{})
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Prefix", "Holder"})
+	table.SetHeader([]string{"Prefix", "ASN", "Holder"})
 	if ok {
 		resource := data["resource"].(string)
 		asns := data["asns"].([]interface{})
 		for _, h := range asns {
 			holder := h.(map[string]interface{})["holder"].(string)
-			table.Append([]string{resource, holder})
+			asn := h.(map[string]interface{})["asn"].(float64)
+			table.Append([]string{resource, fmt.Sprintf("%.0f", asn), holder})
 		}
 	}
 	table.Render()
