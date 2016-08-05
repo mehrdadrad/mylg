@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/mehrdadrad/mylg/cli"
@@ -209,7 +210,7 @@ func web() {
 // dump provides decoding packets
 func dump() {
 	p, err := packet.NewPacket(args)
-	if err != nil {
+	if p == nil || err != nil {
 		return
 	}
 	for l := range p.Open() {
@@ -338,13 +339,33 @@ func BGP() {
 	}
 }
 
+// discovery handles disc command
 func discovery() {
-	d := disc.New()
+	var (
+		wg sync.WaitGroup
+		//ts = time.Now()
+	)
+
+	spin.Prefix = "please wait "
+	spin.Start()
+
+	d := disc.New(args)
+	// load OUI async
+	go func() {
+		wg.Add(1)
+		d.LoadOUI()
+		wg.Done()
+	}()
 	d.PingLan()
+	//s := 10 - int(time.Since(ts).Seconds())
+	time.Sleep(5 * time.Second)
 	if err := d.GetARPTable(); err != nil {
 		println(err.Error())
 		return
 	}
-	d.LoadOUI()
+	wg.Wait()
+	spin.Stop()
+
+	println("Network LAN Discovery")
 	d.PrintPretty()
 }
