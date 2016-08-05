@@ -15,6 +15,7 @@ import (
 	"github.com/google/gopacket/pcap"
 
 	"github.com/fatih/color"
+	"github.com/olekukonko/tablewriter"
 
 	"github.com/mehrdadrad/mylg/cli"
 )
@@ -50,9 +51,9 @@ var (
 	addrs       = make(map[string]struct{}, 20)
 	ifName      string
 
-	noColor bool
-	filter  string
-	count   int
+	noColor, showIf bool
+	filter          string
+	count           int
 )
 
 // NewPacket creates an empty packet info
@@ -64,14 +65,16 @@ func NewPacket(args string) (*Packet, error) {
 	// help
 	if _, ok := flag["help"]; ok {
 		help()
-		return nil, fmt.Errorf("help")
+		return nil, nil
 	}
 
 	noColor = cli.SetFlag(flag, "nc", false).(bool)
 	count = cli.SetFlag(flag, "c", 1000000).(int)
+	showIf = cli.SetFlag(flag, "d", false).(bool)
 
-	if err != nil {
-		return nil, err
+	if showIf {
+		printDev()
+		return nil, nil
 	}
 
 	log.SetFlags(0)
@@ -331,12 +334,43 @@ func lookupDev() (string, map[string]struct{}) {
 	return ifName, ips
 }
 
+func printDev() {
+	var (
+		status  = "DOWN"
+		columns []string
+	)
+
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"Name", "MAC", "Status", "MTU", "Multicast", "Broadcast", "PointToPoint", "Loopback"})
+	ifs, _ := net.Interfaces()
+	for _, i := range ifs {
+		if strings.Contains(i.Flags.String(), "up") {
+			status = "UP"
+		} else {
+			status = "DOWN"
+		}
+		columns = append(columns, i.Name, i.HardwareAddr.String(), status, fmt.Sprintf("%d", i.MTU))
+		for _, flag := range []string{"multicast", "broadcast", "pointtopoint", "loopback"} {
+			if strings.Contains(i.Flags.String(), flag) {
+				columns = append(columns, "\u2713")
+			} else {
+				columns = append(columns, "")
+			}
+		}
+		table.Append(columns)
+		columns = columns[:0]
+	}
+	table.Render()
+}
+
 func help() {
 	fmt.Println(`
     usage:
-          dump [-c count][-nc]
+          dump [-c count][-i interface][-nc]
     options:		  
           -c count       Stop after receiving count packets (default: 1M)
+          -i interface   Listen on specified interface (default: first non-loopback)
+          -d             Print list of available interfaces 		  
           -nc            Shows dumps without color
     Example:
           dump tcp and port 443 -c 1000
