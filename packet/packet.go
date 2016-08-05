@@ -13,6 +13,7 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
+	"github.com/google/gopacket/pcapgo"
 
 	"github.com/fatih/color"
 	"github.com/olekukonko/tablewriter"
@@ -42,6 +43,17 @@ type Packet struct {
 type logWriter struct {
 }
 
+type Options struct {
+	// no color
+	nc bool
+	// count
+	c int
+	// device list
+	d bool
+	// write pcap
+	w string
+}
+
 var (
 	snapLen     int32 = 6 * 1024
 	promiscuous       = false
@@ -51,9 +63,8 @@ var (
 	addrs       = make(map[string]struct{}, 20)
 	ifName      string
 
-	noColor, showIf bool
-	filter          string
-	count           int
+	options Options
+	filter  string
 )
 
 // NewPacket creates an empty packet info
@@ -68,11 +79,14 @@ func NewPacket(args string) (*Packet, error) {
 		return nil, nil
 	}
 
-	noColor = cli.SetFlag(flag, "nc", false).(bool)
-	count = cli.SetFlag(flag, "c", 1000000).(int)
-	showIf = cli.SetFlag(flag, "d", false).(bool)
+	options = Options{
+		nc: cli.SetFlag(flag, "nc", false).(bool),
+		c:  cli.SetFlag(flag, "c", 1000000).(int),
+		d:  cli.SetFlag(flag, "d", false).(bool),
+		w:  cli.SetFlag(flag, "w", "").(string),
+	}
 
-	if showIf {
+	if options.d {
 		printDev()
 		return nil, nil
 	}
@@ -90,6 +104,7 @@ func (p *Packet) Open() chan *Packet {
 	var (
 		c    = make(chan *Packet, 1)
 		s    = make(chan os.Signal, 1)
+		w    *pcapgo.Writer
 		loop = true
 	)
 	// capture interrupt w/ s channel
@@ -107,6 +122,14 @@ func (p *Packet) Open() chan *Packet {
 		defer close(s)
 		defer close(c)
 
+		// write to pcap if needed
+		if options.w != "" {
+			f, _ := os.Create(options.w)
+			w = pcapgo.NewWriter(f)
+			w.WriteFileHeader(uint32(snapLen), layers.LinkTypeEthernet)
+			defer f.Close()
+		}
+
 		handle, err = pcap.OpenLive(p.device, snapLen, promiscuous, timeout)
 		if err != nil {
 			log.Println(err.Error())
@@ -122,8 +145,12 @@ func (p *Packet) Open() chan *Packet {
 		for loop {
 			select {
 			case packet := <-packetSource.Packets():
+				// write to pcap if needed
+				if options.w != "" {
+					w.WritePacket(packet.Metadata().CaptureInfo, packet.Data())
+				}
 				c <- ParsePacketLayers(packet)
-				if counter++; counter > count-1 {
+				if counter++; counter > options.c-1 {
 					loop = false
 				}
 			case <-s:
@@ -286,7 +313,7 @@ func czIP(ip net.IP, host []string, attr ...color.Attribute) string {
 	var (
 		src string
 	)
-	if _, ok := addrs[ip.String()]; ok && !noColor {
+	if _, ok := addrs[ip.String()]; ok && !options.nc {
 		if len(host) > 0 {
 			src = czStr(host[0], attr...)
 		} else {
@@ -305,7 +332,7 @@ func czIP(ip net.IP, host []string, attr ...color.Attribute) string {
 // czStr makes colorize string
 func czStr(i string, attr ...color.Attribute) string {
 	c := color.New(attr...).SprintfFunc()
-	if !noColor {
+	if !options.nc {
 		return c(i)
 	}
 	return i
@@ -366,13 +393,17 @@ func printDev() {
 func help() {
 	fmt.Println(`
     usage:
-          dump [-c count][-i interface][-nc]
+          dump [-c count][-i interface][-w filename][-d][-nc]
     options:		  
           -c count       Stop after receiving count packets (default: 1M)
           -i interface   Listen on specified interface (default: first non-loopback)
+          -w filename    Write packets to a pcap format file            
           -d             Print list of available interfaces 		  
           -nc            Shows dumps without color
     Example:
           dump tcp and port 443 -c 1000
+          dump !udp
+          dump -i eth0
+          dump -w /tmp/mypcap		  
 	`)
 }
