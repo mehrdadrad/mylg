@@ -36,6 +36,7 @@ myLG, my looking glass is software utility which combines the functions of the d
              www.facebook.com/mylg.io
                   http://mylg.io
 ================== myLG v0.2.0 ==================
+
 local> hping www.google.com -c 5
 HPING www.google.com (172.217.4.164), Method: HEAD, DNSLookup: 19.0237 ms
 HTTP Response seq=0, proto=HTTP/1.1, status=200, time=90.134 ms
@@ -43,7 +44,7 @@ HTTP Response seq=1, proto=HTTP/1.1, status=200, time=62.478 ms
 HTTP Response seq=2, proto=HTTP/1.1, status=200, time=65.311 ms
 HTTP Response seq=3, proto=HTTP/1.1, status=200, time=70.106 ms
 HTTP Response seq=4, proto=HTTP/1.1, status=200, time=62.913 ms
-local> 
+ 
 local> whois 577
 BACOM - Bell Canada, CA
 +--------------------+-----------+
@@ -63,6 +64,7 @@ BACOM - Bell Canada, CA
 | Canada - NB        |    0.0000 |
 | Canada - NS        |    0.0000 |
 +--------------------+-----------+
+
 local> scan www.google.com -p 1-500
 +----------+------+--------+-------------+
 | PROTOCOL | PORT | STATUS | DESCRIPTION |
@@ -71,6 +73,7 @@ local> scan www.google.com -p 1-500
 | TCP      |  443 | Open   |             |
 +----------+------+--------+-------------+
 Scan done: 2 opened port(s) found in 5.605 seconds
+
 lg/telia/los angeles> bgp 8.8.8.0/24
 Telia Carrier Looking Glass - show route protocol bgp 8.8.8.0/24 table inet.0
 
@@ -147,6 +150,43 @@ Network LAN Discovery
 | 192.168.0.105 | 40:b8:9a:60:55:9e | NA   | en0       | Hon Hai Precision Ind.         |
 | 224.0.0.251   | 1:0:5e:0:0:fb     | NA   | en0       | NA                             |
 +---------------+-------------------+------+-----------+--------------------------------+
+
+local> dump -d
++---------+-------------------+--------+-------+-----------+-----------+--------------+----------+
+|  NAME   |        MAC        | STATUS |  MTU  | MULTICAST | BROADCAST | POINTTOPOINT | LOOPBACK |
++---------+-------------------+--------+-------+-----------+-----------+--------------+----------+
+| lo0     |                   | UP     | 16384 | ✓         |           |              | ✓        |
+| gif0    |                   | DOWN   |  1280 | ✓         |           | ✓            |          |
+| stf0    |                   | DOWN   |  1280 |           |           |              |          |
+| en0     | ac:bc:32:b4:33:23 | UP     |  1500 | ✓         | ✓         |              |          |
+| en1     | 4a:00:03:9c:8d:60 | UP     |  1500 |           | ✓         |              |          |
+| en2     | 4a:00:03:9c:8d:61 | UP     |  1500 |           | ✓         |              |          |
+| p2p0    | 0e:bc:32:b4:33:23 | UP     |  2304 | ✓         | ✓         |              |          |
+| awdl0   | 16:fe:c4:ab:2a:f9 | UP     |  1484 | ✓         | ✓         |              |          |
+| bridge0 | ae:bc:32:4b:10:00 | UP     |  1500 | ✓         | ✓         |              |          |
+| gpd0    | 02:50:41:00:01:01 | DOWN   |  1400 | ✓         | ✓         |              |          |
+| utun0   |                   | UP     |  1500 | ✓         |           | ✓            |          |
++---------+-------------------+--------+-------+-----------+-----------+--------------+----------+
+
+local> whois 8.8.8.8
++------------+-------+--------------------------+
+|   PREFIX   |  ASN  |          HOLDER          |
++------------+-------+--------------------------+
+| 8.8.8.0/24 | 15169 | GOOGLE - Google Inc., US |
++------------+-------+--------------------------+
+
+local> dump 
+20:29:36.415 IPv4/TCP  ec2-52-73-80-145.compute-1.amazonaws.com.:443(https) > 192.168.0.104:61479 [P.], win 166, len: 33
+20:29:36.416 IPv4/TCP  192.168.0.104:61479 > ec2-52-73-80-145.compute-1.amazonaws.com.:443(https) [.], win 4094, len: 0
+20:29:36.417 IPv4/TCP  192.168.0.104:61479 > ec2-52-73-80-145.compute-1.amazonaws.com.:443(https) [P.], win 4096, len: 37
+20:29:36.977 IPv4/UDP  192.168.0.104:62733 > 192.168.0.1:53(domain) , len: 0
+20:29:37.537 IPv4/TCP  ec2-54-86-120-119.compute-1.amazonaws.com.:443(https) > 192.168.0.104:61302 [.], win 124, len: 0
+20:29:38.125 IPv4/TCP  192.168.0.104:61304 > ec2-52-23-213-161.compute-1.amazonaws.com.:443(https) [P.], win 4096, len: 85
+20:29:38.126 IPv4/TCP  ec2-52-23-213-161.compute-1.amazonaws.com.:443(https) > 192.168.0.104:61304 [.], win 1048, len: 0
+20:29:38.760 IPv4/TCP  ec2-54-165-12-100.compute-1.amazonaws.com.:443(https) > 192.168.0.104:61296 [.], win 2085, len: 0
+20:29:39.263 IPv4/ICMP 192.168.0.104 > ir1.fp.vip.ne1.yahoo.com.: EchoRequest id 20859, seq 27196, len: 56
+20:29:39.265 IPv4/UDP  192.168.0.1:53(domain) > 192.168.0.104:62733 , len: 0
+
 ```
 
 ## Contribute 
