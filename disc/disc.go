@@ -2,9 +2,9 @@
 package disc
 
 import (
+	"bufio"
 	"encoding/csv"
 	"fmt"
-	"github.com/olekukonko/tablewriter"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -14,6 +14,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/olekukonko/tablewriter"
 
 	"github.com/mehrdadrad/mylg/cli"
 )
@@ -42,7 +44,14 @@ type disc struct {
 
 // New creates new discovery object
 func New(args string) *disc {
-	key, _ := cli.Flag(args)
+	key, flag := cli.Flag(args)
+
+	// help
+	if _, ok := flag["help"]; ok {
+		help()
+		return nil
+	}
+
 	return &disc{
 		IsMac: IsMac(),
 		OUI:   make(map[string]string, 25000),
@@ -132,8 +141,34 @@ func StrTobyte16(s string) [16]byte {
 func (a *disc) GetARPTable() error {
 	if a.IsMac {
 		return a.GetMACOSARPTable()
+	} else {
+		return a.GetLinuxARPTable()
 	}
 	return fmt.Errorf("")
+}
+
+// GetLinuxARPTable gets Linux ARP table
+func (a *disc) GetLinuxARPTable() error {
+	var host string
+	file, err := os.Open("/proc/net/arp")
+	if err != nil {
+		return err
+	}
+	s := bufio.NewScanner(file)
+	s.Scan() // skip description
+	for s.Scan() {
+		fields := strings.Fields(s.Text())
+		hosts, _ := net.LookupAddr(fields[0])
+
+		if len(hosts) == 0 {
+			host = "NA"
+		} else {
+			host = hosts[0]
+		}
+
+		a.Table = append(a.Table, ARP{IP: fields[0], Host: host, MAC: fields[3], Interface: fields[5]})
+	}
+	return nil
 }
 
 // GetMACOSARPTable gets Mac OS X ARP table
@@ -263,7 +298,11 @@ func (a *disc) PrintPretty() {
 
 		// OUI
 		if name, ok := a.OUI[strings.ToUpper(strings.Replace(arp.MAC, ":", "", -1))[:6]]; ok {
-			orgName = name
+			if len(name) > 25 {
+				orgName = name[:25] + "..."
+			} else {
+				orgName = name
+			}
 		} else {
 			orgName = "NA"
 		}
@@ -306,8 +345,13 @@ func search(data, key string) bool {
 // help shows disc help
 func help() {
 	fmt.Println(`
+    Network LAN Discovery	
     usage:
+          disc [search keyword]
+    Example:
           disc
-
+          disc 5c:a:5b:aa:4a:99
+          disc apple
+          disc 192.168.0.10		  
 	`)
 }
