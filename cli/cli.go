@@ -28,6 +28,7 @@ const usage = `Usage:
 	hping                       Ping through HTTP/HTTPS w/ GET/HEAD methods
 	scan                        scan tcp ports (you can provide range >scan host minport maxport)
 	dump                        prints out a description of the contents of packets on a network interface
+	disc                        discover all the devices on a LAN                
 	peering                     peering information (provides by peeringdb.com)
 	web                         web dashboard - opens dashboard at your default browser
 	`
@@ -65,6 +66,7 @@ func Init(prompt, version string) *Readline {
 			readline.PcItem("whois"),
 			readline.PcItem("scan"),
 			readline.PcItem("dump"),
+			readline.PcItem("disc"),
 			readline.PcItem("peering"),
 			readline.PcItem("help"),
 			readline.PcItem("web"),
@@ -247,7 +249,7 @@ func checkUpdate(version string) {
 		return
 	}
 	if version != appCtl.Version {
-		fmt.Printf("New version is available (v%s) mylg.io/download\n", appCtl.Version)
+		fmt.Printf("New version is available (v%s) at http://mylg.io/download\n", appCtl.Version)
 	}
 }
 
