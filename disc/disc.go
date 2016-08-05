@@ -14,6 +14,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/mehrdadrad/mylg/cli"
 )
 
 const (
@@ -26,6 +28,7 @@ type ARP struct {
 	IP        string
 	MAC       string
 	Interface string
+	Host      string
 }
 
 // disc holds all discovery information
@@ -34,11 +37,17 @@ type disc struct {
 	IPs   []string
 	OUI   map[string]string
 	IsMac bool
+	SKey  string
 }
 
 // New creates new discovery object
-func New() *disc {
-	return &disc{IsMac: IsMac(), OUI: make(map[string]string, 25000)}
+func New(args string) *disc {
+	key, _ := cli.Flag(args)
+	return &disc{
+		IsMac: IsMac(),
+		OUI:   make(map[string]string, 25000),
+		SKey:  key,
+	}
 }
 
 // WalkIP tries to salk through subnet as generator
@@ -129,6 +138,7 @@ func (a *disc) GetARPTable() error {
 
 // GetMACOSARPTable gets Mac OS X ARP table
 func (a *disc) GetMACOSARPTable() error {
+	var host string
 	cmd := exec.Command("arp", "-an")
 	outBytes, err := cmd.Output()
 	if err != nil {
@@ -143,7 +153,15 @@ func (a *disc) GetMACOSARPTable() error {
 		if fields[3] != "(incomplete)" {
 			fields[1] = strings.Trim(fields[1], ")")
 			fields[1] = strings.Trim(fields[1], "(")
-			a.Table = append(a.Table, ARP{IP: fields[1], MAC: fields[3], Interface: fields[5]})
+			hosts, _ := net.LookupAddr(fields[1])
+
+			if len(hosts) == 0 {
+				host = "NA"
+			} else {
+				host = hosts[0]
+			}
+
+			a.Table = append(a.Table, ARP{IP: fields[1], Host: host, MAC: fields[3], Interface: fields[5]})
 		}
 	}
 	return nil
@@ -235,24 +253,36 @@ func cache(r string, b []byte) (string, bool) {
 
 // PrintPretty prints ARP table
 func (a *disc) PrintPretty() {
-	var orgName string
+	var (
+		orgName string
+		counter = 0
+	)
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"IP", "MAC", "Host", "Interface", "Organization Name"})
 	for _, arp := range a.Table {
-		host, _ := net.LookupAddr(arp.IP)
+
+		// OUI
 		if name, ok := a.OUI[strings.ToUpper(strings.Replace(arp.MAC, ":", "", -1))[:6]]; ok {
 			orgName = name
 		} else {
 			orgName = "NA"
 		}
 
-		if len(host) == 0 {
-			table.Append([]string{arp.IP, arp.MAC, "NA", arp.Interface, orgName})
-		} else {
-			table.Append([]string{arp.IP, arp.MAC, host[0], arp.Interface, orgName})
+		// Search
+		sHost := search(arp.Host, a.SKey)
+		sARP := search(arp.IP, a.SKey)
+		sMAC := search(arp.MAC, a.SKey)
+		sOrg := search(orgName, a.SKey)
+
+		if !sHost && !sARP && !sMAC && !sOrg {
+			continue
 		}
+
+		table.Append([]string{arp.IP, arp.MAC, arp.Host, arp.Interface, orgName})
+		counter++
 	}
 	table.Render()
+	println(counter, "host has been found")
 }
 
 // IsMac checks OS
@@ -261,4 +291,23 @@ func IsMac() bool {
 		return false
 	}
 	return true
+}
+
+// search tries to find key at data
+func search(data, key string) bool {
+	data = strings.ToLower(data)
+	key = strings.ToLower(key)
+	if strings.Contains(data, key) {
+		return true
+	}
+	return false
+}
+
+// help shows disc help
+func help() {
+	fmt.Println(`
+    usage:
+          disc
+
+	`)
 }
