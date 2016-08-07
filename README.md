@@ -202,6 +202,27 @@ local> dump tcp and port 443 -c 10
 local> dump !udp -w /home/user1/mypcap -c 100000
 
 ```
+## Build
+It can be built for Linux and Darwin. there is libpcap dependency:
+```
+- LINUX
+apt-get install libpcap-dev
+- OSX
+brew install libpcap
+```
+
+Given that the Go Language compiler is installed, you can build and run:
+
+```
+git clone https://github.com/mehrdadrad/mylg.git
+cd mylg
+go get
+go build mylg
+```
+
+## Licence
+This project is licensed under MIT license. Please read the LICENSE file.
+
 
 ## Contribute 
 Welcomes any kind of contribution, please follow the next steps:
