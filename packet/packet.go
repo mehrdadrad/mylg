@@ -25,6 +25,7 @@ import (
 type Packet struct {
 	// packet layers data
 	Eth    *layers.Ethernet
+	ARP    *layers.ARP
 	IPv4   *layers.IPv4
 	IPv6   *layers.IPv6
 	TCP    *layers.TCP
@@ -170,10 +171,17 @@ func (p *Packet) PrintPretty() {
 	case layers.EthernetTypeIPv6:
 		p.PrintIPv6()
 	case layers.EthernetTypeARP:
-		// todo
+		//p.PrintARP()
+		//todo
 	default:
 		// todo
 	}
+}
+
+// PrintARP prints ARP header
+func (p *Packet) PrintARP() {
+	log.Printf("%s > %s",
+		p.ARP.SourceHwAddress, p.ARP.DstHwAddress)
 }
 
 // PrintIPv4 prints IPv4 packets
@@ -245,52 +253,31 @@ func (writer logWriter) Write(bytes []byte) (int, error) {
 	return fmt.Printf("%s %s", time.Now().Format("15:04:05.000"), string(bytes))
 }
 
-// ParsePacketLayers decodes layers
+// ParsePacketLayers decodes layers (Lazy Decoding)
 func ParsePacketLayers(packet gopacket.Packet) *Packet {
 	var p Packet
-	// Ethernet
-	ethernetLayer := packet.Layer(layers.LayerTypeEthernet)
-	if ethernetLayer != nil {
-		p.Eth, _ = ethernetLayer.(*layers.Ethernet)
-	}
-
-	// IP Address V4
-	ipLayer := packet.Layer(layers.LayerTypeIPv4)
-	if ipLayer != nil {
-		p.IPv4, _ = ipLayer.(*layers.IPv4)
-		p.SrcHost = lookup(p.IPv4.SrcIP)
-		p.DstHost = lookup(p.IPv4.DstIP)
-	} else {
-		// IP Address V6
-		ipLayer := packet.Layer(layers.LayerTypeIPv6)
-		if ipLayer != nil {
-			p.IPv6, _ = ipLayer.(*layers.IPv6)
+	for _, l := range packet.Layers() {
+		switch l.LayerType() {
+		case layers.LayerTypeEthernet:
+			p.Eth, _ = l.(*layers.Ethernet)
+		case layers.LayerTypeARP:
+			p.ARP, _ = l.(*layers.ARP)
+		case layers.LayerTypeIPv4:
+			p.IPv4, _ = l.(*layers.IPv4)
+			p.SrcHost = lookup(p.IPv4.SrcIP)
+			p.DstHost = lookup(p.IPv4.DstIP)
+		case layers.LayerTypeIPv6:
+			p.IPv6, _ = l.(*layers.IPv6)
 			p.SrcHost = lookup(p.IPv6.SrcIP)
 			p.DstHost = lookup(p.IPv6.DstIP)
-		}
-	}
-
-	// TCP
-	tcpLayer := packet.Layer(layers.LayerTypeTCP)
-	if tcpLayer != nil {
-		p.TCP, _ = tcpLayer.(*layers.TCP)
-	} else {
-		// UDP
-		udpLayer := packet.Layer(layers.LayerTypeUDP)
-		if udpLayer != nil {
-			p.UDP, _ = udpLayer.(*layers.UDP)
-		}
-	}
-
-	// ICMPv4
-	icmpLayer := packet.Layer(layers.LayerTypeICMPv4)
-	if icmpLayer != nil {
-		p.ICMPv4, _ = icmpLayer.(*layers.ICMPv4)
-	} else {
-		// ICMPv6
-		icmpv6Layer := packet.Layer(layers.LayerTypeICMPv6)
-		if icmpv6Layer != nil {
-			p.ICMPv6, _ = icmpv6Layer.(*layers.ICMPv6)
+		case layers.LayerTypeICMPv4:
+			p.ICMPv4, _ = l.(*layers.ICMPv4)
+		case layers.LayerTypeICMPv6:
+			p.ICMPv6, _ = l.(*layers.ICMPv6)
+		case layers.LayerTypeTCP:
+			p.TCP, _ = l.(*layers.TCP)
+		case layers.LayerTypeUDP:
+			p.UDP, _ = l.(*layers.UDP)
 		}
 	}
 
