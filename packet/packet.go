@@ -171,8 +171,7 @@ func (p *Packet) PrintPretty() {
 	case layers.EthernetTypeIPv6:
 		p.PrintIPv6()
 	case layers.EthernetTypeARP:
-		//p.PrintARP()
-		//todo
+		p.PrintARP()
 	default:
 		// todo
 	}
@@ -180,8 +179,10 @@ func (p *Packet) PrintPretty() {
 
 // PrintARP prints ARP header
 func (p *Packet) PrintARP() {
-	log.Printf("%s > %s",
-		p.ARP.SourceHwAddress, p.ARP.DstHwAddress)
+	log.Printf("%s %s > %s",
+		czStr("ARP      ", color.FgWhite, color.BgBlue),
+		net.HardwareAddr(p.ARP.SourceHwAddress),
+		net.HardwareAddr(p.ARP.DstHwAddress))
 }
 
 // PrintIPv4 prints IPv4 packets
@@ -209,22 +210,6 @@ func (p *Packet) PrintIPv4() {
 	}
 }
 
-// flags returns flags string except ack
-func (p *Packet) flagsString() string {
-	var (
-		r     []string
-		flags = []bool{p.TCP.FIN, p.TCP.SYN, p.TCP.RST, p.TCP.PSH, p.TCP.URG, p.TCP.ECE, p.TCP.NS}
-		sign  = "FSRPUECN"
-	)
-	for i, flag := range flags {
-		if flag {
-			r = append(r, string(sign[i]))
-		}
-	}
-	r = append(r, ".")
-	return strings.Join(r, "")
-}
-
 // PrintIPv6 prints IPv6 packets
 func (p *Packet) PrintIPv6() {
 
@@ -247,6 +232,22 @@ func (p *Packet) PrintIPv6() {
 			src, dst, p.ICMPv6.TypeCode.String(), len(p.Payload))
 	}
 
+}
+
+// flags returns flags string except ack
+func (p *Packet) flagsString() string {
+	var (
+		r     []string
+		flags = []bool{p.TCP.FIN, p.TCP.SYN, p.TCP.RST, p.TCP.PSH, p.TCP.URG, p.TCP.ECE, p.TCP.NS}
+		sign  = "FSRPUECN"
+	)
+	for i, flag := range flags {
+		if flag {
+			r = append(r, string(sign[i]))
+		}
+	}
+	r = append(r, ".")
+	return strings.Join(r, "")
 }
 
 func (writer logWriter) Write(bytes []byte) (int, error) {
