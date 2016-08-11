@@ -179,10 +179,35 @@ func (p *Packet) PrintPretty() {
 
 // PrintARP prints ARP header
 func (p *Packet) PrintARP() {
-	log.Printf("%s %s > %s",
-		czStr("ARP      ", color.FgWhite, color.BgBlue),
-		net.HardwareAddr(p.ARP.SourceHwAddress),
-		net.HardwareAddr(p.ARP.DstHwAddress))
+	var (
+		operation = "ARP/Reply"
+		bgColor   = color.BgBlue
+		srcAddr   = p.ARP.SourceProtAddress
+		dstAddr   = p.ARP.DstProtAddress
+		dstIP     net.IP
+		srcIP     net.IP
+	)
+	if p.ARP.Protocol == layers.EthernetTypeIPv4 {
+		srcIP = net.IPv4(srcAddr[0], srcAddr[1], srcAddr[2], srcAddr[3])
+		dstIP = net.IPv4(dstAddr[0], dstAddr[1], dstAddr[2], dstAddr[3])
+	}
+
+	if p.ARP.Operation == layers.ARPRequest {
+		operation = "ARP/Req. "
+		bgColor = color.BgHiBlue
+		log.Printf("%s %s who-has %s tell %s (%s)",
+			czStr(operation, color.FgWhite, bgColor),
+			p.ARP.Protocol,
+			dstIP.String(),
+			srcIP.String(),
+			net.HardwareAddr(p.ARP.SourceHwAddress))
+	} else {
+		log.Printf("%s %s %s is-at %s",
+			czStr(operation, color.FgWhite, bgColor),
+			p.ARP.Protocol,
+			srcIP.String(),
+			net.HardwareAddr(p.ARP.SourceHwAddress))
+	}
 }
 
 // PrintIPv4 prints IPv4 packets
@@ -382,16 +407,16 @@ func help() {
 	fmt.Println(`
     usage:
           dump [-c count][-i interface][-w filename][-d][-nc]
-    options:		  
+    options:
           -c count       Stop after receiving count packets (default: 1M)
           -i interface   Listen on specified interface (default: first non-loopback)
-          -w filename    Write packets to a pcap format file            
-          -d             Print list of available interfaces 		  
+          -w filename    Write packets to a pcap format file
+          -d             Print list of available interfaces
           -nc            Shows dumps without color
     Example:
           dump tcp and port 443 -c 1000
           dump !udp
           dump -i eth0
-          dump -w /tmp/mypcap		  
+          dump -w /tmp/mypcap
 	`)
 }
