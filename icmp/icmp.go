@@ -10,6 +10,8 @@ import (
 	"log"
 	"math/rand"
 	"net"
+	"os"
+	"os/signal"
 	"sync"
 	"syscall"
 	"time"
@@ -284,6 +286,38 @@ func (p *Ping) Ping(out chan Response) {
 		log.Println("error")
 	}
 
+}
+
+// PrintPretty prints out the result pretty format
+func (p *Ping) PrintPretty() {
+	var (
+		loop  = true
+		sigCh = make(chan os.Signal, 1)
+		pFmt  = "%d bytes from %s icmp_seq=%d time=%f ms"
+		resp  = p.Run()
+	)
+
+	// capture interrupt w/ s channel
+	signal.Notify(sigCh, os.Interrupt)
+	defer signal.Stop(sigCh)
+
+	for loop {
+		select {
+		case r, ok := <-resp:
+			if !ok {
+				loop = false
+				break
+			}
+			if r.Error != nil {
+				println(r.Error.Error())
+				continue
+			}
+			msg := fmt.Sprintf(pFmt, r.Size, r.Addr, r.Sequence, r.RTT)
+			println(msg)
+		case <-sigCh:
+			loop = false
+		}
+	}
 }
 
 // getTimeStamp
