@@ -2,6 +2,7 @@
 package packet
 
 import (
+	"encoding/hex"
 	"fmt"
 	"log"
 	"net"
@@ -35,7 +36,7 @@ type Packet struct {
 
 	SrcHost []string
 	DstHost []string
-	Payload string
+	Payload []byte
 	// info
 	device string
 }
@@ -53,6 +54,12 @@ type Options struct {
 	d bool
 	// write pcap
 	w string
+	// print w/o timestamp
+	t bool
+	// dump payload
+	x bool
+	// search at payload
+	s string
 }
 
 var (
@@ -84,7 +91,10 @@ func NewPacket(args string) (*Packet, error) {
 		nc: cli.SetFlag(flag, "nc", false).(bool),
 		c:  cli.SetFlag(flag, "c", 1000000).(int),
 		d:  cli.SetFlag(flag, "d", false).(bool),
+		x:  cli.SetFlag(flag, "x", false).(bool),
+		t:  cli.SetFlag(flag, "t", false).(bool),
 		w:  cli.SetFlag(flag, "w", "").(string),
+		s:  cli.SetFlag(flag, "s", "").(string),
 	}
 
 	if options.d {
@@ -187,9 +197,18 @@ func (p *Packet) PrintARP() {
 		dstIP     net.IP
 		srcIP     net.IP
 	)
-	if p.ARP.Protocol == layers.EthernetTypeIPv4 {
+
+	// stop printing
+	if p.isSilent() {
+		return
+	}
+
+	switch p.ARP.Protocol {
+	case layers.EthernetTypeIPv4:
 		srcIP = net.IPv4(srcAddr[0], srcAddr[1], srcAddr[2], srcAddr[3])
 		dstIP = net.IPv4(dstAddr[0], dstAddr[1], dstAddr[2], dstAddr[3])
+	case layers.EthernetTypeIPv6:
+		// todo
 	}
 
 	if p.ARP.Operation == layers.ARPRequest {
@@ -212,6 +231,10 @@ func (p *Packet) PrintARP() {
 
 // PrintIPv4 prints IPv4 packets
 func (p *Packet) PrintIPv4() {
+	// stop printing
+	if p.isSilent() {
+		return
+	}
 
 	src := czIP(p.IPv4.SrcIP, p.SrcHost, color.Bold)
 	dst := czIP(p.IPv4.DstIP, p.DstHost, color.Bold)
@@ -233,10 +256,19 @@ func (p *Packet) PrintIPv4() {
 			src, dst, p.ICMPv4.TypeCode.String(), p.ICMPv4.Id,
 			p.ICMPv4.Seq, len(p.Payload))
 	}
+
+	// dump payload in hex format
+	if options.x {
+		fmt.Println(hex.Dump(p.Payload))
+	}
 }
 
 // PrintIPv6 prints IPv6 packets
 func (p *Packet) PrintIPv6() {
+	// stop printing
+	if p.isSilent() {
+		return
+	}
 
 	src := czIP(p.IPv6.SrcIP, p.SrcHost, color.Bold)
 	dst := czIP(p.IPv6.DstIP, p.DstHost, color.Bold)
@@ -257,6 +289,21 @@ func (p *Packet) PrintIPv6() {
 			src, dst, p.ICMPv6.TypeCode.String(), len(p.Payload))
 	}
 
+	// dump payload in hex format
+	if options.x {
+		fmt.Println(hex.Dump(p.Payload))
+	}
+}
+func (p *Packet) isSilent() bool {
+	if options.s == "" {
+		return false
+	}
+	payload := strings.ToLower(string(p.Payload))
+	keyword := strings.ToLower(options.s)
+	if !strings.Contains(payload, keyword) {
+		return true
+	}
+	return false
 }
 
 // flags returns flags string except ack
@@ -276,7 +323,11 @@ func (p *Packet) flagsString() string {
 }
 
 func (writer logWriter) Write(bytes []byte) (int, error) {
-	return fmt.Printf("%s %s", time.Now().Format("15:04:05.000"), string(bytes))
+	if !options.t {
+		return fmt.Printf("%s %s", time.Now().Format("15:04:05.000"), string(bytes))
+	} else {
+		return fmt.Printf("%s %s", time.Now().Format(""), string(bytes))
+	}
 }
 
 // ParsePacketLayers decodes layers (Lazy Decoding)
@@ -310,7 +361,7 @@ func ParsePacketLayers(packet gopacket.Packet) *Packet {
 	// Application
 	applicationLayer := packet.ApplicationLayer()
 	if applicationLayer != nil {
-		p.Payload = string(applicationLayer.Payload())
+		p.Payload = applicationLayer.Payload()
 	}
 
 	// Check for errors
@@ -406,17 +457,21 @@ func printDev() {
 func help() {
 	fmt.Println(`
     usage:
-          dump [-c count][-i interface][-w filename][-d][-nc]
+          dump [-c count][-i interface][-w filename][-s keyword][-d][-x][-t][-nc]
     options:
           -c count       Stop after receiving count packets (default: 1M)
           -i interface   Listen on specified interface (default: first non-loopback)
           -w filename    Write packets to a pcap format file
           -d             Print list of available interfaces
+          -t             Print without timestamp on each dump line.
+          -x             Dump payload in hex format
+          -s keyword     Search keyword at payload
           -nc            Shows dumps without color
     Example:
           dump tcp and port 443 -c 1000
           dump !udp
           dump -i eth0
           dump -w /tmp/mypcap
-	`)
+          dump tcp -s verisign -x			
+  `)
 }
