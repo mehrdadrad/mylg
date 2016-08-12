@@ -44,6 +44,7 @@ type Ping struct {
 	isV6Avail bool
 	network   string
 	source    string
+	timeout   int
 	MaxRTT    time.Duration
 	mu        sync.RWMutex
 }
@@ -79,6 +80,7 @@ func NewPing(args string) (*Ping, error) {
 		seq:       -1,
 		pSize:     64,
 		count:     cli.SetFlag(flag, "c", 4).(int),
+		timeout:   cli.SetFlag(flag, "t", 1500).(int),
 		isV4Avail: false,
 		isV6Avail: false,
 		network:   "ip",
@@ -162,7 +164,8 @@ func (p *Ping) listen(network string) *icmp.PacketConn {
 func (p *Ping) recv(conn *icmp.PacketConn, rcvdChan chan<- *packet) {
 	var err error
 	bytes := make([]byte, 1500)
-	conn.SetReadDeadline(time.Now().Add(time.Millisecond * 500))
+	timeout := time.Duration(p.timeout) * time.Millisecond
+	conn.SetReadDeadline(time.Now().Add(timeout))
 	n, dest, err := conn.ReadFrom(bytes)
 	if err != nil {
 		if neterr, ok := err.(*net.OpError); ok {
@@ -331,12 +334,12 @@ func getTimeStamp(m []byte) int64 {
 
 // help represents ping help
 func help() {
-	println(`
+	fmt.Println(`
     usage:
           ping IP address / domain name
     options:		  
           -c count       Send 'count' requests (default: 4)
- 
+          -t timeout     Specifiy a timeout in milliseconds (default: 1500) 
     Example:
           ping 8.8.8.8
           ping 8.8.8.8 -c 10
