@@ -12,6 +12,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"regexp"
 	"sync"
 	"syscall"
 	"time"
@@ -44,7 +45,8 @@ type Ping struct {
 	isV6Avail bool
 	network   string
 	source    string
-	timeout   int
+	timeout   time.Duration
+	interval  time.Duration
 	MaxRTT    time.Duration
 	mu        sync.RWMutex
 }
@@ -61,18 +63,34 @@ type Response struct {
 
 // NewPing creates a new ping object
 func NewPing(args string) (*Ping, error) {
+	var (
+		timeout  time.Duration
+		interval time.Duration
+		err      error
+	)
 	target, flag := cli.Flag(args)
 
 	// show help
 	if _, ok := flag["help"]; ok || len(target) < 3 {
 		help()
-		return nil, fmt.Errorf("help showed up")
+		return nil, nil
 	}
-
+	// resolve host
 	ra, err := net.ResolveIPAddr("ip", target)
 	if err != nil {
-		println("cannot resolve", args, ": Unknown host")
 		return nil, err
+	}
+	// timeout
+	timeoutStr := cli.SetFlag(flag, "t", "2s").(string)
+	timeoutStr = NormalizeDuration(timeoutStr)
+	if timeout, err = time.ParseDuration(timeoutStr); err != nil {
+		return nil, fmt.Errorf("timeout options is not valid")
+	}
+	// interval
+	intervalStr := cli.SetFlag(flag, "i", "1s").(string)
+	intervalStr = NormalizeDuration(intervalStr)
+	if interval, err = time.ParseDuration(intervalStr); err != nil {
+		return nil, fmt.Errorf("interval options is not valid")
 	}
 
 	p := Ping{
@@ -80,7 +98,8 @@ func NewPing(args string) (*Ping, error) {
 		seq:       -1,
 		pSize:     64,
 		count:     cli.SetFlag(flag, "c", 4).(int),
-		timeout:   cli.SetFlag(flag, "t", 1500).(int),
+		timeout:   timeout,
+		interval:  interval,
 		isV4Avail: false,
 		isV6Avail: false,
 		network:   "ip",
@@ -98,6 +117,7 @@ func (p *Ping) Run() chan Response {
 	go func() {
 		for n := 0; n < p.count; n++ {
 			p.Ping(r)
+			time.Sleep(p.interval)
 		}
 		close(r)
 	}()
@@ -164,8 +184,7 @@ func (p *Ping) listen(network string) *icmp.PacketConn {
 func (p *Ping) recv(conn *icmp.PacketConn, rcvdChan chan<- *packet) {
 	var err error
 	bytes := make([]byte, 1500)
-	timeout := time.Duration(p.timeout) * time.Millisecond
-	conn.SetReadDeadline(time.Now().Add(timeout))
+	conn.SetReadDeadline(time.Now().Add(p.timeout))
 	n, dest, err := conn.ReadFrom(bytes)
 	if err != nil {
 		if neterr, ok := err.(*net.OpError); ok {
@@ -332,6 +351,14 @@ func getTimeStamp(m []byte) int64 {
 	return ts
 }
 
+// NormalizeDuration adds default unit (seconds) as needed
+func NormalizeDuration(d string) string {
+	if match, _ := regexp.MatchString(`^\d+\.{0,1}\d*$`, d); match {
+		return d + "s"
+	}
+	return d
+}
+
 // help represents ping help
 func help() {
 	fmt.Println(`
@@ -339,7 +366,8 @@ func help() {
           ping IP address / domain name
     options:		  
           -c count       Send 'count' requests (default: 4)
-          -t timeout     Specifiy a timeout in milliseconds (default: 1500) 
+          -t timeout     Specifiy a timeout in format "ms", "s", "m" (default: 2s) 
+          -i interval    Specifiy a interval in format "ms", "s", "m" (default: 1s) 
     Example:
           ping 8.8.8.8
           ping 8.8.8.8 -c 10
