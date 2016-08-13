@@ -214,6 +214,11 @@ local> dump -s http -x
 
 local> dump !udp -w /home/user1/mypcap -c 100000
 
+local> ping google.com -6
+64 bytes from 2607:f8b0:400b:80a::200e icmp_seq=0 time=23.193988 ms
+64 bytes from 2607:f8b0:400b:80a::200e icmp_seq=1 time=21.265492 ms
+64 bytes from 2607:f8b0:400b:80a::200e icmp_seq=2 time=24.521306 ms
+64 bytes from 2607:f8b0:400b:80a::200e icmp_seq=3 time=25.313072 ms
 ```
 ## Build
 It can be built for Linux and Darwin. there is libpcap dependency:
