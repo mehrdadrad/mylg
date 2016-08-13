@@ -43,12 +43,13 @@ type Ping struct {
 	addr      *net.IPAddr
 	isV4Avail bool
 	isV6Avail bool
+	forceV4   bool
+	forcev6   bool
 	network   string
 	source    string
 	timeout   time.Duration
 	interval  time.Duration
 	MaxRTT    time.Duration
-	mu        sync.RWMutex
 }
 
 // Response represent ping response
@@ -76,7 +77,7 @@ func NewPing(args string) (*Ping, error) {
 		return nil, nil
 	}
 	// resolve host
-	ra, err := net.ResolveIPAddr("ip", target)
+	ips, err := net.LookupIP(target)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +108,10 @@ func NewPing(args string) (*Ping, error) {
 		MaxRTT:    time.Second,
 	}
 
-	p.SetIP(ra.String())
+	if err := p.SetIP(ips); err != nil {
+		return nil, err
+	}
+
 	return &p, nil
 }
 
@@ -117,7 +121,9 @@ func (p *Ping) Run() chan Response {
 	go func() {
 		for n := 0; n < p.count; n++ {
 			p.Ping(r)
-			time.Sleep(p.interval)
+			if n != p.count-1 {
+				time.Sleep(p.interval)
+			}
 		}
 		close(r)
 	}()
@@ -149,16 +155,20 @@ func (p *Ping) parseMessage(m *packet) (*ipv4.Header, *icmp.Message, error) {
 }
 
 // SetIP set ip address
-func (p *Ping) SetIP(ipAddr string) {
-	ip := net.ParseIP(ipAddr)
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.addr = &net.IPAddr{IP: ip}
-	if IsIPv4(ip) {
-		p.isV4Avail = true
-	} else {
-		p.isV6Avail = true
+func (p *Ping) SetIP(ips []net.IP) error {
+	for _, ip := range ips {
+		p.addr = &net.IPAddr{IP: ip}
+		if IsIPv4(ip) {
+			p.addr = &net.IPAddr{IP: ip}
+			p.isV4Avail = true
+			return nil
+		} else {
+			p.addr = &net.IPAddr{IP: ip}
+			p.isV6Avail = true
+			return nil
+		}
 	}
+	return fmt.Errorf("there is not  A or AAAA record")
 }
 
 // DelIP removes ip adrress
@@ -290,11 +300,11 @@ func (p *Ping) Ping(out chan Response) {
 
 	switch m.Body.(type) {
 	case *icmp.TimeExceeded:
-		log.Println("time exceeded")
+		out <- Response{Error: fmt.Errorf("time exceeded")}
 	case *icmp.PacketTooBig:
-		log.Println("packet too big")
+		out <- Response{Error: fmt.Errorf("packet too big")}
 	case *icmp.DstUnreach:
-		log.Println("unreachable")
+		out <- Response{Error: fmt.Errorf("destination unreachable")}
 	case *icmp.Echo:
 		rtt := float64(time.Now().UnixNano()-getTimeStamp(rm.bytes)) / 1000000
 		out <- Response{
@@ -305,9 +315,8 @@ func (p *Ping) Ping(out chan Response) {
 			Error:    nil,
 		}
 	default:
-		log.Println("error")
+		out <- Response{Error: fmt.Errorf("ICMP error")}
 	}
-
 }
 
 // PrintPretty prints out the result pretty format
