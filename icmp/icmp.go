@@ -44,7 +44,7 @@ type Ping struct {
 	isV4Avail bool
 	isV6Avail bool
 	forceV4   bool
-	forcev6   bool
+	forceV6   bool
 	network   string
 	source    string
 	timeout   time.Duration
@@ -98,11 +98,13 @@ func NewPing(args string) (*Ping, error) {
 		id:        rand.Intn(0xffff),
 		seq:       -1,
 		pSize:     64,
-		count:     cli.SetFlag(flag, "c", 4).(int),
 		timeout:   timeout,
 		interval:  interval,
 		isV4Avail: false,
 		isV6Avail: false,
+		count:     cli.SetFlag(flag, "c", 4).(int),
+		forceV4:   cli.SetFlag(flag, "4", false).(bool),
+		forceV6:   cli.SetFlag(flag, "6", false).(bool),
 		network:   "ip",
 		source:    "",
 		MaxRTT:    time.Second,
@@ -158,11 +160,11 @@ func (p *Ping) parseMessage(m *packet) (*ipv4.Header, *icmp.Message, error) {
 func (p *Ping) SetIP(ips []net.IP) error {
 	for _, ip := range ips {
 		p.addr = &net.IPAddr{IP: ip}
-		if IsIPv4(ip) {
+		if IsIPv4(ip) && !p.forceV6 {
 			p.addr = &net.IPAddr{IP: ip}
 			p.isV4Avail = true
 			return nil
-		} else {
+		} else if IsIPv6(ip) && !p.forceV4 {
 			p.addr = &net.IPAddr{IP: ip}
 			p.isV6Avail = true
 			return nil
@@ -373,13 +375,16 @@ func help() {
 	fmt.Println(`
     usage:
           ping IP address / domain name
-    options:		  
+    options:
           -c count       Send 'count' requests (default: 4)
-          -t timeout     Specifiy a timeout in format "ms", "s", "m" (default: 2s) 
-          -i interval    Wait interval between sending each packet (default: 1s) 
+          -t timeout     Specifiy a timeout in format "ms", "s", "m" (default: 2s)
+          -i interval    Wait interval between sending each packet (default: 1s)
+          -4             Forces the ping command to use IPv4 (target should be hostname)
+          -6             Forces the ping command to use IPv6 (target should be hostname)
     Example:
           ping 8.8.8.8
           ping 8.8.8.8 -c 10
-          ping mylg.io
+          ping google.com -6
+          ping mylg.io -i 5s
 	`)
 }
