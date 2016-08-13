@@ -367,7 +367,7 @@ func help() {
     options:		  
           -c count       Send 'count' requests (default: 4)
           -t timeout     Specifiy a timeout in format "ms", "s", "m" (default: 2s) 
-          -i interval    Specifiy a interval in format "ms", "s", "m" (default: 1s) 
+          -i interval    Wait interval between sending each packet (default: 1s) 
     Example:
           ping 8.8.8.8
           ping 8.8.8.8 -c 10
