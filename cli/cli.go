@@ -291,13 +291,21 @@ func SetFlag(flag map[string]interface{}, option string, v interface{}) interfac
 		case int:
 			return sValue.(int)
 		case string:
-			return sValue.(string)
+			switch sValue.(type) {
+			case string:
+				return sValue.(string)
+			case int:
+				str := strconv.FormatInt(int64(sValue.(int)), 10)
+				return str
+			case float64:
+				str := strconv.FormatFloat(sValue.(float64), 'f', -1, 64)
+				return str
+			}
 		case bool:
 			return true
 		default:
 			return sValue.(string)
 		}
-	} else {
-		return v
 	}
+	return v
 }
