@@ -302,6 +302,9 @@ func pingLG() {
 func pingLocal() {
 	p, err := icmp.NewPing(args)
 	if err != nil {
+		println(err.Error())
+	}
+	if p == nil {
 		return
 	}
 	p.PrintPretty()
