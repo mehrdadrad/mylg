@@ -298,22 +298,22 @@ func (p *Ping) Ping(out chan Response) {
 	rm := <-rcvdChan
 
 	if rm.err != nil {
-		out <- Response{Error: rm.err}
+		out <- Response{Error: rm.err, Sequence: p.seq}
 		return
 	}
 	_, m, err := p.parseMessage(rm)
 	if err != nil {
-		out <- Response{Error: err}
+		out <- Response{Error: err, Sequence: p.seq}
 		return
 	}
 
 	switch m.Body.(type) {
 	case *icmp.TimeExceeded:
-		out <- Response{Error: fmt.Errorf("time exceeded")}
+		out <- Response{Error: fmt.Errorf("time exceeded"), Sequence: p.seq}
 	case *icmp.PacketTooBig:
-		out <- Response{Error: fmt.Errorf("packet too big")}
+		out <- Response{Error: fmt.Errorf("packet too big"), Sequence: p.seq}
 	case *icmp.DstUnreach:
-		out <- Response{Error: fmt.Errorf("destination unreachable")}
+		out <- Response{Error: fmt.Errorf("destination unreachable"), Sequence: p.seq}
 	case *icmp.Echo:
 		rtt := float64(time.Now().UnixNano()-getTimeStamp(rm.bytes)) / 1000000
 		out <- Response{
@@ -324,7 +324,7 @@ func (p *Ping) Ping(out chan Response) {
 			Error:    nil,
 		}
 	default:
-		out <- Response{Error: fmt.Errorf("ICMP error")}
+		out <- Response{Error: fmt.Errorf("ICMP error"), Sequence: p.seq}
 	}
 }
 
