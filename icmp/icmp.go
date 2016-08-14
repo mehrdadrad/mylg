@@ -331,12 +331,14 @@ func (p *Ping) Ping(out chan Response) {
 // PrintPretty prints out the result pretty format
 func (p *Ping) PrintPretty() {
 	var (
-		loop  = true
-		sigCh = make(chan os.Signal, 1)
-		pFmt  = "%d bytes from %s icmp_seq=%d time=%f ms"
-		eFmt  = "%s icmp_seq=%d"
-		resp  = p.Run()
-		msg   string
+		loop          = true
+		sigCh         = make(chan os.Signal, 1)
+		pFmt          = "%d bytes from %s icmp_seq=%d time=%f ms"
+		eFmt          = "%s icmp_seq=%d"
+		resp          = p.Run()
+		msg           string
+		min, max, avg float64
+		c             = map[string]int{"tx": 0, "err": 0, "pl": 0}
 	)
 
 	// capture interrupt w/ s channel
@@ -351,17 +353,60 @@ func (p *Ping) PrintPretty() {
 				loop = false
 				break
 			}
+			c["tx"]++
 			if r.Error != nil {
+				c["err"]++
 				msg = fmt.Sprintf(eFmt, r.Error.Error(), r.Sequence)
 				println(msg)
 				continue
 			}
+
+			min = Min(r.RTT, min)
+			max = Max(r.RTT, max)
+			avg = Avg(r.RTT, avg)
+
 			msg = fmt.Sprintf(pFmt, r.Size, r.Addr, r.Sequence, r.RTT)
 			println(msg)
 		case <-sigCh:
 			loop = false
 		}
 	}
+
+	// packet loss
+	c["pl"] = c["err"] * 100 / c["tx"]
+
+	fmt.Printf("\n\n--- %s ping statistics ---\n", p.target)
+	fmt.Printf("%d packets transmitted,  %d packets received, %d%% packet loss\n", c["tx"], c["tx"]-c["err"], c["pl"])
+
+	if c["pl"] == 100 {
+		return
+	}
+
+	fmt.Printf("round-trip min/avg/max = %.3f/%.3f/%.3f\n", min, avg, max)
+}
+
+// Max handles maximum delay
+func Max(x, y float64) float64 {
+	if x > y {
+		return x
+	}
+	return y
+}
+
+// Min handles minimum delay
+func Min(x, y float64) float64 {
+	if x < y || y == 0 {
+		return x
+	}
+	return y
+}
+
+// Avg handles average delay
+func Avg(x, y float64) float64 {
+	if y == 0 {
+		return x
+	}
+	return (x + y) / 2
 }
 
 // getTimeStamp
