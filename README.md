@@ -215,6 +215,7 @@ local> dump -s http -x
 local> dump !udp -w /home/user1/mypcap -c 100000
 
 local> ping google.com -6
+PING google.com (2607:f8b0:400b:80a::200e): 56 data bytes
 64 bytes from 2607:f8b0:400b:80a::200e icmp_seq=0 time=23.193988 ms
 64 bytes from 2607:f8b0:400b:80a::200e icmp_seq=1 time=21.265492 ms
 64 bytes from 2607:f8b0:400b:80a::200e icmp_seq=2 time=24.521306 ms
