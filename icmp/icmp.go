@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	"regexp"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -139,7 +140,10 @@ func IsIPv4(ip net.IP) bool {
 
 // IsIPv6 returns true if ip version is v6
 func IsIPv6(ip net.IP) bool {
-	return len(ip) == net.IPv6len
+	if r := strings.Index(ip.String(), ":"); r != -1 {
+		return true
+	}
+	return false
 }
 
 func (p *Ping) parseMessage(m *packet) (*ipv4.Header, *icmp.Message, error) {
@@ -159,7 +163,6 @@ func (p *Ping) parseMessage(m *packet) (*ipv4.Header, *icmp.Message, error) {
 // SetIP set ip address
 func (p *Ping) SetIP(ips []net.IP) error {
 	for _, ip := range ips {
-		p.addr = &net.IPAddr{IP: ip}
 		if IsIPv4(ip) && !p.forceV6 {
 			p.addr = &net.IPAddr{IP: ip}
 			p.isV4Avail = true
@@ -243,7 +246,7 @@ func (p *Ping) send(conn *icmp.PacketConn) {
 		},
 	}).Marshal(nil)
 	if err != nil {
-		println(err)
+		println(err.Error())
 	}
 
 	wg.Add(1)
@@ -251,7 +254,7 @@ func (p *Ping) send(conn *icmp.PacketConn) {
 		defer wg.Done()
 		for {
 			if _, err := conn.WriteTo(bytes, dest); err != nil {
-				println(err)
+				println(err.Error())
 				if neterr, ok := err.(*net.OpError); ok {
 					if neterr.Err == syscall.ENOBUFS {
 						continue
@@ -327,7 +330,9 @@ func (p *Ping) PrintPretty() {
 		loop  = true
 		sigCh = make(chan os.Signal, 1)
 		pFmt  = "%d bytes from %s icmp_seq=%d time=%f ms"
+		eFmt  = "%s icmp_seq=%d"
 		resp  = p.Run()
+		msg   string
 	)
 
 	// capture interrupt w/ s channel
@@ -342,10 +347,11 @@ func (p *Ping) PrintPretty() {
 				break
 			}
 			if r.Error != nil {
-				println(r.Error.Error())
+				msg = fmt.Sprintf(eFmt, r.Error.Error(), r.Sequence)
+				println(msg)
 				continue
 			}
-			msg := fmt.Sprintf(pFmt, r.Size, r.Addr, r.Sequence, r.RTT)
+			msg = fmt.Sprintf(pFmt, r.Size, r.Addr, r.Sequence, r.RTT)
 			println(msg)
 		case <-sigCh:
 			loop = false
