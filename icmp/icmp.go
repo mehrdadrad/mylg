@@ -42,6 +42,8 @@ type Ping struct {
 	pSize     int
 	count     int
 	addr      *net.IPAddr
+	addrs     []net.IP
+	target    string
 	isV4Avail bool
 	isV6Avail bool
 	forceV4   bool
@@ -111,6 +113,8 @@ func NewPing(args string) (*Ping, error) {
 		MaxRTT:    time.Second,
 	}
 
+	p.addrs = ips
+	p.target = target
 	if err := p.SetIP(ips); err != nil {
 		return nil, err
 	}
@@ -339,6 +343,7 @@ func (p *Ping) PrintPretty() {
 	signal.Notify(sigCh, os.Interrupt)
 	defer signal.Stop(sigCh)
 
+	fmt.Printf("PING %s (%s): %d data bytes\n", p.target, p.addr, p.pSize-8)
 	for loop {
 		select {
 		case r, ok := <-resp:
