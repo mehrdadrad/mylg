@@ -264,8 +264,14 @@ func mode() {
 func trace() {
 	switch {
 	case strings.HasPrefix(prompt, "local"):
-		trace := icmp.Trace{}
-		trace.Run(args)
+		trace, err := icmp.NewTrace(args)
+		if err != nil {
+			println(err.Error())
+		}
+		if trace == nil {
+			break
+		}
+		trace.PrintPretty()
 	case strings.HasPrefix(prompt, "lg"):
 		providers[cPName].Set(args, "ipv4")
 		for l := range providers[cPName].Trace() {
