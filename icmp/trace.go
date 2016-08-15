@@ -180,6 +180,7 @@ func (i *Trace) Run(retry int) chan []HopResp {
 			c <- r
 			if r[0].last {
 				close(c)
+				i.Done(fd)
 				break
 			}
 			r = r[:0]
@@ -199,6 +200,9 @@ func (i *Trace) PrintPretty() {
 
 	signal.Notify(sigCh, os.Interrupt)
 	defer signal.Stop(sigCh)
+
+	// header
+	fmt.Printf("trace route to %s (%s), 30 hops max\n", i.host, i.ips[0])
 
 	for loop {
 		select {
@@ -221,17 +225,17 @@ func (i *Trace) PrintPretty() {
 			}
 			// load balance between three routes
 			if r[0].ip != r[1].ip && r[0].ip != r[2].ip && r[1].ip != r[2].ip {
-				fmt.Printf("%-2d %s   %s   %s", counter, fmtHops(r[0:1], 0), fmtHops(r[1:2], 0), fmtHops(r[2:3], 1))
+				fmt.Printf("%-2d %s %s %s", counter, fmtHops(r[0:1], 0), fmtHops(r[1:2], 0), fmtHops(r[2:3], 1))
 				continue
 			}
 			// load balance between two routes
 			if r[0].ip == r[1].ip && r[1].ip != r[2].ip {
-				fmt.Printf("%-2d %s   %s", counter, fmtHops(r[0:2], 0), fmtHops(r[2:3], 1))
+				fmt.Printf("%-2d %s %s", counter, fmtHops(r[0:2], 0), fmtHops(r[2:3], 1))
 				continue
 			}
 			// load balance between two routes
 			if r[0].ip != r[1].ip && r[1].ip == r[2].ip {
-				fmt.Printf("%-2d %s   %s", counter, fmtHops(r[0:1], 0), fmtHops(r[1:3], 1))
+				fmt.Printf("%-2d %s %s", counter, fmtHops(r[0:1], 0), fmtHops(r[1:3], 1))
 				continue
 			}
 			// there is not any load balancing
@@ -245,7 +249,7 @@ func (i *Trace) PrintPretty() {
 	}
 }
 
-func fmtHops(m []HopResp, last int) string {
+func fmtHops(m []HopResp, newLine int) string {
 	var (
 		timeout = false
 		msg     string
@@ -261,11 +265,11 @@ func fmtHops(m []HopResp, last int) string {
 			msg += fmt.Sprintf("%.3f ms ", r.elapsed)
 			timeout = false
 		} else {
-			msg += "*  "
+			msg += "* "
 			timeout = true
 		}
 	}
-	if !timeout || last == 1 {
+	if newLine == 1 {
 		msg += "\n"
 	}
 	return msg
