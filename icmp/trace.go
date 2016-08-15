@@ -46,7 +46,7 @@ func NewTrace(args string) (*Trace, error) {
 	return &Trace{
 		host:    target,
 		ips:     ips,
-		timeout: 1500,
+		timeout: 5000,
 	}, nil
 }
 
@@ -71,7 +71,6 @@ func (i *Trace) Send() error {
 
 	if IsIPv4(i.ips[0]) {
 		var b [4]byte
-		//b := i.ips[0].To4()
 		copy(b[:], i.ips[0].To4())
 		addr := syscall.SockaddrInet4{
 			Port: 33434,
@@ -82,7 +81,6 @@ func (i *Trace) Send() error {
 		}
 	} else if IsIPv6(i.ips[0]) {
 		var b [16]byte
-		//ip := i.ips[0].To16()
 		copy(b[:], i.ips[0].To16())
 		addr := syscall.SockaddrInet6{
 			Port: 33434,
@@ -278,7 +276,7 @@ func helpTrace() {
     usage:
           trace IP address / domain name
     options:
-          -t timeout     Specifiy a timeout in format "ms", "s", "m" (default: 1500ms)
+
     Example:
           trace 8.8.8.8
 	`)
