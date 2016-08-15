@@ -3,23 +3,56 @@ package icmp
 import (
 	"fmt"
 	"net"
+	"os"
+	"os/signal"
+	"sort"
 	"syscall"
 	"time"
+
+	"github.com/mehrdadrad/mylg/cli"
 )
 
 // Trace represents trace properties
 type Trace struct {
 	src     string
-	dest    string
+	host    string
+	ips     []net.IP
 	ttl     int
 	timeout int64
 }
 
-// Init set the basic parameters
-func (i *Trace) Init(dest string, timeout int64) {
-	i.dest = dest
-	i.timeout = timeout
+type HopResp struct {
+	hop     string
+	ip      string
+	elapsed float64
+	last    bool
 }
+
+type MHopResp []HopResp
+
+// NewTrace creates new trace object
+func NewTrace(args string) (*Trace, error) {
+	target, flag := cli.Flag(args)
+
+	// show help
+	if _, ok := flag["help"]; ok || len(target) < 3 {
+		helpTrace()
+		return nil, nil
+	}
+	ips, err := net.LookupIP(target)
+	if err != nil {
+		return nil, err
+	}
+	return &Trace{
+		host:    target,
+		ips:     ips,
+		timeout: 1500,
+	}, nil
+}
+
+func (h MHopResp) Len() int           { return len(h) }
+func (h MHopResp) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h MHopResp) Less(i, j int) bool { return len(h[i].ip) > len(h[j].ip) }
 
 // SetTTL set the IP packat time to live
 func (i *Trace) SetTTL(ttl int) {
@@ -36,15 +69,29 @@ func (i *Trace) Send() error {
 	// Set options
 	syscall.SetsockoptInt(fd, 0x0, syscall.IP_TTL, i.ttl)
 
-	b := net.ParseIP(i.dest).To4()
-	addr := syscall.SockaddrInet4{
-		Port: 33434,
-		Addr: [4]byte{b[0], b[1], b[2], b[3]},
+	if IsIPv4(i.ips[0]) {
+		var b [4]byte
+		//b := i.ips[0].To4()
+		copy(b[:], i.ips[0].To4())
+		addr := syscall.SockaddrInet4{
+			Port: 33434,
+			Addr: b,
+		}
+		if err := syscall.Sendto(fd, []byte{0x0}, 0, &addr); err != nil {
+			return err
+		}
+	} else if IsIPv6(i.ips[0]) {
+		var b [16]byte
+		//ip := i.ips[0].To16()
+		copy(b[:], i.ips[0].To16())
+		addr := syscall.SockaddrInet6{
+			Port: 33434,
+			Addr: b,
+		}
+		if err := syscall.Sendto(fd, []byte{0x0}, 0, &addr); err != nil {
+			return err
+		}
 	}
-	if err := syscall.Sendto(fd, []byte{0x0}, 0, &addr); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -93,49 +140,147 @@ func (i *Trace) Done(fd int) {
 	syscall.Close(fd)
 }
 
-// Run provides trace based on the other methods
-func (i *Trace) Run(ip string) {
+// NextHop pings the specific hop by set TTL
+func (i *Trace) NextHop(fd, hop int) HopResp {
 	var (
-		trace Trace
-		done  = false
+		r HopResp
 	)
-	ipAddr, err := net.ResolveIPAddr("ip4", ip)
+	i.SetTTL(hop)
+	ts := time.Now().UnixNano()
+	err := i.Send()
 	if err != nil {
-		println("error: can not resolve")
-		return
+		println("e5", err.Error())
 	}
-	fmt.Printf("Traceroute to %s (%s), 30 hops max\n", ip, ipAddr.String())
-	trace.Init(ipAddr.String(), 5000)
-	fd := trace.Bind()
-	for i := 1; i < 30; i++ {
-		fmt.Printf("%d  ", i)
-		for b := 0; b < 1; b++ {
-			trace.SetTTL(i)
-			ts := time.Now().UnixNano()
-			err := trace.Send()
-			if err != nil {
-				println("e5", err.Error())
-			}
-			t, c, ip := trace.Recv(fd)
-			elapsed := time.Now().UnixNano() - ts
-			if t == 0 {
-				fmt.Printf("*  ")
-			} else {
-				name, _ := net.LookupAddr(ip)
-				if len(name) > 0 {
-					fmt.Printf("%s (%s) %.3f ms ", name[0], ip, float64(elapsed)/1e6)
-				} else {
-					fmt.Printf("%s %.3f ms ", ip, float64(elapsed)/1e6)
-				}
-			}
-			if c == 3 {
-				done = true
-			}
-		}
-		fmt.Printf("\n")
-		if done {
-			break
+	t, c, ip := i.Recv(fd)
+	elapsed := time.Now().UnixNano() - ts
+	if t != 0 {
+		name, _ := net.LookupAddr(ip)
+		if len(name) > 0 {
+			r = HopResp{name[0], ip, float64(elapsed) / 1e6, false}
+		} else {
+			r = HopResp{"", ip, float64(elapsed) / 1e6, false}
 		}
 	}
-	trace.Done(fd)
+	if c == 3 {
+		r.last = true
+	}
+	return r
+}
+
+// Run provides trace based on the other methods
+func (i *Trace) Run(retry int) chan []HopResp {
+	var (
+		c = make(chan []HopResp, 1)
+		r []HopResp
+	)
+	fd := i.Bind()
+	go func() {
+		for h := 1; h < 30; h++ {
+			for n := 0; n < retry; n++ {
+				r = append(r, i.NextHop(fd, h))
+			}
+			c <- r
+			if r[0].last {
+				close(c)
+				break
+			}
+			r = r[:0]
+		}
+	}()
+	return c
+}
+
+// PrintPretty prints out trace result
+func (i *Trace) PrintPretty() {
+	var (
+		loop    = true
+		counter int
+		sigCh   = make(chan os.Signal, 1)
+		resp    = i.Run(3)
+	)
+
+	signal.Notify(sigCh, os.Interrupt)
+	defer signal.Stop(sigCh)
+
+	for loop {
+		select {
+		case r, ok := <-resp:
+			if !ok {
+				loop = false
+				break
+			}
+			counter++
+			sort.Sort(MHopResp(r))
+			// there is not any load balancing and there is at least a timeout
+			if r[0].ip != r[1].ip && (r[1].elapsed == 0 || r[2].elapsed == 0) {
+				fmt.Printf("%-2d %s", counter, fmtHops(r, 1))
+				continue
+			}
+			// there is not any load balancing and there is at least a timeout
+			if r[1].ip != r[2].ip && (r[0].elapsed == 0 || r[1].elapsed == 0) {
+				fmt.Printf("%-2d %s", counter, fmtHops(r, 1))
+				continue
+			}
+			// load balance between three routes
+			if r[0].ip != r[1].ip && r[0].ip != r[2].ip && r[1].ip != r[2].ip {
+				fmt.Printf("%-2d %s   %s   %s", counter, fmtHops(r[0:1], 0), fmtHops(r[1:2], 0), fmtHops(r[2:3], 1))
+				continue
+			}
+			// load balance between two routes
+			if r[0].ip == r[1].ip && r[1].ip != r[2].ip {
+				fmt.Printf("%-2d %s   %s", counter, fmtHops(r[0:2], 0), fmtHops(r[2:3], 1))
+				continue
+			}
+			// load balance between two routes
+			if r[0].ip != r[1].ip && r[1].ip == r[2].ip {
+				fmt.Printf("%-2d %s   %s", counter, fmtHops(r[0:1], 0), fmtHops(r[1:3], 1))
+				continue
+			}
+			// there is not any load balancing
+			if r[0].ip == r[1].ip && r[1].ip == r[2].ip {
+				fmt.Printf("%-2d %s", counter, fmtHops(r, 1))
+			}
+
+		case <-sigCh:
+			loop = false
+		}
+	}
+}
+
+func fmtHops(m []HopResp, last int) string {
+	var (
+		timeout = false
+		msg     string
+	)
+	for _, r := range m {
+		if (msg == "" || timeout) && r.hop != "" {
+			msg += fmt.Sprintf("%s (%s) ", r.hop, r.ip)
+		}
+		if (msg == "" || timeout) && r.hop == "" {
+			msg += fmt.Sprintf("%s ", r.ip)
+		}
+		if r.elapsed != 0 {
+			msg += fmt.Sprintf("%.3f ms ", r.elapsed)
+			timeout = false
+		} else {
+			msg += "*  "
+			timeout = true
+		}
+	}
+	if !timeout || last == 1 {
+		msg += "\n"
+	}
+	return msg
+}
+
+func helpTrace() {
+	fmt.Println(`
+    usage:
+          trace IP address / domain name
+    options:
+          -t timeout     Specifiy a timeout in format "ms", "s", "m" (default: 1500ms)
+    Example:
+          trace 8.8.8.8
+	`)
+
 }
