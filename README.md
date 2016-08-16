@@ -220,6 +220,23 @@ PING google.com (2607:f8b0:400b:80a::200e): 56 data bytes
 64 bytes from 2607:f8b0:400b:80a::200e icmp_seq=1 time=21.265492 ms
 64 bytes from 2607:f8b0:400b:80a::200e icmp_seq=2 time=24.521306 ms
 64 bytes from 2607:f8b0:400b:80a::200e icmp_seq=3 time=25.313072 ms
+
+local> trace google.com
+trace route to google.com (172.217.4.142), 30 hops max
+1  192.168.0.1 4.705 ms 1.236 ms 0.941 ms 
+2  142.254.236.25 [ASN 20001/ROADRUNNER-WEST] 13.941 ms 13.504 ms 12.303 ms 
+3  agg59.snmncaby01h.socal.rr.com. (76.167.31.241) [ASN 20001/ROADRUNNER-WEST] 14.834 ms 11.625 ms 13.050 ms 
+4  agg20.lamrcadq01r.socal.rr.com. (72.129.10.128) [ASN 20001/ROADRUNNER-WEST] 17.617 ms 18.064 ms 15.612 ms 
+5  agg28.lsancarc01r.socal.rr.com. (72.129.9.0) [ASN 20001/ROADRUNNER-WEST] 16.291 ms 24.079 ms 20.456 ms 
+6  bu-ether26.lsancarc0yw-bcr00.tbone.rr.com. (66.109.3.230) [ASN 7843/TWCABLE-BACKBONE] 18.339 ms 23.278 ms 23.434 ms 
+7  216.0.6.25 [ASN 2828/XO-AS15] 19.842 ms 21.025 ms 35.105 ms 
+8  216.0.6.42 [ASN 2828/XO-AS15] 16.666 ms 18.252 ms 18.872 ms 
+9  209.85.245.199 [ASN 15169/GOOGLE] 14.358 ms 17.478 ms 
+   209.85.246.125 [ASN 15169/GOOGLE] 18.593 ms 
+10 72.14.239.121 [ASN 15169/GOOGLE] 21.635 ms 
+   72.14.238.213 [ASN 15169/GOOGLE] 16.133 ms 
+   72.14.239.121 [ASN 15169/GOOGLE] 21.541 ms 
+11 lax17s14-in-f14.1e100.net. (172.217.4.142) [ASN 15169/GOOGLE] 18.127 ms 17.151 ms 18.892 ms 
 ```
 ## Build
 It can be built for Linux and Darwin. there is libpcap dependency:
