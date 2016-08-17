@@ -457,7 +457,8 @@ func printDev() {
 func help() {
 	fmt.Println(`
     usage:
-          dump [-c count][-i interface][-w filename][-s keyword][-d][-x][-t][-nc]
+          dump [filter expression] [options]
+          * The expression consists of one or more primitives (Berkeley Packet Filter (BPF) syntax)
     options:
           -c count       Stop after receiving count packets (default: 1M)
           -i interface   Listen on specified interface (default: first non-loopback)
