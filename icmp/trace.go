@@ -31,6 +31,9 @@ type Trace struct {
 	ttl     int
 	fd      int
 	timeout int64
+	resolve bool
+	ripe    bool
+	maxTTL  int
 }
 
 // HopResp represents hop's response
@@ -68,6 +71,9 @@ func NewTrace(args string) (*Trace, error) {
 		host:    target,
 		ips:     ips,
 		timeout: DefaultRXTimeout,
+		resolve: cli.SetFlag(flag, "n", true).(bool),
+		ripe:    cli.SetFlag(flag, "nr", true).(bool),
+		maxTTL:  cli.SetFlag(flag, "m", 30).(int),
 	}, nil
 }
 
@@ -187,7 +193,8 @@ func (i *Trace) Done() {
 // NextHop pings the specific hop by set TTL
 func (i *Trace) NextHop(fd, hop int) HopResp {
 	var (
-		r HopResp
+		r    HopResp
+		name []string
 	)
 	i.SetTTL(hop)
 	ts := time.Now().UnixNano()
@@ -198,7 +205,9 @@ func (i *Trace) NextHop(fd, hop int) HopResp {
 	t, _, ip := i.Recv(fd)
 	elapsed := time.Now().UnixNano() - ts
 	if t == ICMPTypeTimeExceeded || ip == i.ips[0].String() {
-		name, _ := net.LookupAddr(ip)
+		if i.resolve {
+			name, _ = net.LookupAddr(ip)
+		}
 		if len(name) > 0 {
 			r = HopResp{name[0], ip, float64(elapsed) / 1e6, false, Whois{}}
 		} else {
@@ -223,11 +232,13 @@ func (i *Trace) Run(retry int) chan []HopResp {
 	)
 	i.Bind()
 	go func() {
-		for h := 1; h <= 30; h++ {
+		for h := 1; h <= i.maxTTL; h++ {
 			for n := 0; n < retry; n++ {
 				r = append(r, i.NextHop(i.fd, h))
 			}
-			appendWhois(r[:])
+			if i.ripe {
+				appendWhois(r[:])
+			}
 			c <- r
 			if r[0].last || r[1].last || r[2].last {
 				break
@@ -254,7 +265,7 @@ func (i *Trace) PrintPretty() {
 	defer signal.Stop(sigCh)
 
 	// header
-	fmt.Printf("trace route to %s (%s), 30 hops max\n", i.host, i.ips[0])
+	fmt.Printf("trace route to %s (%s), %d hops max\n", i.host, i.ips[0], i.maxTTL)
 
 	for loop {
 		select {
@@ -383,9 +394,11 @@ func whois(ip string) (Whois, error) {
 func helpTrace() {
 	fmt.Println(`
     usage:
-          trace IP address / domain name
+          trace IP address / domain name [options]
     options:
-
+          -n             Do not try to map IP addresses to host names
+          -nr            Do not try to map IP addresses to ASN,Holder (RIPE NCC)
+          -m MAX_TTL     Specifies the maximum number of hops
     Example:
           trace 8.8.8.8
 	`)
