@@ -301,7 +301,7 @@ func SetFlag(flag map[string]interface{}, option string, v interface{}) interfac
 				return str
 			}
 		case bool:
-			return true
+			return !v.(bool)
 		default:
 			return sValue.(string)
 		}
