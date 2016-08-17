@@ -434,7 +434,7 @@ func NormalizeDuration(d string) string {
 func help() {
 	fmt.Println(`
     usage:
-          ping IP address / domain name
+          ping IP address / domain name [options]
     options:
           -c count       Send 'count' requests (default: 4)
           -t timeout     Specifiy a timeout in format "ms", "s", "m" (default: 2s)
