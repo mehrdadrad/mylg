@@ -15,8 +15,6 @@ import (
 )
 
 const (
-	// ICMP Time Exceeded type number
-	ICMPTypeTimeExceeded int = 11
 	// Default TX timeout
 	DefaultTXTimeout int64 = 1000
 	// Default RX timeout
@@ -27,9 +25,12 @@ const (
 type Trace struct {
 	src     string
 	host    string
+	ip      net.IP
 	ips     []net.IP
 	ttl     int
 	fd      int
+	family  int
+	proto   int
 	timeout int64
 	resolve bool
 	ripe    bool
@@ -42,6 +43,7 @@ type HopResp struct {
 	ip      string
 	elapsed float64
 	last    bool
+	err     error
 	whois   Whois
 }
 
@@ -56,8 +58,14 @@ type MHopResp []HopResp
 
 // NewTrace creates new trace object
 func NewTrace(args string) (*Trace, error) {
+	var (
+		family int
+		proto  int
+		ip     net.IP
+	)
 	target, flag := cli.Flag(args)
-
+	forceIPv4 := cli.SetFlag(flag, "4", false).(bool)
+	forceIPv6 := cli.SetFlag(flag, "6", false).(bool)
 	// show help
 	if _, ok := flag["help"]; ok || len(target) < 3 {
 		helpTrace()
@@ -67,9 +75,34 @@ func NewTrace(args string) (*Trace, error) {
 	if err != nil {
 		return nil, err
 	}
+	for _, IP := range ips {
+		if IsIPv4(IP) && !forceIPv6 {
+			ip = IP
+			break
+		} else if IsIPv6(IP) && !forceIPv4 {
+			ip = IP
+			break
+		}
+	}
+
+	if ip == nil {
+		return nil, fmt.Errorf("there is not A or AAAA record")
+	}
+
+	if IsIPv4(ip) {
+		family = syscall.AF_INET
+		proto = syscall.IPPROTO_ICMP
+	} else {
+		family = syscall.AF_INET6
+		proto = syscall.IPPROTO_ICMPV6
+	}
+
 	return &Trace{
 		host:    target,
 		ips:     ips,
+		ip:      ip,
+		family:  family,
+		proto:   proto,
 		timeout: DefaultRXTimeout,
 		resolve: cli.SetFlag(flag, "n", true).(bool),
 		ripe:    cli.SetFlag(flag, "nr", true).(bool),
@@ -88,31 +121,32 @@ func (i *Trace) SetTTL(ttl int) {
 
 // Send tries to send an UDP packet
 func (i *Trace) Send() error {
-	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
+	fd, err := syscall.Socket(i.family, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
 	if err != nil {
 		println(err.Error())
 	}
 	defer syscall.Close(fd)
 	// Set options
-	syscall.SetsockoptInt(fd, 0x0, syscall.IP_TTL, i.ttl)
-
-	if IsIPv4(i.ips[0]) {
+	if IsIPv4(i.ip) {
 		var b [4]byte
-		copy(b[:], i.ips[0].To4())
+		copy(b[:], i.ip.To4())
 		addr := syscall.SockaddrInet4{
 			Port: 33434,
 			Addr: b,
 		}
+		syscall.SetsockoptInt(fd, 0x0, syscall.IP_TTL, i.ttl)
 		if err := syscall.Sendto(fd, []byte{0x0}, 0, &addr); err != nil {
 			return err
 		}
-	} else if IsIPv6(i.ips[0]) {
+	} else {
 		var b [16]byte
-		copy(b[:], i.ips[0].To16())
+		copy(b[:], i.ip.To16())
 		addr := syscall.SockaddrInet6{
-			Port: 33434,
-			Addr: b,
+			Port:   33434,
+			ZoneId: 0,
+			Addr:   b,
 		}
+		syscall.SetsockoptInt(fd, syscall.IPPROTO_IPV6, syscall.IP_TTL, i.ttl)
 		if err := syscall.Sendto(fd, []byte{0x0}, 0, &addr); err != nil {
 			return err
 		}
@@ -148,7 +182,7 @@ func (i *Trace) SetDeadLine() error {
 // Bind starts to listen for ICMP reply
 func (i *Trace) Bind() {
 	var err error
-	i.fd, err = syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_ICMP)
+	i.fd, err = syscall.Socket(i.family, syscall.SOCK_RAW, i.proto)
 	if err != nil {
 		println("e2", err.Error())
 	}
@@ -156,15 +190,27 @@ func (i *Trace) Bind() {
 	if err != nil {
 		println(err.Error())
 	}
-	// TODO: IPv6
-	b := net.ParseIP("0.0.0.0").To4()
-	addr := syscall.SockaddrInet4{
-		Port: 0,
-		Addr: [4]byte{b[0], b[1], b[2], b[3]},
-	}
 
-	if err := syscall.Bind(i.fd, &addr); err != nil {
-		println("e3", err.Error())
+	if i.family == syscall.AF_INET {
+		addr := syscall.SockaddrInet4{
+			Port: 0,
+			Addr: [4]byte{},
+		}
+
+		if err := syscall.Bind(i.fd, &addr); err != nil {
+			println("e3", err.Error())
+		}
+	} else {
+		addr := syscall.SockaddrInet6{
+			Port:   0,
+			ZoneId: 0,
+			Addr:   [16]byte{},
+		}
+
+		if err := syscall.Bind(i.fd, &addr); err != nil {
+			println("e3", err.Error())
+		}
+
 	}
 }
 
@@ -178,9 +224,13 @@ func (i *Trace) Recv(fd int) (int, int, string) {
 		typ = int(buf[20])  // ICMP Type
 		code = int(buf[21]) // ICMP Code
 	}
-	if typ != 0 {
-		b := from.(*syscall.SockaddrInet4).Addr
-		return typ, code, fmt.Sprintf("%v.%v.%v.%v", b[0], b[1], b[2], b[3])
+	if i.family == syscall.AF_INET && typ != 0 {
+		fromAddrStr := net.IP((from.(*syscall.SockaddrInet4).Addr)[:]).String()
+		return typ, code, fromAddrStr
+	}
+	if i.family == syscall.AF_INET6 && typ != 0 {
+		fromAddrStr := net.IP((from.(*syscall.SockaddrInet6).Addr)[:]).String()
+		return typ, code, fromAddrStr
 	}
 	return typ, code, ""
 }
@@ -200,21 +250,21 @@ func (i *Trace) NextHop(fd, hop int) HopResp {
 	ts := time.Now().UnixNano()
 	err := i.Send()
 	if err != nil {
-		println("e5", err.Error())
+		return HopResp{err: err}
 	}
 	t, _, ip := i.Recv(fd)
 	elapsed := time.Now().UnixNano() - ts
-	if t == ICMPTypeTimeExceeded || ip == i.ips[0].String() {
+	if t == 64 || t == 11 || ip == i.ip.String() {
 		if i.resolve {
 			name, _ = net.LookupAddr(ip)
 		}
 		if len(name) > 0 {
-			r = HopResp{name[0], ip, float64(elapsed) / 1e6, false, Whois{}}
+			r = HopResp{name[0], ip, float64(elapsed) / 1e6, false, nil, Whois{}}
 		} else {
-			r = HopResp{"", ip, float64(elapsed) / 1e6, false, Whois{}}
+			r = HopResp{"", ip, float64(elapsed) / 1e6, false, nil, Whois{}}
 		}
 	}
-	// readed to the target
+	// reached to the target
 	for _, h := range i.ips {
 		if ip == h.String() {
 			r.last = true
@@ -232,18 +282,24 @@ func (i *Trace) Run(retry int) chan []HopResp {
 	)
 	i.Bind()
 	go func() {
+	LOOP:
 		for h := 1; h <= i.maxTTL; h++ {
 			for n := 0; n < retry; n++ {
-				r = append(r, i.NextHop(i.fd, h))
+				hop := i.NextHop(i.fd, h)
+				r = append(r, hop)
+				if hop.err != nil {
+					break
+				}
 			}
 			if i.ripe {
-				appendWhois(r[:])
+				i.appendWhois(r[:])
 			}
 			c <- r
-			if r[0].last || r[1].last || r[2].last {
-				break
+			for _, R := range r {
+				if R.last || R.err != nil {
+					break LOOP
+				}
 			}
-
 			r = r[:0]
 		}
 		close(c)
@@ -255,7 +311,6 @@ func (i *Trace) Run(retry int) chan []HopResp {
 // PrintPretty prints out trace result
 func (i *Trace) PrintPretty() {
 	var (
-		loop    = true
 		counter int
 		sigCh   = make(chan os.Signal, 1)
 		resp    = i.Run(3)
@@ -265,14 +320,19 @@ func (i *Trace) PrintPretty() {
 	defer signal.Stop(sigCh)
 
 	// header
-	fmt.Printf("trace route to %s (%s), %d hops max\n", i.host, i.ips[0], i.maxTTL)
-
-	for loop {
+	fmt.Printf("trace route to %s (%s), %d hops max\n", i.host, i.ip, i.maxTTL)
+LOOP:
+	for {
 		select {
 		case r, ok := <-resp:
 			if !ok {
-				loop = false
-				break
+				break LOOP
+			}
+			for _, R := range r {
+				if R.err != nil {
+					println(R.err.Error())
+					break LOOP
+				}
 			}
 			counter++
 			sort.Sort(MHopResp(r))
@@ -313,7 +373,7 @@ func (i *Trace) PrintPretty() {
 			}
 			//fmt.Printf("%#v\n", r)
 		case <-sigCh:
-			loop = false
+			break LOOP
 		}
 	}
 }
@@ -353,8 +413,12 @@ func fmtHops(m []HopResp, newLine int) string {
 }
 
 // appendWhois adds whois info to response if available
-func appendWhois(R []HopResp) {
-	var ips = make(map[string]Whois, 3)
+func (i *Trace) appendWhois(R []HopResp) {
+	var (
+		ips = make(map[string]Whois, 3)
+		w   Whois
+		err error
+	)
 	for _, r := range R {
 		ips[r.ip] = Whois{}
 	}
@@ -362,7 +426,11 @@ func appendWhois(R []HopResp) {
 		if ip == "" {
 			continue
 		}
-		w, err := whois(ip + "/24")
+		if i.family != syscall.AF_INET6 {
+			w, err = whois(ip)
+		} else {
+			w, err = whois(ip)
+		}
 		if err != nil {
 			continue
 		}
@@ -399,6 +467,8 @@ func helpTrace() {
           -n             Do not try to map IP addresses to host names
           -nr            Do not try to map IP addresses to ASN,Holder (RIPE NCC)
           -m MAX_TTL     Specifies the maximum number of hops
+          -4             Forces the trace command to use IPv4 (target should be hostname)
+          -6             Forces the trace command to use IPv6 (target should be hostname)
     Example:
           trace 8.8.8.8
 	`)
