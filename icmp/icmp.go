@@ -437,7 +437,7 @@ func help() {
           ping IP address / domain name [options]
     options:
           -c count       Send 'count' requests (default: 4)
-          -t timeout     Specifiy a timeout in format "ms", "s", "m" (default: 2s)
+          -t timeout     Specify a timeout in format "ms", "s", "m" (default: 2s)
           -i interval    Wait interval between sending each packet (default: 1s)
           -4             Forces the ping command to use IPv4 (target should be hostname)
           -6             Forces the ping command to use IPv6 (target should be hostname)
