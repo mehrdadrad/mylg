@@ -15,7 +15,6 @@ const b = `
 	
                  My Looking Glass
            Free Network Diagnostic Tool
-             www.facebook.com/mylg.io
                   http://mylg.io
 ================== myLG v%s ==================
 	`
