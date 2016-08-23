@@ -124,7 +124,8 @@ func main() {
 			case cmd == "bgp":
 				BGP()
 			case cmd == "dig":
-				nsr.Dig(args)
+				nsr.SetOptions(args, prompt)
+				nsr.Dig()
 			case cmd == "node":
 				node()
 			case cmd == "local":
