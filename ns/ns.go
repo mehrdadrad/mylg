@@ -6,14 +6,17 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"sort"
 	"strings"
 	"time"
 
-	"github.com/mehrdadrad/mylg/data"
 	"github.com/miekg/dns"
+
+	"github.com/mehrdadrad/mylg/cli"
+	"github.com/mehrdadrad/mylg/data"
 )
 
 const (
@@ -31,15 +34,55 @@ type Host struct {
 
 // A Request represents a name server request
 type Request struct {
-	Country string
-	City    string
-	Host    string
-	Hosts   []Host
+	Country      string
+	City         string
+	Target       string
+	Type         uint16
+	Host         string
+	Hosts        []Host
+	TraceEnabled bool
 }
 
 // NewRequest creates a new dns request object
 func NewRequest() *Request {
 	return &Request{Host: ""}
+}
+
+// SetOptions passes arguments to appropriate variable
+func (d *Request) SetOptions(args, prompt string) {
+	nArgs, _ := cli.Flag(args)
+	d.Host = ""
+	d.TraceEnabled = false
+	d.Type = dns.TypeANY
+
+	for _, a := range strings.Fields(nArgs) {
+		if a[0] == '@' {
+			d.Host = a[1:]
+			d.City = ""
+			continue
+		}
+		if t, ok := dns.StringToType[strings.ToUpper(a)]; ok {
+			d.Type = t
+			continue
+		}
+		if a == "+trace" {
+			d.TraceEnabled = true
+			continue
+		}
+		d.Target = a
+	}
+
+	p := strings.Split(prompt, "/")
+
+	if d.Host == "" {
+		if p[0] == "local" || len(p) < 3 {
+			config, _ := dns.ClientConfigFromFile("/etc/resolv.conf")
+			d.Host = config.Servers[0]
+			d.City = "your local dns server"
+		} else {
+			d.ChkNode(p[2])
+		}
+	}
 }
 
 // Init configure dns command and fetch name servers
@@ -107,33 +150,87 @@ func (d *Request) Local() {
 	d.Country = ""
 }
 
-// Dig look up name server
-func (d *Request) Dig(args string) {
+// Dig looks up name server w/ trace feature
+func (d *Request) Dig() {
+	if !d.TraceEnabled {
+		d.RunDig()
+	} else {
+		d.RunDigTrace()
+	}
+}
+
+// RunDig looks up name server
+func (d *Request) RunDig() {
 	c := new(dns.Client)
 	m := new(dns.Msg)
-
-	m.SetQuestion(dns.Fqdn(args), dns.TypeANY)
+	m.SetQuestion(dns.Fqdn(d.Target), d.Type)
 	m.RecursionDesired = true
-
-	if d.Host == "" {
-		config, _ := dns.ClientConfigFromFile("/etc/resolv.conf")
-		d.Host = config.Servers[0]
-		d.City = "your local dns server"
-	}
+	m.RecursionAvailable = true
 
 	println("Trying to query server:", d.Host, d.Country, d.City)
 
-	t := time.Now()
-	r, _, err := c.Exchange(m, d.Host+":53")
-	elapsed := time.Now().Sub(t)
+	r, rtt, err := c.Exchange(m, d.Host+":53")
 	if err != nil {
 		println(err.Error())
 		return
 	}
-	fmt.Printf("Query time: %.4f ms\n", elapsed.Seconds())
+	fmt.Printf("Query time: %d ms\n", rtt/1e6)
 	for _, a := range r.Answer {
 		fmt.Println(a)
 	}
+	// CHAOS info
+	c.Timeout = ((rtt / 1e6) + 100) * time.Millisecond
+	fmt.Printf("\n=== CHAOS class BIND information ===\n")
+	for _, q := range []string{"version.bind.", "hostname.bind."} {
+		m.Question[0] = dns.Question{q, dns.TypeTXT, dns.ClassCHAOS}
+		r, _, err = c.Exchange(m, d.Host+":53")
+		if err != nil {
+			continue
+		}
+		for _, a := range r.Answer {
+			fmt.Println(a)
+		}
+	}
+}
+
+// RunDigTrace handles dig trace
+func (d *Request) RunDigTrace() {
+	// TODO
+	var (
+		rr   = make([]string, 30)
+		host = d.Host
+	)
+	c := new(dns.Client)
+	m := new(dns.Msg)
+	m.RecursionDesired = true
+	q := ""
+
+	domain := strings.Split(dns.Fqdn(d.Target), ".")
+	for i, _ := range domain {
+		if i != 1 {
+			q = domain[len(domain)-i-1] + "." + q
+		} else {
+			q = domain[len(domain)-i-1] + q
+		}
+		m.SetQuestion(q, dns.TypeNS)
+		r, rtt, err := c.Exchange(m, host+":53")
+		if err != nil {
+			println(err.Error())
+		}
+		for _, a := range r.Answer {
+			fmt.Printf("%s\n", a)
+			rr = strings.Fields(a.String())
+		}
+		fmt.Printf("from: %s#53 in %d ms\n", host, rtt/1e6)
+		ips, _ := net.LookupHost(rr[len(rr)-1])
+		if len(ips) > 0 {
+			host = ips[0]
+		} else {
+			println("can not resolve: %s", rr[len(rr)-1])
+			break
+		}
+	}
+
 }
 
 // cache provides caching for name servers
