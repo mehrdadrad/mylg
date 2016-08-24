@@ -100,21 +100,36 @@ inet.0: 661498 destinations, 5564401 routes (657234 active, 509 holddown, 194799
                       to 62.115.119.94 via xe-9/3/1.0
                       to 62.115.119.96 via xe-9/3/3.0
 
-ns/united kingdom/manchester> dig yahoo.com
-Trying to query server: 80.84.72.20 united kingdom manchester
-Query time: 0.2369 ms
-yahoo.com.	103	IN	AAAA	2001:4998:c:a06::2:4008
-yahoo.com.	103	IN	AAAA	2001:4998:44:204::a7
-yahoo.com.	103	IN	AAAA	2001:4998:58:c02::a9
-yahoo.com.	518	IN	A	98.139.183.24
-yahoo.com.	518	IN	A	206.190.36.45
-yahoo.com.	518	IN	A	98.138.253.109
-yahoo.com.	161748	IN	NS	ns1.yahoo.com.
-yahoo.com.	161748	IN	NS	ns2.yahoo.com.
-yahoo.com.	161748	IN	NS	ns3.yahoo.com.
-yahoo.com.	161748	IN	NS	ns4.yahoo.com.
-yahoo.com.	161748	IN	NS	ns5.yahoo.com.
-yahoo.com.	161748	IN	NS	ns6.yahoo.com.
+ns/united states/redwood city> dig yahoo.com
+Trying to query server: 204.152.184.76 united states redwood city
+;; opcode: QUERY, status: NOERROR, id: 19850
+;; flags: qr rd ra;
+yahoo.com.	728	IN	MX	1 mta6.am0.yahoodns.net.
+yahoo.com.	728	IN	MX	1 mta5.am0.yahoodns.net.
+yahoo.com.	728	IN	MX	1 mta7.am0.yahoodns.net.
+yahoo.com.	143013	IN	NS	ns4.yahoo.com.
+yahoo.com.	143013	IN	NS	ns6.yahoo.com.
+yahoo.com.	143013	IN	NS	ns2.yahoo.com.
+yahoo.com.	143013	IN	NS	ns5.yahoo.com.
+yahoo.com.	143013	IN	NS	ns1.yahoo.com.
+yahoo.com.	143013	IN	NS	ns3.yahoo.com.
+
+;; ADDITIONAL SECTION:
+ns1.yahoo.com.	561456	IN	A	68.180.131.16
+ns2.yahoo.com.	27934	IN	A	68.142.255.16
+ns3.yahoo.com.	532599	IN	A	203.84.221.53
+ns4.yahoo.com.	532599	IN	A	98.138.11.157
+ns5.yahoo.com.	532599	IN	A	119.160.247.124
+ns6.yahoo.com.	143291	IN	A	121.101.144.139
+ns1.yahoo.com.	51624	IN	AAAA	2001:4998:130::1001
+ns2.yahoo.com.	51624	IN	AAAA	2001:4998:140::1002
+ns3.yahoo.com.	51624	IN	AAAA	2406:8600:b8:fe03::1003
+ns6.yahoo.com.	143291	IN	AAAA	2406:2000:108:4::1006
+;; Query time: 1204 ms
+
+;; CHAOS CLASS BIND
+version.bind.	0	CH	TXT	"9.10.4-P1"
+hostname.bind.	0	CH	TXT	"fred.isc.org"
 
 local> peering 6327
 The data provided from www.peeringdb.com
