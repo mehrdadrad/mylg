@@ -124,8 +124,7 @@ func main() {
 			case cmd == "bgp":
 				BGP()
 			case cmd == "dig":
-				nsr.SetOptions(args, prompt)
-				nsr.Dig()
+				dig()
 			case cmd == "node":
 				node()
 			case cmd == "local":
@@ -189,6 +188,13 @@ func node() {
 			println("local doesn't support node")
 		}
 
+	}
+}
+
+// dig
+func dig() {
+	if ok := nsr.SetOptions(args, prompt); ok {
+		nsr.Dig()
 	}
 }
 

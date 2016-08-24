@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"os"
 	"sort"
@@ -49,11 +48,18 @@ func NewRequest() *Request {
 }
 
 // SetOptions passes arguments to appropriate variable
-func (d *Request) SetOptions(args, prompt string) {
-	nArgs, _ := cli.Flag(args)
+func (d *Request) SetOptions(args, prompt string) bool {
 	d.Host = ""
 	d.TraceEnabled = false
 	d.Type = dns.TypeANY
+
+	nArgs, flag := cli.Flag(args)
+
+	// show help
+	if _, ok := flag["help"]; ok || len(nArgs) < 1 {
+		help()
+		return false
+	}
 
 	for _, a := range strings.Fields(nArgs) {
 		if a[0] == '@' {
@@ -83,6 +89,7 @@ func (d *Request) SetOptions(args, prompt string) {
 			d.ChkNode(p[2])
 		}
 	}
+	return true
 }
 
 // Init configure dns command and fetch name servers
@@ -174,13 +181,23 @@ func (d *Request) RunDig() {
 		println(err.Error())
 		return
 	}
-	fmt.Printf("Query time: %d ms\n", rtt/1e6)
+	// Answer
+	println(r.MsgHdr.String())
 	for _, a := range r.Answer {
 		fmt.Println(a)
 	}
-	// CHAOS info
+	// Extra info
+	if len(r.Extra) > 0 {
+		println("\n;; ADDITIONAL SECTION:")
+		for _, a := range r.Extra {
+			fmt.Println(a)
+		}
+	}
+	fmt.Printf(";; Query time: %d ms\n", rtt/1e6)
+
+	// CHAOS
 	c.Timeout = ((rtt / 1e6) + 100) * time.Millisecond
-	fmt.Printf("\n=== CHAOS class BIND information ===\n")
+	fmt.Printf("\n;; CHAOS CLASS BIND\n")
 	for _, q := range []string{"version.bind.", "hostname.bind."} {
 		m.Question[0] = dns.Question{q, dns.TypeTXT, dns.ClassCHAOS}
 		r, _, err = c.Exchange(m, d.Host+":53")
@@ -195,42 +212,57 @@ func (d *Request) RunDig() {
 
 // RunDigTrace handles dig trace
 func (d *Request) RunDigTrace() {
-	// TODO
 	var (
-		rr   = make([]string, 30)
-		host = d.Host
+		nss  = []string{d.Host}
+		err  error
+		host string
+		rtt  time.Duration
+		r    *dns.Msg
 	)
 	c := new(dns.Client)
 	m := new(dns.Msg)
 	m.RecursionDesired = true
 	q := ""
 
-	domain := strings.Split(dns.Fqdn(d.Target), ".")
+	domain := []string{""}
+	domain = append(domain, strings.Split(dns.Fqdn(d.Target), ".")...)
 	for i, _ := range domain {
-		if i != 1 {
+		if i != 1 && i != len(domain)-1 {
 			q = domain[len(domain)-i-1] + "." + q
 		} else {
 			q = domain[len(domain)-i-1] + q
 		}
-		m.SetQuestion(q, dns.TypeNS)
-		r, rtt, err := c.Exchange(m, host+":53")
-		if err != nil {
-			println(err.Error())
-		}
-		for _, a := range r.Answer {
-			fmt.Printf("%s\n", a)
-			rr = strings.Fields(a.String())
-		}
-		fmt.Printf("from: %s#53 in %d ms\n", host, rtt/1e6)
-		ips, _ := net.LookupHost(rr[len(rr)-1])
-		if len(ips) > 0 {
-			host = ips[0]
-		} else {
-			println("can not resolve: %s", rr[len(rr)-1])
-			break
-		}
-	}
 
+		if i != len(domain)-1 {
+			m.SetQuestion(q, dns.TypeNS)
+		} else {
+			m.SetQuestion(q, d.Type)
+		}
+
+		for _, host = range nss {
+			r, rtt, err = c.Exchange(m, host+":53")
+			if err != nil {
+				println(err.Error())
+			} else {
+				break
+			}
+		}
+
+		nss = nss[:0]
+
+		for _, a := range r.Answer {
+			println(a.String())
+			if a.Header().Rrtype == dns.TypeNS {
+				nss = append(nss, strings.Fields(a.String())[4])
+			}
+		}
+		for _, a := range r.Ns {
+			println(a.String())
+			nss = append(nss, strings.Fields(a.String())[4])
+		}
+
+		fmt.Printf("from: %s#53 in %d ms\n", host, rtt/1e6)
+	}
 }
 
 // cache provides caching for name servers
@@ -322,4 +354,20 @@ func uniqStrSlice(src []string) []string {
 		rst = append(rst, s)
 	}
 	return rst
+}
+
+// help
+func help() {
+	fmt.Println(`
+    usage:
+          dig [@local-server] host [options]
+    options:
+          +trace
+    Example:
+          dig google.com
+          dig @8.8.8.8 yahoo.com
+          dig google.com +trace
+          dig google.com MX
+	`)
+
 }
