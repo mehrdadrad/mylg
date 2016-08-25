@@ -41,17 +41,46 @@ const (
 )
 
 var (
+	pNames = providerNames()
+	req    = make(chan string, 1)
+	nxt    = make(chan struct{}, 1)
+	spin   = spinner.New(spinner.CharSets[26], 220*time.Millisecond)
+	args   string
+	prompt string
+	cPName string
+	nsr    *ns.Request
+	c      *cli.Readline
+
 	// register looking glass hosts
-	providers = map[string]Provider{"telia": new(lg.Telia), "level3": new(lg.Level3), "cogent": new(lg.Cogent)}
-	pNames    = providerNames()
-	req       = make(chan string, 1)
-	nxt       = make(chan struct{}, 1)
-	spin      = spinner.New(spinner.CharSets[26], 220*time.Millisecond)
-	args      string
-	prompt    string
-	cPName    string
-	nsr       *ns.Request
-	c         *cli.Readline
+	providers = map[string]Provider{
+		"telia":  new(lg.Telia),  // telia
+		"level3": new(lg.Level3), // level3
+		"cogent": new(lg.Cogent), //cogent
+	}
+
+	// map cmd to function
+	cmdFunc = map[string]func(){
+		"web":     web,         // web dashboard
+		"dump":    dump,        // dump traffic
+		"disc":    discovery,   // network discovery
+		"scan":    scanPorts,   // network scan
+		"mode":    mode,        // editor mode
+		"ping":    pingQuery,   // ping
+		"trace":   trace,       // trace route
+		"bgp":     BGP,         // BGP
+		"whois":   whoisLookup, // whois / dns lookup
+		"peering": peeringDB,   // peering DB
+		"hping":   hping,       // hping
+		"dig":     dig,         // dig
+		"node":    node,        // change node
+		"connect": connect,     // connect to a country or LG
+		"local":   local,       // local
+		"help":    help,        // help
+		"exit":    cleanUp,     // clean up
+		"quit":    cleanUp,     // clean up
+		"lg":      setLG,       // prepare looking glass
+		"ns":      setNS,       // prepare name server
+	}
 )
 
 // providerName
@@ -74,6 +103,8 @@ func validateProvider(p string) (string, error) {
 	return "", errors.New("provider not support")
 
 }
+
+// init
 func init() {
 	// initialize cli
 	c = cli.Init("local", version)
@@ -112,53 +143,10 @@ func main() {
 			prompt = c.GetPrompt()
 			args = strings.TrimSpace(subReq[2])
 			cmd := strings.TrimSpace(subReq[1])
-			switch {
-			case cmd == "hping" && cPName == "local":
-				hping()
-			case cmd == "ping" && cPName == "local":
-				pingLocal()
-			case cmd == "ping":
-				pingLG()
-			case cmd == "trace":
-				trace()
-			case cmd == "bgp":
-				BGP()
-			case cmd == "dig":
-				dig()
-			case cmd == "node":
-				node()
-			case cmd == "local":
-				nsr.Local()
-				cPName = "local"
-				c.SetPrompt(cPName)
-			case cmd == "connect":
-				connect()
-			case cmd == "lg":
-				c.SetPrompt("lg")
-				c.UpdateCompleter("connect", pNames)
-			case cmd == "ns":
-				c.UpdateCompleter("connect", nsr.CountryList())
-				c.UpdateCompleter("node", []string{})
-				c.SetPrompt("ns")
-			case cmd == "whois":
-				whois.Lookup(args)
-			case cmd == "peering":
-				peeringdb.Search(args)
-			case cmd == "scan":
-				scanPorts()
-			case cmd == "mode":
-				mode()
-			case cmd == "web":
-				web()
-			case cmd == "dump":
-				dump()
-			case cmd == "disc":
-				discovery()
-			case cmd == "help":
-				c.Help()
-			case cmd == "exit", cmd == "quit":
-				c.Close(nxt)
-				close(req)
+			if f, ok := cmdFunc[cmd]; ok {
+				f()
+			} else {
+				println("doesn't support")
 			}
 			// next line
 			c.Next()
@@ -191,7 +179,7 @@ func node() {
 	}
 }
 
-// dig
+// dig gets dig info
 func dig() {
 	if ok := nsr.SetOptions(args, prompt); ok {
 		nsr.Dig()
@@ -289,11 +277,24 @@ func trace() {
 
 // hping tries to ping a web server by http
 func hping() {
+	// it should work at local mode
+	if cPName != "local" {
+		return
+	}
 	p, err := ping.NewPing(args)
 	if err != nil {
 		println(err.Error())
 	} else {
 		p.Run()
+	}
+}
+
+// pingQuery runs ping command (local/LG)
+func pingQuery() {
+	if cPName == "local" {
+		pingLocal()
+	} else {
+		pingLG()
 	}
 }
 
@@ -379,4 +380,45 @@ func discovery() {
 
 	println("Network LAN Discovery")
 	d.PrintPretty()
+}
+
+// setLG set lg prompt and completer
+func setLG() {
+	c.SetPrompt("lg")
+	c.UpdateCompleter("connect", pNames)
+}
+
+// setNS set ns prompt and update completers
+func setNS() {
+	c.UpdateCompleter("connect", nsr.CountryList())
+	c.UpdateCompleter("node", []string{})
+	c.SetPrompt("ns")
+}
+
+// peeringDB gets peer info
+func peeringDB() {
+	peeringdb.Search(args)
+}
+
+// whoisLookup gets ANS/Prefix info
+func whoisLookup() {
+	whois.Lookup(args)
+}
+
+// local set prompts to local
+func local() {
+	nsr.Local()
+	cPName = "local"
+	c.SetPrompt(cPName)
+}
+
+// cleanUp
+func cleanUp() {
+	c.Close(nxt)
+	close(req)
+}
+
+// help
+func help() {
+	c.Help()
 }
