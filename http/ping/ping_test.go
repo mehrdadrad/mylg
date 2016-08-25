@@ -12,52 +12,24 @@ func TestNewPing(t *testing.T) {
 	if url != nil {
 		t.Error("NewPing expected nil but returned string")
 	}
-	_, err := ping.NewPing("garbage")
+	_, err := ping.NewPing(".")
 	if err == nil {
 		t.Error("Newping expected error but it didn't return")
 	}
 }
 
-func TestPingGet(t *testing.T) {
+func TestPing(t *testing.T) {
 	var url = "mylg.io"
 	gock.New(url).
 		Reply(200)
 
 	p, _ := ping.NewPing(url)
-	r, _ := p.PingGet()
+	r, _ := p.Ping()
 	if r.StatusCode != 200 {
 		t.Error("PingGet expected to get 200 but didn't")
 	}
 	if r.TotalTime == 0 {
 		t.Error("PingGet expected to set totaltime but it didn't")
-	}
-}
-func TestPingPost(t *testing.T) {
-	var url = "mylg.io"
-	gock.New(url).
-		Reply(200)
-
-	p, _ := ping.NewPing(url)
-	r, _ := p.PingPost()
-	if r.StatusCode != 200 {
-		t.Error("PingPost expected to get 200 but didn't")
-	}
-	if r.TotalTime == 0 {
-		t.Error("PingPost expected to set totaltime but it didn't")
-	}
-}
-func TestPingHead(t *testing.T) {
-	var url = "mylg.io"
-	gock.New(url).
-		Reply(200)
-
-	p, _ := ping.NewPing(url)
-	r, _ := p.PingHead()
-	if r.StatusCode != 200 {
-		t.Error("PingHead expected to get 200 but didn't")
-	}
-	if r.TotalTime == 0 {
-		t.Error("PingHead expected to set totaltime but it didn't")
 	}
 }
 

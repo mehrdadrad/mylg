@@ -8,6 +8,8 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"os/signal"
 	"regexp"
 	"strings"
 	"time"
@@ -72,6 +74,7 @@ func NewPing(args string) (*Ping, error) {
 	p.timeout = time.Duration(timeout)
 	// set method
 	p.method = cli.SetFlag(flag, "m", "HEAD").(string)
+	p.method = strings.ToUpper(p.method)
 	// set buff (post)
 	buf := cli.SetFlag(flag, "d", "mylg").(string)
 	p.buf = buf
@@ -87,132 +90,136 @@ func Normalize(URL string) string {
 	return URL
 }
 
-// pingHeadLoop tries number of connection
-// with header information
-func (p *Ping) pingHeadLoop() {
-	pStrPrefix := "HTTP Response seq=%d, "
-	pStrSuffix := "proto=%s, status=%d, time=%.3f ms\n"
-	fmt.Printf("HPING %s (%s), Method: HEAD, DNSLookup: %.4f ms\n", p.host, p.rAddr, p.nsTime.Seconds()*1000)
-	for i := 0; i < p.count; i++ {
-		if r, ok := p.PingHead(); ok {
-			fmt.Printf(pStrPrefix+pStrSuffix, i, r.Proto, r.StatusCode, r.TotalTime*1000)
-		} else {
-			fmt.Printf(pStrPrefix+"timeout\n", i)
-		}
-	}
-}
-
-// pingGetLoop tries number of connection
-// with header information
-func (p *Ping) pingGetLoop() {
-	pStrPrefix := "HTTP Response seq=%d, "
-	pStrSuffix := "proto=%s, status=%d, size=%d Bytes, time=%.3f ms\n"
-	fmt.Printf("HPING %s (%s), Method: GET, DNSLookup: %.4f ms\n", p.host, p.rAddr, p.nsTime.Seconds()*1000)
-	for i := 0; i < p.count; i++ {
-		if r, ok := p.PingGet(); ok {
-			fmt.Printf(pStrPrefix+pStrSuffix, i, r.Proto, r.StatusCode, r.Size, r.TotalTime*1000)
-		} else {
-			fmt.Printf(pStrPrefix+"timeout\n", i)
-		}
-	}
-}
-
-// pingGetLoop tries number of connection
-// with header information
-func (p *Ping) pingPostLoop() {
-	pStrPrefix := "HTTP Response seq=%d, "
-	pStrSuffix := "proto=%s, status=%d, size=%d Bytes, time=%.3f ms\n"
-	fmt.Printf("HPING %s (%s), Method: POST, DNSLookup: %.4f ms\n", p.host, p.rAddr, p.nsTime.Seconds()*1000)
-	for i := 0; i < p.count; i++ {
-		if r, ok := p.PingPost(); ok {
-			fmt.Printf(pStrPrefix+pStrSuffix, i, r.Proto, r.StatusCode, r.Size, r.TotalTime*1000)
-		} else {
-			fmt.Printf(pStrPrefix+"timeout\n", i)
-		}
-	}
-}
-
-// PingGet tries to ping a web server through http
-func (p *Ping) PingGet() (Result, bool) {
-	var (
-		r     Result
-		sTime time.Time
-	)
-
-	client := &http.Client{Timeout: p.timeout * time.Second}
-	sTime = time.Now()
-	resp, err := client.Get(p.url)
-	if err != nil {
-		return r, false
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	r.Size = len(body)
-	r.TotalTime = time.Since(sTime).Seconds()
-	if err != nil {
-		return r, false
-	}
-	r.StatusCode = resp.StatusCode
-	r.Proto = resp.Proto
-	return r, true
-}
-
-// PingHead tries to ping a web server through http
-func (p *Ping) PingHead() (Result, bool) {
-	var (
-		r     Result
-		sTime time.Time
-	)
-
-	client := &http.Client{Timeout: p.timeout * time.Second}
-	sTime = time.Now()
-	resp, err := client.Head(p.url)
-	if err != nil {
-		return r, false
-	}
-	r.TotalTime = time.Since(sTime).Seconds()
-	if err != nil {
-		return r, false
-	}
-	r.StatusCode = resp.StatusCode
-	r.Proto = resp.Proto
-	return r, true
-}
-
-// PingPost tries to ping a web server through http
-func (p *Ping) PingPost() (Result, bool) {
-	var (
-		r     Result
-		sTime time.Time
-	)
-
-	client := &http.Client{Timeout: p.timeout * time.Second}
-	sTime = time.Now()
-	r.Size = len(p.buf)
-	reader := strings.NewReader(p.buf)
-	resp, err := client.Post(p.url, "text/plain", reader)
-	if err != nil {
-		return r, false
-	}
-	r.TotalTime = time.Since(sTime).Seconds()
-	if err != nil {
-		return r, false
-	}
-	r.StatusCode = resp.StatusCode
-	r.Proto = resp.Proto
-	return r, true
-}
-
-// Run tries to run ping loop based on the method
+// Run tries to ping w/ pretty print
 func (p *Ping) Run() {
+	var (
+		sigCh = make(chan os.Signal, 1)
+		c     = make(map[int]float64, 10)
+		s     []float64
+	)
+	// capture interrupt w/ s channel
+	signal.Notify(sigCh, os.Interrupt)
+	defer signal.Stop(sigCh)
+
+	pStrPrefix := "HTTP Response seq=%d, "
+	pStrSuffix := "proto=%s, status=%d, size=%d Bytes, time=%.3f ms\n"
+	pStrSuffixHead := "proto=%s, status=%d, time=%.3f ms\n"
+	fmt.Printf("HPING %s (%s), Method: %s, DNSLookup: %.4f ms\n", p.host, p.rAddr, p.method, p.nsTime.Seconds()*1000)
+
+LOOP:
+	for i := 0; i < p.count; i++ {
+		if r, err := p.Ping(); err == nil {
+			if p.method != "HEAD" {
+				fmt.Printf(pStrPrefix+pStrSuffix, i, r.Proto, r.StatusCode, r.Size, r.TotalTime*1000)
+			} else {
+				fmt.Printf(pStrPrefix+pStrSuffixHead, i, r.Proto, r.StatusCode, r.TotalTime*1000)
+			}
+			c[r.StatusCode]++
+			s = append(s, r.TotalTime*1000)
+		} else {
+			fmt.Printf(pStrPrefix+"timeout\n", i)
+			c[-1]++
+			if err.Error() == "wrong method" {
+				println(err.Error())
+				break LOOP
+			}
+		}
+		select {
+		case <-sigCh:
+			break LOOP
+		default:
+		}
+	}
+	// print statistics
+	printStats(c, s, p.host)
+}
+
+// printStats prints out the footer
+func printStats(c map[int]float64, s []float64, host string) {
+	var r = make(map[string]float64, 5)
+
+	// total replied requests
+	for k, v := range c {
+		if k < 0 {
+			continue
+		}
+		r["sum"] += v
+	}
+
+	for _, v := range s {
+		// maximum
+		if r["max"] < v {
+			r["max"] = v
+		}
+		// minimum
+		if r["min"] > v || r["min"] == 0 {
+			r["min"] = v
+		}
+		// average
+		if r["avg"] == 0 {
+			r["avg"] = v
+		} else {
+			r["avg"] = (r["avg"] + v) / 2
+		}
+	}
+
+	totalReq := r["sum"] + c[-1]
+	timeoutPct := 100 - (100*r["sum"])/totalReq
+
+	fmt.Printf("\n--- %s HTTP ping statistics --- \n", host)
+	fmt.Printf("%.0f requests transmitted, %.0f replies received, %.0f%% timeout\n", totalReq, r["sum"], timeoutPct)
+	fmt.Printf("HTTP Round-trip min/avg/max = %.2f/%.2f/%.2f ms\n", r["min"], r["avg"], r["max"])
+	for k, v := range c {
+		if k < 0 {
+			continue
+		}
+		progress := fmt.Sprintf("%10s", strings.Repeat("\u2588", int(v*100/(r["sum"])/5)))
+		fmt.Printf("HTTP Code [%d] responses : [%s] %.2f%% \n", k, progress, v*100/(r["sum"]))
+	}
+}
+
+// Ping tries to ping a web server through http
+func (p *Ping) Ping() (Result, error) {
+	var (
+		r     Result
+		sTime time.Time
+		resp  *http.Response
+		err   error
+	)
+
+	client := &http.Client{Timeout: p.timeout * time.Second}
+	sTime = time.Now()
+
 	switch p.method {
 	case "HEAD":
-		p.pingHeadLoop()
+		resp, err = client.Head(p.url)
 	case "GET":
-		p.pingGetLoop()
+		resp, err = client.Get(p.url)
 	case "POST":
-		p.pingPostLoop()
+		r.Size = len(p.buf)
+		reader := strings.NewReader(p.buf)
+		resp, err = client.Post(p.url, "text/plain", reader)
+	default:
+		return r, fmt.Errorf("wrong method")
 	}
+
+	if err != nil {
+		return r, err
+	}
+	r.TotalTime = time.Since(sTime).Seconds()
+
+	if p.method == "GET" {
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return r, err
+		}
+		r.Size = len(body)
+	}
+
+	r.StatusCode = resp.StatusCode
+	r.Proto = resp.Proto
+	return r, nil
 }
 
 // help shows ping help
