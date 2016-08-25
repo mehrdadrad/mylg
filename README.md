@@ -37,13 +37,18 @@ my looking glass is open source software utility which combines the functions of
                   http://mylg.io
 ================== myLG v0.2.0 ==================
 
-local> hping www.google.com -c 5
-HPING www.google.com (172.217.4.164), Method: HEAD, DNSLookup: 19.0237 ms
-HTTP Response seq=0, proto=HTTP/1.1, status=200, time=90.134 ms
-HTTP Response seq=1, proto=HTTP/1.1, status=200, time=62.478 ms
-HTTP Response seq=2, proto=HTTP/1.1, status=200, time=65.311 ms
-HTTP Response seq=3, proto=HTTP/1.1, status=200, time=70.106 ms
-HTTP Response seq=4, proto=HTTP/1.1, status=200, time=62.913 ms
+local> hping google.com -c 5
+HPING google.com (216.58.216.14), Method: HEAD, DNSLookup: 44.3652 ms
+HTTP Response seq=0, proto=HTTP/1.1, status=200, time=476.465 ms
+HTTP Response seq=1, proto=HTTP/1.1, status=200, time=279.403 ms
+HTTP Response seq=2, proto=HTTP/1.1, status=200, time=186.390 ms
+HTTP Response seq=3, proto=HTTP/1.1, status=200, time=279.451 ms
+HTTP Response seq=4, proto=HTTP/1.1, status=200, time=249.007 ms
+
+--- google.com HTTP ping statistics --- 
+5 requests transmitted, 5 replies received, 0% timeout
+HTTP Round-trip min/avg/max = 186.39/264.91/476.46 ms
+HTTP Code [200] responses : [████████████████████] 100.00%
  
 local> whois 577
 BACOM - Bell Canada, CA
