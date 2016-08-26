@@ -35,7 +35,7 @@ my looking glass is open source software utility which combines the functions of
            Free Network Diagnostic Tool
              www.facebook.com/mylg.io
                   http://mylg.io
-================== myLG v0.2.0 ==================
+================== myLG v0.2.3 ==================
 
 local> hping google.com -c 5
 HPING google.com (216.58.216.14), Method: HEAD, DNSLookup: 44.3652 ms
