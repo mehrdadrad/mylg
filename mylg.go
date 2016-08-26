@@ -4,13 +4,16 @@ package main
 
 import (
 	"errors"
-	"github.com/briandowns/spinner"
+	"fmt"
+	"os"
 	"os/exec"
 	"regexp"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/briandowns/spinner"
 
 	"github.com/mehrdadrad/mylg/cli"
 	"github.com/mehrdadrad/mylg/disc"
@@ -25,6 +28,10 @@ import (
 	"github.com/mehrdadrad/mylg/whois"
 )
 
+const (
+	version = "0.2.2"
+)
+
 // Provider represents looking glass
 type Provider interface {
 	Set(host, version string)
@@ -36,18 +43,16 @@ type Provider interface {
 	BGP() chan string
 }
 
-const (
-	version = "0.2.2"
-)
-
 var (
 	pNames = providerNames()
 	req    = make(chan string, 1)
 	nxt    = make(chan struct{}, 1)
 	spin   = spinner.New(spinner.CharSets[26], 220*time.Millisecond)
+	eArgs  = os.Args
 	args   string
 	prompt string
 	cPName string
+	noIf   bool = true
 	nsr    *ns.Request
 	c      *cli.Readline
 
@@ -83,6 +88,68 @@ var (
 	}
 )
 
+// init
+func init() {
+	if len(eArgs) == 1 {
+		// initialize cli
+		c = cli.Init("local", version)
+		go c.Run(req, nxt)
+		// start web server
+		go httpd.Run()
+		// set interface enabled
+		noIf = false
+	}
+	// initialize name server
+	nsr = ns.NewRequest()
+	go nsr.Init()
+	// set default provider, promot
+	cPName = "local"
+	prompt = "local"
+}
+
+func main() {
+	// command line w/o interface
+	if noIf {
+		cmd := eArgs[1]
+		args = strings.Join(eArgs[2:], " ")
+		if f, ok := cmdFunc[cmd]; ok {
+			f()
+		} else {
+			println("Invalied command please try mylg help")
+		}
+		return
+	}
+	// command like w/ interface
+LOOP:
+	for {
+		select {
+		case request, ok := <-req:
+			if !ok {
+				break LOOP
+			}
+			if len(request) < 1 {
+				c.Next()
+				continue
+			}
+			subReq := cli.CMDReg.FindStringSubmatch(request)
+			if len(subReq) == 0 {
+				println("syntax error")
+				c.Next()
+				continue
+			}
+			prompt = c.GetPrompt()
+			args = strings.TrimSpace(subReq[2])
+			cmd := strings.TrimSpace(subReq[1])
+			if f, ok := cmdFunc[cmd]; ok {
+				f()
+			} else {
+				println("Invalid command please try help")
+			}
+			c.Next()
+		}
+	}
+}
+
 // providerName
 func providerNames() []string {
 	pNames := []string{}
@@ -102,56 +169,6 @@ func validateProvider(p string) (string, error) {
 	}
 	return "", errors.New("provider not support")
 
-}
-
-// init
-func init() {
-	// initialize cli
-	c = cli.Init("local", version)
-	go c.Run(req, nxt)
-	// initialize name server
-	nsr = ns.NewRequest()
-	go nsr.Init()
-	// start web server
-	go httpd.Run()
-	// set default provider
-	cPName = "local"
-}
-
-func main() {
-	var (
-		request string
-		loop    = true
-	)
-
-	for loop {
-		select {
-		case request, loop = <-req:
-			if !loop {
-				break
-			}
-			if len(request) < 1 {
-				c.Next()
-				continue
-			}
-			subReq := cli.CMDReg.FindStringSubmatch(request)
-			if len(subReq) == 0 {
-				println("syntax error")
-				c.Next()
-				continue
-			}
-			prompt = c.GetPrompt()
-			args = strings.TrimSpace(subReq[2])
-			cmd := strings.TrimSpace(subReq[1])
-			if f, ok := cmdFunc[cmd]; ok {
-				f()
-			} else {
-				println("doesn't support")
-			}
-			// next line
-			c.Next()
-		}
-	}
 }
 
 // node handles node cmd
@@ -321,7 +338,10 @@ func pingLocal() {
 	if p == nil {
 		return
 	}
-	p.PrintPretty()
+	if !p.IsCIDR() {
+		resp := p.Run()
+		p.PrintPretty(resp)
+	}
 }
 
 // scanPorts tries to scan tcp/ip ports
@@ -420,5 +440,34 @@ func cleanUp() {
 
 // help
 func help() {
-	c.Help()
+	if noIf {
+		// without command line
+		h := `
+              ***** TRY IT WITHOUT ANYTHING TO HAVE INTERFACE *****
+        Usage:
+              mylg [command] [args...]
+
+              Available commands:
+
+              ping                        ping ip address or domain name
+              dig                         name server looking up
+              whois                       resolve AS number/IP/CIDR to holder (provides by ripe ncc)
+              hping                       Ping through HTTP/HTTPS w/ GET/HEAD methods
+              scan                        scan tcp ports (you can provide range >scan host minport maxport)
+              dump                        prints out a description of the contents of packets on a network interface
+              disc                        discover all the devices on a LAN
+              peering                     peering information (provides by peeringdb.com)
+              varsion                     shows mylg version
+
+        Example:
+              mylg whois 8.8.8.8
+              mylg scan 127.0.0.1
+              mylg dig google.com +trace
+		`
+		fmt.Println(h)
+	} else {
+		// with command line interface
+
+		c.Help()
+	}
 }
