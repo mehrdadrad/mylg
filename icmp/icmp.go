@@ -46,6 +46,7 @@ type Ping struct {
 	target    string
 	isV4Avail bool
 	isV6Avail bool
+	isCIDR    bool
 	forceV4   bool
 	forceV6   bool
 	network   string
@@ -68,9 +69,7 @@ type Response struct {
 // NewPing creates a new ping object
 func NewPing(args string) (*Ping, error) {
 	var (
-		timeout  time.Duration
-		interval time.Duration
-		err      error
+		err error
 	)
 	target, flag := cli.Flag(args)
 
@@ -79,32 +78,15 @@ func NewPing(args string) (*Ping, error) {
 		help()
 		return nil, nil
 	}
-	// resolve host
-	ips, err := net.LookupIP(target)
-	if err != nil {
-		return nil, err
-	}
-	// timeout
-	timeoutStr := cli.SetFlag(flag, "t", "2s").(string)
-	timeoutStr = NormalizeDuration(timeoutStr)
-	if timeout, err = time.ParseDuration(timeoutStr); err != nil {
-		return nil, fmt.Errorf("timeout options is not valid")
-	}
-	// interval
-	intervalStr := cli.SetFlag(flag, "i", "1s").(string)
-	intervalStr = NormalizeDuration(intervalStr)
-	if interval, err = time.ParseDuration(intervalStr); err != nil {
-		return nil, fmt.Errorf("interval options is not valid")
-	}
 
 	p := Ping{
 		id:        rand.Intn(0xffff),
 		seq:       -1,
 		pSize:     64,
-		timeout:   timeout,
-		interval:  interval,
+		target:    target,
 		isV4Avail: false,
 		isV6Avail: false,
+		isCIDR:    isCIDR(target),
 		count:     cli.SetFlag(flag, "c", 4).(int),
 		forceV4:   cli.SetFlag(flag, "4", false).(bool),
 		forceV6:   cli.SetFlag(flag, "6", false).(bool),
@@ -113,10 +95,29 @@ func NewPing(args string) (*Ping, error) {
 		MaxRTT:    time.Second,
 	}
 
-	p.addrs = ips
-	p.target = target
-	if err := p.SetIP(ips); err != nil {
-		return nil, err
+	if !p.isCIDR {
+		// resolve host
+		ips, err := net.LookupIP(target)
+		if err != nil {
+			return nil, err
+		}
+		p.addrs = ips
+		if err := p.SetIP(ips); err != nil {
+			return nil, err
+		}
+
+	}
+	// set timeout
+	timeoutStr := cli.SetFlag(flag, "t", "2s").(string)
+	timeoutStr = NormalizeDuration(timeoutStr)
+	if p.timeout, err = time.ParseDuration(timeoutStr); err != nil {
+		return nil, fmt.Errorf("timeout options is not valid")
+	}
+	// set interval
+	intervalStr := cli.SetFlag(flag, "i", "1s").(string)
+	intervalStr = NormalizeDuration(intervalStr)
+	if p.interval, err = time.ParseDuration(intervalStr); err != nil {
+		return nil, fmt.Errorf("interval options is not valid")
 	}
 
 	return &p, nil
@@ -329,14 +330,13 @@ func (p *Ping) Ping(out chan Response) {
 }
 
 // PrintPretty prints out the result pretty format
-func (p *Ping) PrintPretty() {
+func (p *Ping) PrintPretty(resp chan Response) {
 	var (
 		loop          = true
 		sigCh         = make(chan os.Signal, 1)
 		pFmt          = "%d bytes from %s icmp_seq=%d time=%f ms"
 		eFmt          = "%s icmp_seq=%d"
 		sFmt          = "%d packets transmitted,  %d packets received, %d%% packet loss\n"
-		resp          = p.Run()
 		msg           string
 		min, max, avg float64
 		c             = map[string]int{"tx": 0, "err": 0, "pl": 0}
@@ -379,7 +379,7 @@ func (p *Ping) PrintPretty() {
 	// packet loss
 	c["pl"] = c["err"] * 100 / c["tx"]
 
-	fmt.Printf("\n\n--- %s ping statistics ---\n", p.target)
+	fmt.Printf("\n--- %s ping statistics ---\n", p.target)
 	fmt.Printf(sFmt, c["tx"], c["tx"]-c["err"], c["pl"])
 
 	if c["pl"] == 100 {
@@ -387,6 +387,11 @@ func (p *Ping) PrintPretty() {
 	}
 
 	fmt.Printf("round-trip min/avg/max = %.3f/%.3f/%.3f ms\n", min, avg, max)
+}
+
+// IsCIDR
+func (p *Ping) IsCIDR() bool {
+	return p.isCIDR
 }
 
 // Max handles maximum delay
@@ -420,6 +425,14 @@ func getTimeStamp(m []byte) int64 {
 		ts += int64(m[uint(len(m))-8+i]) << (i * 8)
 	}
 	return ts
+}
+
+// isCIDR
+func isCIDR(s string) bool {
+	if _, _, err := net.ParseCIDR(s); err != nil {
+		return false
+	}
+	return true
 }
 
 // NormalizeDuration adds default unit (seconds) as needed
