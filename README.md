@@ -15,6 +15,8 @@ my looking glass is open source software utility which combines the functions of
 * Port scanning fast
 * Network LAN Discovery
 * Web dashboard
+* Configureable options
+* Direct access to commands from shell
 * Support vi and emacs mode, almost all basic features
 * CLI auto complete and history features
 
@@ -257,6 +259,39 @@ trace route to google.com (172.217.4.142), 30 hops max
    72.14.238.213 [ASN 15169/GOOGLE] 16.133 ms 
    72.14.239.121 [ASN 15169/GOOGLE] 21.541 ms 
 11 lax17s14-in-f14.1e100.net. (172.217.4.142) [ASN 15169/GOOGLE] 18.127 ms 17.151 ms 18.892 ms 
+
+local> show config 
+set ping     timeout    2s
+set ping     interval   1s
+set ping     count      4
+set hping    timeout    2s
+set hping    method     HEAD
+set hping    data       mylg
+set hping    count      5
+set web      port       8080
+set web      address    127.0.0.1
+set scan     port       1-500
+
+local> set hping count 10
+
+sh-3.2# mylg peering 577
+The data provided from www.peeringdb.com
++----------------------+---------+------+--------------------+------+
+|         NAME         | TRAFFIC | TYPE |      WEB SITE      | NOTE |
++----------------------+---------+------+--------------------+------+
+| Bell Canada Backbone |         | NSP  | http://www.bell.ca |      |
++----------------------+---------+------+--------------------+------+
++-------------------+--------+-------+-----------------+------------------------+
+|       NAME        | STATUS | SPEED |    IPV4 ADDR    |       IPV6 ADDR        |
++-------------------+--------+-------+-----------------+------------------------+
+| Equinix Ashburn   | ok     | 20000 | 206.126.236.203 | 2001:504:0:2::577:1    |
+| Equinix Chicago   | ok     | 20000 | 206.223.119.66  | 2001:504:0:4::577:1    |
+| Equinix Palo Alto | ok     | 10000 | 198.32.176.94   | 2001:504:d::5e         |
+| Equinix New York  | ok     | 10000 | 198.32.118.113  | 2001:504:f::577:1      |
+| SIX Seattle       | ok     | 10000 | 206.81.80.217   | 2001:504:16::241       |
+| NYIIX             | ok     | 10000 | 198.32.160.36   | 2001:504:1::a500:577:1 |
++-------------------+--------+-------+-----------------+------------------------+
+
 ```
 ## Build
 It can be built for Linux and Darwin. there is libpcap dependency:
