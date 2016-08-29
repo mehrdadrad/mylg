@@ -20,7 +20,7 @@ const usage = `Usage:
 	connect <provider name>     connects to external looking glass, press tab to see the menu
 	node <city/country name>    connects to specific node at current looking glass, press tab to see the available nodes
 	local                       back to local
-	lg                          change mode to extenal looking glass
+	lg                          change mode to external looking glass
 	ns                          change mode to name server looking up
 	ping                        ping ip address or domain name
 	dig                         name server looking up
