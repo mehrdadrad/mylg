@@ -42,11 +42,11 @@ type Result struct {
 }
 
 // NewPing validate and constructs request object
-func NewPing(args string) (*Ping, error) {
+func NewPing(args string, cfg cli.Config) (*Ping, error) {
 	URL, flag := cli.Flag(args)
 	// help
 	if _, ok := flag["help"]; ok || URL == "" {
-		help()
+		help(cfg)
 		return nil, fmt.Errorf("")
 	}
 	URL = Normalize(URL)
@@ -68,12 +68,15 @@ func NewPing(args string) (*Ping, error) {
 	}
 
 	// set count
-	p.count = cli.SetFlag(flag, "c", 4).(int)
+	p.count = cli.SetFlag(flag, "c", cfg.Hping.Count).(int)
 	// set timeout
-	timeout := cli.SetFlag(flag, "t", 2).(int)
-	p.timeout = time.Duration(timeout)
+	timeout := cli.SetFlag(flag, "t", cfg.Hping.Timeout).(string)
+	p.timeout, err = time.ParseDuration(timeout)
+	if err != nil {
+		return p, err
+	}
 	// set method
-	p.method = cli.SetFlag(flag, "m", "HEAD").(string)
+	p.method = cli.SetFlag(flag, "m", cfg.Hping.Method).(string)
 	p.method = strings.ToUpper(p.method)
 	// set buff (post)
 	buf := cli.SetFlag(flag, "d", "mylg").(string)
@@ -223,15 +226,19 @@ func (p *Ping) Ping() (Result, error) {
 }
 
 // help shows ping help
-func help() {
-	fmt.Println(`
+func help(cfg cli.Config) {
+	fmt.Printf(`
     usage:
-          hping [-c count][-t timeout][-m method][-d data] url
+          hping url [options]
 
     options:		  
-          -c count       Send 'count' requests (default: 4)
-          -t timeout     Specifies a time limit for requests in second (default is 2) 
-          -m method      HTTP methods: GET/POST/HEAD (default: HEAD)
-          -d data        Sending the given data (text/json) (default: "mylg")
-	`)
+          -c count       Send 'count' requests (default: %d)
+          -t timeout     Specifies a time limit for requests in ms/s (default is %s) 
+          -m method      HTTP methods: GET/POST/HEAD (default: %s)
+          -d data        Sending the given data (text/json) (default: "%s")
+	`,
+		cfg.Hping.Count,
+		cfg.Hping.Timeout,
+		cfg.Hping.Method,
+		cfg.Hping.Data)
 }

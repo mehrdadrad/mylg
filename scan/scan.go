@@ -22,7 +22,7 @@ type Scan struct {
 }
 
 // NewScan creats scan object
-func NewScan(args string) (Scan, error) {
+func NewScan(args string, cfg cli.Config) (Scan, error) {
 	var (
 		scan Scan
 		flag map[string]interface{}
@@ -31,12 +31,12 @@ func NewScan(args string) (Scan, error) {
 
 	args, flag = cli.Flag(args)
 	// help
-	if _, ok := flag["help"]; ok {
-		help()
+	if _, ok := flag["help"]; ok || args == "" {
+		help(cfg)
 		return scan, fmt.Errorf("")
 	}
 
-	pRange := cli.SetFlag(flag, "p", "1-500").(string)
+	pRange := cli.SetFlag(flag, "p", cfg.Scan.Port).(string)
 
 	re := regexp.MustCompile(`(\d+)-(\d+)`)
 	f := re.FindStringSubmatch(pRange)
@@ -116,11 +116,12 @@ func host(ipAddr string, minPort, maxPort int) {
 }
 
 // help represents guide to user
-func help() {
-	println(`
+func help(cfg cli.Config) {
+	fmt.Printf(`
     usage:
           scan ip/host [-p portrange]
     example:
-          scan www.google.com -p 1-500
-	`)
+          scan www.google.com -p %s
+	`,
+		cfg.Scan.Port)
 }

@@ -53,6 +53,7 @@ var (
 	prompt string
 	cPName string
 	noIf   bool = true
+	cfg    cli.Config
 	nsr    *ns.Request
 	c      *cli.Readline
 
@@ -83,6 +84,8 @@ var (
 		"help":    help,        // help
 		"exit":    cleanUp,     // clean up
 		"quit":    cleanUp,     // clean up
+		"show":    show,        // show config
+		"set":     setConfig,   // set config
 		"lg":      setLG,       // prepare looking glass
 		"ns":      setNS,       // prepare name server
 	}
@@ -90,12 +93,15 @@ var (
 
 // init
 func init() {
+	// load configuration
+	cfg = cli.LoadConfig()
+	// with interface
 	if len(eArgs) == 1 {
 		// initialize cli
 		c = cli.Init("local", version)
 		go c.Run(req, nxt)
 		// start web server
-		go httpd.Run()
+		go httpd.Run(cfg)
 		// set interface enabled
 		noIf = false
 	}
@@ -210,7 +216,7 @@ func web() {
 	if runtime.GOOS != "darwin" {
 		openCmd = "xdg-open"
 	}
-	cmd := exec.Command(openCmd, "http://localhost:8080")
+	cmd := exec.Command(openCmd, fmt.Sprintf("http://%s:%d", cfg.Web.Address, cfg.Web.Port))
 	err := cmd.Start()
 	if err != nil {
 		println("error opening default browser")
@@ -298,7 +304,7 @@ func hping() {
 	if cPName != "local" {
 		return
 	}
-	p, err := ping.NewPing(args)
+	p, err := ping.NewPing(args, cfg)
 	if err != nil {
 		println(err.Error())
 	} else {
@@ -331,7 +337,7 @@ func pingLG() {
 
 // pingLocal tries to ping from local source ip
 func pingLocal() {
-	p, err := icmp.NewPing(args)
+	p, err := icmp.NewPing(args, cfg)
 	if err != nil {
 		println(err.Error())
 	}
@@ -346,7 +352,7 @@ func pingLocal() {
 
 // scanPorts tries to scan tcp/ip ports
 func scanPorts() {
-	scan, err := scan.NewScan(args)
+	scan, err := scan.NewScan(args, cfg)
 	if err != nil {
 		println(err.Error())
 	} else {
@@ -400,6 +406,18 @@ func discovery() {
 
 	println("Network LAN Discovery")
 	d.PrintPretty()
+}
+
+// setConfig
+func setConfig() {
+	cli.SetConfig(args, &cfg)
+}
+
+// showConfig
+func show() {
+	if args == "config" {
+		cli.ShowConfig(&cfg)
+	}
 }
 
 // setLG set lg prompt and completer

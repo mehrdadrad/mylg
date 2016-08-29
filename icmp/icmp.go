@@ -67,7 +67,7 @@ type Response struct {
 }
 
 // NewPing creates a new ping object
-func NewPing(args string) (*Ping, error) {
+func NewPing(args string, cfg cli.Config) (*Ping, error) {
 	var (
 		err error
 	)
@@ -75,7 +75,7 @@ func NewPing(args string) (*Ping, error) {
 
 	// show help
 	if _, ok := flag["help"]; ok || len(target) < 3 {
-		help()
+		help(cfg)
 		return nil, nil
 	}
 
@@ -87,7 +87,7 @@ func NewPing(args string) (*Ping, error) {
 		isV4Avail: false,
 		isV6Avail: false,
 		isCIDR:    isCIDR(target),
-		count:     cli.SetFlag(flag, "c", 4).(int),
+		count:     cli.SetFlag(flag, "c", cfg.Ping.Count).(int),
 		forceV4:   cli.SetFlag(flag, "4", false).(bool),
 		forceV6:   cli.SetFlag(flag, "6", false).(bool),
 		network:   "ip",
@@ -108,13 +108,13 @@ func NewPing(args string) (*Ping, error) {
 
 	}
 	// set timeout
-	timeoutStr := cli.SetFlag(flag, "t", "2s").(string)
+	timeoutStr := cli.SetFlag(flag, "t", cfg.Ping.Timeout).(string)
 	timeoutStr = NormalizeDuration(timeoutStr)
 	if p.timeout, err = time.ParseDuration(timeoutStr); err != nil {
 		return nil, fmt.Errorf("timeout options is not valid")
 	}
 	// set interval
-	intervalStr := cli.SetFlag(flag, "i", "1s").(string)
+	intervalStr := cli.SetFlag(flag, "i", cfg.Ping.Interval).(string)
 	intervalStr = NormalizeDuration(intervalStr)
 	if p.interval, err = time.ParseDuration(intervalStr); err != nil {
 		return nil, fmt.Errorf("interval options is not valid")
@@ -444,14 +444,14 @@ func NormalizeDuration(d string) string {
 }
 
 // help represents ping help
-func help() {
-	fmt.Println(`
+func help(cfg cli.Config) {
+	fmt.Printf(`
     usage:
           ping IP address / domain name [options]
     options:
-          -c count       Send 'count' requests (default: 4)
-          -t timeout     Specify a timeout in format "ms", "s", "m" (default: 2s)
-          -i interval    Wait interval between sending each packet (default: 1s)
+          -c count       Send 'count' requests (default: %d)
+          -t timeout     Specify a timeout in format "ms", "s", "m" (default: %s)
+          -i interval    Wait interval between sending each packet (default: %s)
           -4             Forces the ping command to use IPv4 (target should be hostname)
           -6             Forces the ping command to use IPv6 (target should be hostname)
     Example:
@@ -459,5 +459,8 @@ func help() {
           ping 8.8.8.8 -c 10
           ping google.com -6
           ping mylg.io -i 5s
-	`)
+	`,
+		cfg.Ping.Count,
+		cfg.Ping.Timeout,
+		cfg.Ping.Interval)
 }
