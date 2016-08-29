@@ -7,6 +7,7 @@ import (
 	"github.com/rakyll/statik/fs"
 	"net/http"
 
+	"github.com/mehrdadrad/mylg/cli"
 	"github.com/mehrdadrad/mylg/icmp"
 	// statik is single binary including all web stuff
 	_ "github.com/mehrdadrad/mylg/services/dashboard/statik"
@@ -20,23 +21,22 @@ type Route struct {
 	HandlerFunc http.HandlerFunc
 }
 
-var routes = []Route{
-	Route{
-		"API",
-		"POST",
-		"/api/{name}",
-		API,
-	},
+type APIHandler func(w http.ResponseWriter, r *http.Request, cfg cli.Config)
+
+func APIWarpper(handler APIHandler, cfg cli.Config) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		handler(w, r, cfg)
+	}
 }
 
 // API handles API routes
-func API(w http.ResponseWriter, r *http.Request) {
+func API(w http.ResponseWriter, r *http.Request, cfg cli.Config) {
 	var f = mux.Vars(r)["name"]
 	switch f {
 	case "ping":
 		r.ParseForm()
 		host := r.FormValue("host")
-		p, err := icmp.NewPing(host + " -c 1")
+		p, err := icmp.NewPing(host+" -c 1", cfg)
 		if err != nil {
 			return
 		}
@@ -47,9 +47,18 @@ func API(w http.ResponseWriter, r *http.Request) {
 }
 
 // Run starts web service
-func Run() {
+func Run(cfg cli.Config) {
 	statikFS, _ := fs.New()
 	router := mux.NewRouter().StrictSlash(true)
+	routes := []Route{
+		Route{
+			"API",
+			"POST",
+			"/api/{name}",
+			APIWarpper(API, cfg),
+		},
+	}
+
 	for _, route := range routes {
 		router.
 			Path(route.Path).
@@ -58,5 +67,8 @@ func Run() {
 			Handler(route.HandlerFunc)
 	}
 	router.PathPrefix("/").Handler(http.FileServer(statikFS))
-	http.ListenAndServe("127.0.0.1:8080", router)
+	err := http.ListenAndServe(fmt.Sprintf("%s:%d", cfg.Web.Address, cfg.Web.Port), router)
+	if err != nil {
+		println(err.Error())
+	}
 }
