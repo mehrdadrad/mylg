@@ -44,7 +44,7 @@ type Readline struct {
 var (
 	// validation command regex
 	CMDReg, _ = regexp.Compile(
-		`(ping|trace|bgp|lg|ns|dig|dump|disc|whois|peering|scan|hping|connect|node|local|mode|help|web|exit|quit)\s{0,1}(.*)`)
+		`(ping|trace|bgp|lg|ns|dig|dump|disc|whois|peering|scan|hping|connect|node|local|mode|help|web|show|set|exit|quit)\s{0,1}(.*)`)
 )
 
 // Init set readline imain items
@@ -70,7 +70,11 @@ func Init(prompt, version string) *Readline {
 			readline.PcItem("peering"),
 			readline.PcItem("help"),
 			readline.PcItem("web"),
+			readline.PcItem("set"),
 			readline.PcItem("exit"),
+			readline.PcItem("show",
+				readline.PcItem("config"),
+			),
 		)
 	)
 	r.completer = completer
