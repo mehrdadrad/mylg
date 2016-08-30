@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -15,7 +16,7 @@ var defaultConfig = `{
 		"timeout" : "2s",
 		"interval": "1s",
 		"count":	4
-	},	
+	},
 	"hping" : {
 		"timeout"  : "2s",
 		"method"   : "HEAD",
@@ -27,7 +28,7 @@ var defaultConfig = `{
 		"address"  : "127.0.0.1"
 	},
 	"scan" : {
-		"port"     : "1-500"		
+		"port"     : "1-500"
 	}
 }`
 
@@ -81,7 +82,7 @@ func WriteConfig(cfg Config) error {
 	if err != nil {
 		return err
 	}
-	_, err = h.Write(b)
+	_, err = h.Write(bytes.ToLower(b))
 	if err != nil {
 		return err
 	}
@@ -90,10 +91,48 @@ func WriteConfig(cfg Config) error {
 	return nil
 }
 
+// GetOptions returns option(s)/value(s) for specific command
+func GetOptions(s interface{}, key string) ([]string, []interface{}) {
+	var (
+		opts []string
+		vals []interface{}
+	)
+	v := reflect.ValueOf(s)
+	t := v.Type()
+
+	for i := 0; i < v.NumField(); i++ {
+		if t.Field(i).Name == key {
+			f := v.Field(i)
+			ft := f.Type()
+			for j := 0; j < f.NumField(); j++ {
+				vals = append(vals, f.Field(j))
+				opts = append(opts, ft.Field(j).Name)
+			}
+			break
+		}
+	}
+	return opts, vals
+}
+
+// GetCMDNames returns command line names
+func GetCMDNames(s interface{}) []string {
+	var fields []string
+
+	v := reflect.ValueOf(s)
+	t := v.Type()
+
+	for i := 0; i < t.NumField(); i++ {
+		fields = append(fields, t.Field(i).Name)
+	}
+	return fields
+}
+
 // UpgradeConfig adds / removes new command(s)/option(s)
-func UpgradeConfig() {
-	// TODO
-	var conf map[string]interface{}
+func UpgradeConfig(cfg *Config) {
+	var (
+		conf  map[string]interface{}
+		cConf Config
+	)
 	b := make([]byte, 2048)
 	f, err := cfgFile()
 	if err != nil {
@@ -102,16 +141,25 @@ func UpgradeConfig() {
 	h, err := os.Open(f)
 	n, _ := h.Read(b)
 	b = b[:n]
-
+	// load saved/old config to conf
 	json.Unmarshal(b, &conf)
-	if v, ok := conf["ping"].(interface{}); ok {
-		if _, ok = v.(map[string]interface{})["timeout"]; !ok {
-			// there is new option
-		}
-	} else {
-		// there is new command
-	}
+	// load default config to cConf
+	json.Unmarshal([]byte(defaultConfig), &cConf)
 
+	for _, cmd := range GetCMDNames(cConf) {
+		opts, vals := GetOptions(cConf, cmd)
+		for i, opt := range opts {
+			if v, ok := conf[strings.ToLower(cmd)].(interface{}); ok {
+				if _, ok = v.(map[string]interface{})[strings.ToLower(opt)]; !ok {
+					args := fmt.Sprintf("%s %s %v", cmd, opt, vals[i])
+					SetConfig(args, cfg)
+				}
+			} else {
+				//TODO:
+				// there is new command
+			}
+		}
+	}
 }
 
 // LoadConfig loads configuration
@@ -119,7 +167,7 @@ func LoadConfig() Config {
 	var cfg Config
 
 	cfg = ReadConfig()
-
+	UpgradeConfig(&cfg)
 	return cfg
 }
 
@@ -314,7 +362,7 @@ func helpSet() {
           usage:
                set command option value
           example:
-               set ping timeout 2s		  
+               set ping timeout 2s
 	`)
 
 }
