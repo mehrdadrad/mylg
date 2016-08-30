@@ -121,7 +121,7 @@ func main() {
 		if f, ok := cmdFunc[cmd]; ok {
 			f()
 		} else {
-			println("Invalied command please try mylg help")
+			println("Invalid command please try mylg help")
 		}
 		return
 	}
