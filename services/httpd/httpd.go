@@ -57,7 +57,7 @@ func Run(cfg cli.Config) {
 	statikFS, _ := fs.New()
 	router := mux.NewRouter().StrictSlash(true)
 	routes := []Route{
-		Route{
+		{
 			"API",
 			"POST",
 			"/api/{name}",

@@ -422,7 +422,7 @@ func (i *Trace) appendWhois(R []HopResp) {
 	for _, r := range R {
 		ips[r.ip] = Whois{}
 	}
-	for ip, _ := range ips {
+	for ip := range ips {
 		if ip == "" {
 			continue
 		}
@@ -436,7 +436,7 @@ func (i *Trace) appendWhois(R []HopResp) {
 		}
 		ips[ip] = w
 	}
-	for i, _ := range R {
+	for i := range R {
 		R[i].whois = ips[R[i].ip]
 	}
 }

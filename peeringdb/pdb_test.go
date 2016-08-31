@@ -17,7 +17,7 @@ func TestGetNetIXLAN(t *testing.T) {
 	peer2 := peeringdb.Peer{Name: "b", ASN: 2}
 	gock.New(peeringdb.APINetIXLAN).
 		Reply(200).
-		JSON(map[string][]peeringdb.Peer{"data": []peeringdb.Peer{peer1, peer2}})
+		JSON(map[string][]peeringdb.Peer{"data": {peer1, peer2}})
 	ix, err := peeringdb.GetNetIXLAN()
 	if err != nil {
 		t.Error("")
