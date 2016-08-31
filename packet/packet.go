@@ -45,6 +45,7 @@ type Packet struct {
 type logWriter struct {
 }
 
+// Options represents dump options
 type Options struct {
 	// no color
 	nc bool
@@ -325,9 +326,8 @@ func (p *Packet) flagsString() string {
 func (writer logWriter) Write(bytes []byte) (int, error) {
 	if !options.t {
 		return fmt.Printf("%s %s", time.Now().Format("15:04:05.000"), string(bytes))
-	} else {
-		return fmt.Printf("%s %s", time.Now().Format(""), string(bytes))
 	}
+	return fmt.Printf("%s %s", time.Now().Format(""), string(bytes))
 }
 
 // ParsePacketLayers decodes layers (Lazy Decoding)
