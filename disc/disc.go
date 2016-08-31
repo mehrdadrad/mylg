@@ -38,7 +38,7 @@ type disc struct {
 	Table []ARP
 	IPs   []string
 	OUI   map[string]string
-	IsMac bool
+	IsBSD bool
 	SKey  string
 }
 
@@ -53,7 +53,7 @@ func New(args string) *disc {
 	}
 
 	return &disc{
-		IsMac: IsMac(),
+		IsBSD: IsBSD(),
 		OUI:   make(map[string]string, 25000),
 		SKey:  key,
 	}
@@ -126,7 +126,7 @@ func nextIP(ip net.IP) {
 	}
 }
 
-// StrToByte16 converts string to 16 bytes
+// StrTobyte16 converts string to 16 bytes
 func StrTobyte16(s string) [16]byte {
 	var r [16]byte
 	if len(s) > 16 {
@@ -139,12 +139,10 @@ func StrTobyte16(s string) [16]byte {
 
 // GetARPTable gets ARP table
 func (a *disc) GetARPTable() error {
-	if a.IsMac {
+	if a.IsBSD {
 		return a.GetMACOSARPTable()
-	} else {
-		return a.GetLinuxARPTable()
 	}
-	return fmt.Errorf("")
+	return a.GetLinuxARPTable()
 }
 
 // GetLinuxARPTable gets Linux ARP table
@@ -236,7 +234,7 @@ func (a *disc) LoadOUI() bool {
 	return false
 }
 
-// GETOUI gets oui info from iEEE
+// GetOUILive gets oui info from iEEE
 func GetOUILive() ([]byte, error) {
 	resp, err := http.Get(IEEEOUI)
 	if err != nil {
@@ -324,12 +322,12 @@ func (a *disc) PrintPretty() {
 	println(counter, "host has been found")
 }
 
-// IsMac checks OS
-func IsMac() bool {
-	if runtime.GOOS != "darwin" {
-		return false
+// IsBSD checks OS
+func IsBSD() bool {
+	if runtime.GOOS != "linux" {
+		return true
 	}
-	return true
+	return false
 }
 
 // search tries to find key at data
