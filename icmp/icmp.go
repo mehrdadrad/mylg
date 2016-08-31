@@ -7,7 +7,6 @@ import (
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
-	"log"
 	"math/rand"
 	"net"
 	"os"
@@ -192,12 +191,12 @@ func (p *Ping) PacketSize(s int) {
 }
 
 // listen starts to listen incoming icmp
-func (p *Ping) listen(network string) *icmp.PacketConn {
+func (p *Ping) listen(network string) (*icmp.PacketConn, error) {
 	c, err := icmp.ListenPacket(network, p.source)
 	if err != nil {
-		log.Fatalf("listen err, %s", err)
+		return c, err
 	}
-	return c
+	return c, nil
 }
 
 // recv reads icmp message
@@ -277,18 +276,21 @@ func (p *Ping) send(conn *icmp.PacketConn) {
 func (p *Ping) Ping(out chan Response) {
 	var (
 		conn     *icmp.PacketConn
+		err      error
 		rcvdChan chan *packet = make(chan *packet, 1)
 	)
 
 	if p.isV4Avail {
-		if conn = p.listen("ip4:icmp"); conn == nil {
+		if conn, err = p.listen("ip4:icmp"); err != nil {
+			out <- Response{Error: err}
 			return
 		}
 		defer conn.Close()
 	}
 
 	if p.isV6Avail {
-		if conn = p.listen("ip6:ipv6-icmp"); conn == nil {
+		if conn, err = p.listen("ip6:ipv6-icmp"); err != nil {
+			out <- Response{Error: err}
 			return
 		}
 		defer conn.Close()
@@ -389,7 +391,7 @@ func (p *Ping) PrintPretty(resp chan Response) {
 	fmt.Printf("round-trip min/avg/max = %.3f/%.3f/%.3f ms\n", min, avg, max)
 }
 
-// IsCIDR
+// IsCIDR returns true if target is CIDR
 func (p *Ping) IsCIDR() bool {
 	return p.isCIDR
 }
