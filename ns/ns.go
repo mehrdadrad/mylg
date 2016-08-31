@@ -226,7 +226,7 @@ func (d *Request) RunDigTrace() {
 
 	domain := []string{""}
 	domain = append(domain, strings.Split(dns.Fqdn(d.Target), ".")...)
-	for i, _ := range domain {
+	for i := range domain {
 		if i != 1 && i != len(domain)-1 {
 			q = domain[len(domain)-i-1] + "." + q
 		} else {
