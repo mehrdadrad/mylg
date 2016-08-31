@@ -31,7 +31,10 @@ func APIWarpper(handler APIHandler, cfg cli.Config) func(w http.ResponseWriter, 
 
 // API handles API routes
 func API(w http.ResponseWriter, r *http.Request, cfg cli.Config) {
-	var f = mux.Vars(r)["name"]
+	var (
+		f      = mux.Vars(r)["name"]
+		errStr string
+	)
 	switch f {
 	case "ping":
 		r.ParseForm()
@@ -42,7 +45,10 @@ func API(w http.ResponseWriter, r *http.Request, cfg cli.Config) {
 		}
 		resp := p.Run()
 		r := <-resp
-		w.Write([]byte(fmt.Sprintf(`{"rtt": %.2f,"pl":0}`, r.RTT)))
+		if r.Error != nil {
+			errStr = r.Error.Error()
+		}
+		w.Write([]byte(fmt.Sprintf(`{"rtt": %.2f,"pl":0, "err": "%s"}`, r.RTT, errStr)))
 	}
 }
 
