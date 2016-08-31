@@ -66,7 +66,7 @@ type Scan struct {
 	Port string `json:port`
 }
 
-// UpdateConfig
+// WriteConfig write config to disk
 func WriteConfig(cfg Config) error {
 	f, err := cfgFile()
 	if err != nil {
