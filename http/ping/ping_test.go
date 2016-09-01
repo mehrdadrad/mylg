@@ -3,16 +3,18 @@ package ping_test
 import (
 	"testing"
 
+	"github.com/mehrdadrad/mylg/cli"
 	"github.com/mehrdadrad/mylg/http/ping"
 	"gopkg.in/h2non/gock.v0"
 )
 
 func TestNewPing(t *testing.T) {
-	url, _ := ping.NewPing("help")
+	cfg, _ := cli.ReadDefaultConfig()
+	url, _ := ping.NewPing("help", cfg)
 	if url != nil {
 		t.Error("NewPing expected nil but returned string")
 	}
-	_, err := ping.NewPing(".")
+	_, err := ping.NewPing(".", cfg)
 	if err == nil {
 		t.Error("Newping expected error but it didn't return")
 	}
@@ -23,7 +25,8 @@ func TestPing(t *testing.T) {
 	gock.New(url).
 		Reply(200)
 
-	p, _ := ping.NewPing(url)
+	cfg, _ := cli.ReadDefaultConfig()
+	p, _ := ping.NewPing(url, cfg)
 	r, _ := p.Ping()
 	if r.StatusCode != 200 {
 		t.Error("PingGet expected to get 200 but didn't")
