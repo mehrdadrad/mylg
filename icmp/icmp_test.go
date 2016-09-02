@@ -1,13 +1,15 @@
 package icmp_test
 
 import (
+	"github.com/mehrdadrad/mylg/cli"
 	"github.com/mehrdadrad/mylg/icmp"
 	"net"
 	"testing"
 )
 
 func TestSetIP(t *testing.T) {
-	_, err := icmp.NewPing("8.8.8.8")
+	cfg, _ := cli.ReadDefaultConfig()
+	_, err := icmp.NewPing("8.8.8.8", cfg)
 	if err != nil {
 		t.Error("NewPing failed with error:", err)
 	}

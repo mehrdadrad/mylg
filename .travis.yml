@@ -4,10 +4,10 @@ go:
   - tip
 
 before_install:
-- sudo apt-get install libpcap-dev -y
-- go get golang.org/x/tools/cmd/cover
-- go get github.com/mattn/goveralls
+  - sudo apt-get install libpcap-dev -y
+  - go get golang.org/x/tools/cmd/cover
+  - go get github.com/mattn/goveralls
 
 script:  
-- test -z "$(gofmt -s -l . | tee /dev/stderr)"
-- go test -v -covermode=count -coverprofile=coverage.out
+  - test -z "$(gofmt -s -l . | tee /dev/stderr)"
+  - go test -v ./...
