@@ -95,6 +95,10 @@ func Normalize(URL string) string {
 
 // Run tries to ping w/ pretty print
 func (p *Ping) Run() {
+	if p.method != "GET" && p.method != "POST" && p.method != "HEAD" {
+		fmt.Printf("Error: Method '%s' not recognized.\n", p.method)
+		return
+	}
 	var (
 		sigCh = make(chan os.Signal, 1)
 		c     = make(map[int]float64, 10)
@@ -120,12 +124,9 @@ LOOP:
 			c[r.StatusCode]++
 			s = append(s, r.TotalTime*1000)
 		} else {
-			fmt.Printf(pStrPrefix+"timeout\n", i)
 			c[-1]++
-			if err.Error() == "wrong method" {
-				println(err.Error())
-				break LOOP
-			}
+			errmsg := strings.Split(err.Error(), ": ")
+			fmt.Printf(pStrPrefix+"%s\n", i, errmsg[len(errmsg)-1])
 		}
 		select {
 		case <-sigCh:
@@ -167,10 +168,10 @@ func printStats(c map[int]float64, s []float64, host string) {
 	}
 
 	totalReq := r["sum"] + c[-1]
-	timeoutPct := 100 - (100*r["sum"])/totalReq
+	failPct := 100 - (100*r["sum"])/totalReq
 
 	fmt.Printf("\n--- %s HTTP ping statistics --- \n", host)
-	fmt.Printf("%.0f requests transmitted, %.0f replies received, %.0f%% timeout\n", totalReq, r["sum"], timeoutPct)
+	fmt.Printf("%.0f requests transmitted, %.0f replies received, %.0f%% requests failed\n", totalReq, r["sum"], failPct)
 	fmt.Printf("HTTP Round-trip min/avg/max = %.2f/%.2f/%.2f ms\n", r["min"], r["avg"], r["max"])
 	for k, v := range c {
 		if k < 0 {
