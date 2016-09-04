@@ -188,28 +188,33 @@ func (p *Ping) Ping() (Result, error) {
 		r     Result
 		sTime time.Time
 		resp  *http.Response
+		req   *http.Request
 		err   error
 	)
 
 	client := &http.Client{Timeout: p.timeout * time.Second}
 	sTime = time.Now()
 
-	switch p.method {
-	case "HEAD":
-		resp, err = client.Head(p.url)
-	case "GET":
-		resp, err = client.Get(p.url)
-	case "POST":
+	if p.method == "POST" {
 		r.Size = len(p.buf)
 		reader := strings.NewReader(p.buf)
-		resp, err = client.Post(p.url, "text/plain", reader)
-	default:
-		return r, fmt.Errorf("wrong method")
+		req, err = http.NewRequest(p.method, p.url, reader)
+	} else {
+		req, err = http.NewRequest(p.method, p.url, nil)
 	}
 
 	if err != nil {
 		return r, err
 	}
+
+	req.Header.Add("User-Agent", "myLG (http://mylg.io)")
+
+	resp, err = client.Do(req)
+
+	if err != nil {
+		return r, err
+	}
+
 	r.TotalTime = time.Since(sTime).Seconds()
 
 	if p.method == "GET" {
