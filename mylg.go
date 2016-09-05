@@ -66,28 +66,29 @@ var (
 
 	// map cmd to function
 	cmdFunc = map[string]func(){
-		"web":     web,         // web dashboard
-		"dump":    dump,        // dump traffic
-		"disc":    discovery,   // network discovery
-		"scan":    scanPorts,   // network scan
-		"mode":    mode,        // editor mode
-		"ping":    pingQuery,   // ping
-		"trace":   trace,       // trace route
-		"bgp":     BGP,         // BGP
-		"whois":   whoisLookup, // whois / dns lookup
-		"peering": peeringDB,   // peering DB
-		"hping":   hping,       // hping
-		"dig":     dig,         // dig
-		"node":    node,        // change node
-		"connect": connect,     // connect to a country or LG
-		"local":   local,       // local
-		"help":    help,        // help
-		"exit":    cleanUp,     // clean up
-		"quit":    cleanUp,     // clean up
-		"show":    show,        // show config
-		"set":     setConfig,   // set config
-		"lg":      setLG,       // prepare looking glass
-		"ns":      setNS,       // prepare name server
+		"web":     web,          // web dashboard
+		"dump":    dump,         // dump traffic
+		"disc":    discovery,    // network discovery
+		"scan":    scanPorts,    // network scan
+		"mode":    mode,         // editor mode
+		"ping":    pingQuery,    // ping
+		"trace":   trace,        // trace route
+		"bgp":     BGP,          // BGP
+		"whois":   whoisLookup,  // whois / dns lookup
+		"peering": peeringDB,    // peering DB
+		"hping":   hping,        // hping
+		"dig":     dig,          // dig
+		"node":    node,         // change node
+		"connect": connect,      // connect to a country or LG
+		"local":   local,        // local
+		"help":    help,         // help
+		"exit":    cleanUp,      // clean up
+		"quit":    cleanUp,      // clean up
+		"show":    show,         // show config
+		"set":     setConfig,    // set config
+		"lg":      setLG,        // prepare looking glass
+		"ns":      setNS,        // prepare name server
+		"version": printVersion, // prints version
 	}
 )
 
@@ -450,6 +451,11 @@ func local() {
 	c.SetPrompt(cPName)
 }
 
+// printVersion prints version and exits
+func printVersion() {
+	fmt.Printf("myLG v%s\n", version)
+}
+
 // cleanUp
 func cleanUp() {
 	c.Close(nxt)
@@ -475,7 +481,7 @@ func help() {
               dump                        prints out a description of the contents of packets on a network interface
               disc                        discover all the devices on a LAN
               peering                     peering information (provides by peeringdb.com)
-              varsion                     shows mylg version
+              version                     shows mylg version
 
         Example:
               mylg whois 8.8.8.8
