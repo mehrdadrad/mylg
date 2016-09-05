@@ -17,8 +17,6 @@ import (
 const (
 	// Default TX timeout
 	DefaultTXTimeout int64 = 1000
-	// Default RX timeout
-	DefaultRXTimeout int64 = 2000
 )
 
 // Trace represents trace properties
@@ -31,7 +29,7 @@ type Trace struct {
 	fd      int
 	family  int
 	proto   int
-	timeout int64
+	wait    string
 	resolve bool
 	ripe    bool
 	maxTTL  int
@@ -39,6 +37,7 @@ type Trace struct {
 
 // HopResp represents hop's response
 type HopResp struct {
+	num     int
 	hop     string
 	ip      string
 	elapsed float64
@@ -57,7 +56,7 @@ type Whois struct {
 type MHopResp []HopResp
 
 // NewTrace creates new trace object
-func NewTrace(args string) (*Trace, error) {
+func NewTrace(args string, cfg cli.Config) (*Trace, error) {
 	var (
 		family int
 		proto  int
@@ -103,7 +102,7 @@ func NewTrace(args string) (*Trace, error) {
 		ip:      ip,
 		family:  family,
 		proto:   proto,
-		timeout: DefaultRXTimeout,
+		wait:    cli.SetFlag(flag, "w", cfg.Trace.Wait).(string),
 		resolve: cli.SetFlag(flag, "n", true).(bool),
 		ripe:    cli.SetFlag(flag, "nr", true).(bool),
 		maxTTL:  cli.SetFlag(flag, "m", 30).(int),
@@ -156,7 +155,11 @@ func (i *Trace) Send() error {
 
 // SetReadDeadLine sets rx timeout
 func (i *Trace) SetReadDeadLine() error {
-	tv := syscall.NsecToTimeval(1e6 * i.timeout)
+	timeout, err := time.ParseDuration(i.wait)
+	if err != nil {
+		return err
+	}
+	tv := syscall.NsecToTimeval(timeout.Nanoseconds())
 	return syscall.SetsockoptTimeval(i.fd, syscall.SOL_SOCKET, syscall.SO_RCVTIMEO, &tv)
 }
 
@@ -215,10 +218,10 @@ func (i *Trace) Bind() {
 }
 
 // Recv gets the replied icmp packet
-func (i *Trace) Recv(fd int) (int, int, string) {
+func (i *Trace) Recv() (int, int, string) {
 	var typ, code int
 	buf := make([]byte, 512)
-	n, from, err := syscall.Recvfrom(fd, buf, 0)
+	n, from, err := syscall.Recvfrom(i.fd, buf, 0)
 	if err == nil {
 		buf = buf[:n]
 		typ = int(buf[20])  // ICMP Type
@@ -241,27 +244,27 @@ func (i *Trace) Done() {
 }
 
 // NextHop pings the specific hop by set TTL
-func (i *Trace) NextHop(fd, hop int) HopResp {
+func (i *Trace) NextHop(hop int) HopResp {
 	var (
-		r    HopResp
+		r    = HopResp{num: hop}
 		name []string
 	)
 	i.SetTTL(hop)
 	ts := time.Now().UnixNano()
 	err := i.Send()
 	if err != nil {
-		return HopResp{err: err}
+		return HopResp{num: hop, err: err}
 	}
-	t, _, ip := i.Recv(fd)
+	t, _, ip := i.Recv()
 	elapsed := time.Now().UnixNano() - ts
 	if t == 64 || t == 11 || ip == i.ip.String() {
 		if i.resolve {
 			name, _ = net.LookupAddr(ip)
 		}
 		if len(name) > 0 {
-			r = HopResp{name[0], ip, float64(elapsed) / 1e6, false, nil, Whois{}}
+			r = HopResp{hop, name[0], ip, float64(elapsed) / 1e6, false, nil, Whois{}}
 		} else {
-			r = HopResp{"", ip, float64(elapsed) / 1e6, false, nil, Whois{}}
+			r = HopResp{hop, "", ip, float64(elapsed) / 1e6, false, nil, Whois{}}
 		}
 	}
 	// reached to the target
@@ -285,7 +288,7 @@ func (i *Trace) Run(retry int) chan []HopResp {
 	LOOP:
 		for h := 1; h <= i.maxTTL; h++ {
 			for n := 0; n < retry; n++ {
-				hop := i.NextHop(i.fd, h)
+				hop := i.NextHop(h)
 				r = append(r, hop)
 				if hop.err != nil {
 					break
@@ -301,6 +304,29 @@ func (i *Trace) Run(retry int) chan []HopResp {
 				}
 			}
 			r = r[:0]
+		}
+		close(c)
+		i.Done()
+	}()
+	return c
+}
+
+// MRun provides trace all hops in loop
+func (i *Trace) MRun() chan HopResp {
+	var (
+		c      = make(chan HopResp, 1)
+		maxTTL = i.maxTTL
+	)
+	i.Bind()
+	go func() {
+		for {
+			for h := 1; h <= maxTTL; h++ {
+				hop := i.NextHop(h)
+				c <- hop
+				if hop.last {
+					maxTTL = h
+				}
+			}
 		}
 		close(c)
 		i.Done()
