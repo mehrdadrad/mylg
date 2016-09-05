@@ -282,7 +282,7 @@ func mode() {
 func trace() {
 	switch {
 	case strings.HasPrefix(prompt, "local"):
-		trace, err := icmp.NewTrace(args)
+		trace, err := icmp.NewTrace(args, cfg)
 		if err != nil {
 			println(err.Error())
 		}
