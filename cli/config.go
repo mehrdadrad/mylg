@@ -29,6 +29,9 @@ var defaultConfig = `{
 	},
 	"scan" : {
 		"port"     : "1-500"
+	},
+	"trace" : {
+		"wait"  : "2s"
 	}
 }`
 
@@ -38,6 +41,7 @@ type Config struct {
 	Hping HPing `json:"hping"`
 	Web   Web   `json:"web"`
 	Scan  Scan  `json:"scan"`
+	Trace Trace `json:"trace"`
 }
 
 // Ping represents ping command options
@@ -64,6 +68,11 @@ type Web struct {
 // Scan represents scan command options
 type Scan struct {
 	Port string `json:port`
+}
+
+// Trace represents trace command options
+type Trace struct {
+	Wait string `json:"wait"`
 }
 
 // WriteConfig write config to disk
@@ -155,8 +164,9 @@ func UpgradeConfig(cfg *Config) {
 					SetConfig(args, cfg)
 				}
 			} else {
-				//TODO:
 				// there is new command
+				args := fmt.Sprintf("%s %s %v", cmd, opt, vals[i])
+				SetConfig(args, cfg)
 			}
 		}
 	}
@@ -293,7 +303,7 @@ func SetConfig(args string, s *Config) {
 
 }
 
-// SetConfig set optioni's value
+// SetValue set optioni's value
 func SetValue(v reflect.Value, rec string, val interface{}) error {
 
 	if v.Kind() != reflect.Ptr {
