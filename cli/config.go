@@ -137,17 +137,22 @@ func GetCMDNames(s interface{}) []string {
 }
 
 // UpgradeConfig adds / removes new command(s)/option(s)
-func UpgradeConfig(cfg *Config) {
+func UpgradeConfig(cfg *Config) error {
 	var (
 		conf  map[string]interface{}
 		cConf Config
 	)
+
 	b := make([]byte, 2048)
 	f, err := cfgFile()
 	if err != nil {
-
+		return err
 	}
+
 	h, err := os.Open(f)
+	if err != nil {
+		return err
+	}
 	n, _ := h.Read(b)
 	b = b[:n]
 	// load saved/old config to conf
@@ -170,6 +175,7 @@ func UpgradeConfig(cfg *Config) {
 			}
 		}
 	}
+	return nil
 }
 
 // LoadConfig loads configuration
