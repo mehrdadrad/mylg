@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	ui "github.com/gizak/termui"
+
 	"github.com/mehrdadrad/mylg/cli"
 	"github.com/mehrdadrad/mylg/ripe"
 )
@@ -32,6 +34,8 @@ type Trace struct {
 	wait    string
 	resolve bool
 	ripe    bool
+	term    bool
+	pSize   int
 	maxTTL  int
 }
 
@@ -102,9 +106,11 @@ func NewTrace(args string, cfg cli.Config) (*Trace, error) {
 		ip:      ip,
 		family:  family,
 		proto:   proto,
+		pSize:   64,
 		wait:    cli.SetFlag(flag, "w", cfg.Trace.Wait).(string),
 		resolve: cli.SetFlag(flag, "n", true).(bool),
 		ripe:    cli.SetFlag(flag, "nr", true).(bool),
+		term:    cli.SetFlag(flag, "v", false).(bool),
 		maxTTL:  cli.SetFlag(flag, "m", 30).(int),
 	}, nil
 }
@@ -121,10 +127,12 @@ func (i *Trace) SetTTL(ttl int) {
 // Send tries to send an UDP packet
 func (i *Trace) Send() error {
 	fd, err := syscall.Socket(i.family, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
+
 	if err != nil {
 		println(err.Error())
 	}
 	defer syscall.Close(fd)
+
 	// Set options
 	if IsIPv4(i.ip) {
 		var b [4]byte
@@ -133,6 +141,7 @@ func (i *Trace) Send() error {
 			Port: 33434,
 			Addr: b,
 		}
+
 		syscall.SetsockoptInt(fd, 0x0, syscall.IP_TTL, i.ttl)
 		if err := syscall.Sendto(fd, []byte{0x0}, 0, &addr); err != nil {
 			return err
@@ -183,7 +192,7 @@ func (i *Trace) SetDeadLine() error {
 }
 
 // Bind starts to listen for ICMP reply
-func (i *Trace) Bind() {
+func (i *Trace) Bind(port int) {
 	var err error
 	i.fd, err = syscall.Socket(i.family, syscall.SOCK_RAW, i.proto)
 	if err != nil {
@@ -196,7 +205,7 @@ func (i *Trace) Bind() {
 
 	if i.family == syscall.AF_INET {
 		addr := syscall.SockaddrInet4{
-			Port: 0,
+			Port: port,
 			Addr: [4]byte{},
 		}
 
@@ -205,7 +214,7 @@ func (i *Trace) Bind() {
 		}
 	} else {
 		addr := syscall.SockaddrInet6{
-			Port:   0,
+			Port:   port,
 			ZoneId: 0,
 			Addr:   [16]byte{},
 		}
@@ -227,6 +236,7 @@ func (i *Trace) Recv() (int, int, string) {
 		typ = int(buf[20])  // ICMP Type
 		code = int(buf[21]) // ICMP Code
 	}
+
 	if i.family == syscall.AF_INET && typ != 0 {
 		fromAddrStr := net.IP((from.(*syscall.SockaddrInet4).Addr)[:]).String()
 		return typ, code, fromAddrStr
@@ -283,7 +293,7 @@ func (i *Trace) Run(retry int) chan []HopResp {
 		c = make(chan []HopResp, 1)
 		r []HopResp
 	)
-	i.Bind()
+	i.Bind(0)
 	go func() {
 	LOOP:
 		for h := 1; h <= i.maxTTL; h++ {
@@ -314,24 +324,158 @@ func (i *Trace) Run(retry int) chan []HopResp {
 // MRun provides trace all hops in loop
 func (i *Trace) MRun() chan HopResp {
 	var (
-		c      = make(chan HopResp, 1)
-		maxTTL = i.maxTTL
+		c        = make(chan HopResp, 1)
+		maxTTL   = i.maxTTL
+		setParam = false
 	)
-	i.Bind()
 	go func() {
 		for {
 			for h := 1; h <= maxTTL; h++ {
+				i.Bind(h - 1)
 				hop := i.NextHop(h)
 				c <- hop
-				if hop.last {
+				if hop.last && !setParam {
 					maxTTL = h
+					i.wait = fmt.Sprintf("%fms", hop.elapsed*2)
+					setParam = true
 				}
+				i.Done()
 			}
 		}
 		close(c)
 		i.Done()
 	}()
 	return c
+}
+
+// TermUI prints out trace loop by termui
+func (i *Trace) TermUI() {
+	var done = make(chan struct{})
+	if err := ui.Init(); err != nil {
+		panic(err)
+	}
+	defer ui.Close()
+
+	type Stats struct {
+		count int64   // sent packet
+		avg   float64 // average rtt
+		pkl   int64   // packet loss
+	}
+
+	var (
+		resp  = i.MRun()
+		hops  = ui.NewList()
+		rtt   = ui.NewList()
+		snt   = ui.NewList()
+		pkl   = ui.NewList()
+		stats = make([]Stats, 35)
+		lists = []*ui.List{hops, rtt, snt, pkl}
+	)
+
+	for _, l := range lists {
+		l.Items = make([]string, 35)
+		l.Height = 35
+		l.Border = false
+	}
+
+	// title
+	hops.Items[0] = "[Host](fg-bold)"
+	rtt.Items[0] = "[Last](fg-bold)"
+	snt.Items[0] = "[Sent](fg-bold)"
+	pkl.Items[0] = "[Loss%](fg-bold)"
+
+	//
+	par0 := ui.NewPar("Press [q] to quit")
+	par0.Height = 2
+	par0.Width = 20
+	par0.Y = 1
+	par0.Border = false
+
+	// layout
+	ui.Body.AddRows(
+		ui.NewRow(
+			ui.NewCol(12, 0, par0),
+		),
+		ui.NewRow(
+			ui.NewCol(5, 0, hops),
+			ui.NewCol(1, 0, pkl),
+			ui.NewCol(1, 0, snt),
+			ui.NewCol(1, 0, rtt),
+		),
+	)
+	ui.Body.Align()
+	ui.Render(ui.Body)
+
+	ui.Handle("/sys/kbd/q", func(ui.Event) {
+		done <- struct{}{}
+		ui.StopLoop()
+	})
+	go func() {
+		var (
+			hop string
+			//who = make(map[string]Whois, 60)
+		)
+	LOOP:
+		for {
+			select {
+			case <-done:
+				break LOOP
+			case r, ok := <-resp:
+				if !ok {
+					break LOOP
+				}
+
+				if r.hop != "" {
+					hop = r.hop
+				} else {
+					hop = r.ip
+				}
+
+				// statistics
+				stats[r.num].count++
+				snt.Items[r.num] = fmt.Sprintf("%d", stats[r.num].count)
+
+				if r.elapsed != 0 {
+					hops.Items[r.num] = fmt.Sprintf("[%-2d] %-40s", r.num, hop)
+					rtt.Items[r.num] = fmt.Sprintf("%.2f", r.elapsed)
+				} else if r.elapsed == 0 && hops.Items[r.num] == "" {
+					hops.Items[r.num] = fmt.Sprintf("[%-2d] %-40s", r.num, "???")
+					stats[r.num].pkl++
+				} else if !strings.Contains(hops.Items[r.num], "???") {
+					hops.Items[r.num] = termUICColor(hops.Items[r.num], "fg-red")
+					rtt.Items[r.num] = "?"
+					stats[r.num].pkl++
+				} else {
+					stats[r.num].pkl++
+				}
+
+				pkl.Items[r.num] = fmt.Sprintf("%.1f", float64(stats[r.num].pkl)*100/float64(stats[r.num].count))
+
+				ui.Render(ui.Body)
+
+				if r.last {
+					time.Sleep(1000 * time.Millisecond)
+				}
+
+			}
+		}
+	}()
+	ui.Loop()
+}
+
+func termUICColor(m, color string) string {
+	if !strings.Contains(m, color) {
+		m = fmt.Sprintf("[%s](%s)", m, color)
+	}
+	return m
+}
+
+func (i *Trace) Print() {
+	if i.term {
+		i.TermUI()
+	} else {
+		i.PrintPretty()
+	}
 }
 
 // PrintPretty prints out trace result

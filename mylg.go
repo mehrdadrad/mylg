@@ -289,7 +289,7 @@ func trace() {
 		if trace == nil {
 			break
 		}
-		trace.PrintPretty()
+		trace.Print()
 	case strings.HasPrefix(prompt, "lg"):
 		providers[cPName].Set(args, "ipv4")
 		for l := range providers[cPName].Trace() {
