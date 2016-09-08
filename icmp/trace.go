@@ -1,7 +1,12 @@
 package icmp
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
+	"golang.org/x/net/icmp"
+	"golang.org/x/net/ipv4"
+	"math/rand"
 	"net"
 	"os"
 	"os/signal"
@@ -32,6 +37,7 @@ type Trace struct {
 	family  int
 	proto   int
 	wait    string
+	icmp    bool
 	resolve bool
 	ripe    bool
 	term    bool
@@ -48,6 +54,14 @@ type HopResp struct {
 	last    bool
 	err     error
 	whois   Whois
+}
+
+type ICMPResp struct {
+	typ  int
+	code int
+	id   int
+	seq  int
+	src  net.IP
 }
 
 // Whois represents prefix info from RIPE
@@ -108,6 +122,7 @@ func NewTrace(args string, cfg cli.Config) (*Trace, error) {
 		proto:   proto,
 		pSize:   64,
 		wait:    cli.SetFlag(flag, "w", cfg.Trace.Wait).(string),
+		icmp:    cli.SetFlag(flag, "I", false).(bool),
 		resolve: cli.SetFlag(flag, "n", true).(bool),
 		ripe:    cli.SetFlag(flag, "nr", true).(bool),
 		term:    cli.SetFlag(flag, "v", false).(bool),
@@ -124,9 +139,19 @@ func (i *Trace) SetTTL(ttl int) {
 	i.ttl = ttl
 }
 
-// Send tries to send an UDP packet
-func (i *Trace) Send() error {
-	fd, err := syscall.Socket(i.family, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
+// Send tries to send ICMP packet
+func (i *Trace) Send() (int, error) {
+	var (
+		seq = rand.Intn(0xff)
+		fd  int
+		err error
+	)
+
+	if i.icmp {
+		fd, err = syscall.Socket(i.family, syscall.SOCK_RAW, syscall.IPPROTO_ICMP)
+	} else {
+		fd, err = syscall.Socket(i.family, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
+	}
 
 	if err != nil {
 		println(err.Error())
@@ -142,10 +167,19 @@ func (i *Trace) Send() error {
 			Addr: b,
 		}
 
+		p, _ := (&icmp.Message{
+			Type: ipv4.ICMPTypeEcho, Code: 0,
+			Body: &icmp.Echo{
+				ID: 55, Seq: seq,
+				Data: []byte("myLG"),
+			},
+		}).Marshal(nil)
+
 		syscall.SetsockoptInt(fd, 0x0, syscall.IP_TTL, i.ttl)
-		if err := syscall.Sendto(fd, []byte{0x0}, 0, &addr); err != nil {
-			return err
+		if err := syscall.Sendto(fd, p, 0, &addr); err != nil {
+			return seq, err
 		}
+		//  err == syscall.EAGAIN
 	} else {
 		var b [16]byte
 		copy(b[:], i.ip.To16())
@@ -156,10 +190,10 @@ func (i *Trace) Send() error {
 		}
 		syscall.SetsockoptInt(fd, syscall.IPPROTO_IPV6, syscall.IP_TTL, i.ttl)
 		if err := syscall.Sendto(fd, []byte{0x0}, 0, &addr); err != nil {
-			return err
+			return seq, err
 		}
 	}
-	return nil
+	return seq, nil
 }
 
 // SetReadDeadLine sets rx timeout
@@ -227,25 +261,55 @@ func (i *Trace) Bind(port int) {
 }
 
 // Recv gets the replied icmp packet
-func (i *Trace) Recv() (int, int, string) {
-	var typ, code int
-	buf := make([]byte, 512)
-	n, from, err := syscall.Recvfrom(i.fd, buf, 0)
-	if err == nil {
-		buf = buf[:n]
-		typ = int(buf[20])  // ICMP Type
-		code = int(buf[21]) // ICMP Code
-	}
+func (i *Trace) Recv(seq int) (ICMPResp, error) {
+	var (
+		buf  = make([]byte, 512)
+		resp ICMPResp
+	)
+	ts := time.Now()
+	for {
+		n, _, err := syscall.Recvfrom(i.fd, buf, 0)
 
-	if i.family == syscall.AF_INET && typ != 0 {
-		fromAddrStr := net.IP((from.(*syscall.SockaddrInet4).Addr)[:]).String()
-		return typ, code, fromAddrStr
+		if err != nil {
+			return resp, err
+		} else {
+			buf = buf[:n]
+			resp.typ = int(buf[20])  // ICMP Type
+			resp.code = int(buf[21]) // ICMP Code
+		}
+
+		// parse header
+		h, err := icmp.ParseIPv4Header(buf)
+		if err != nil {
+			return resp, err
+		}
+
+		resp.src = h.Src
+
+		switch resp.typ {
+		//ICMPv4 TimeExceeded
+		case 11:
+			resp.id, _ = byteToInt(buf[52:54])
+			resp.seq, _ = byteToInt(buf[54:56])
+		// ICMPv4 Reply (0),  Destination Unreachable[Port] (3)
+		// ICMP Protocol : ICMPv4 Reply
+		// UDP Protocol : Destination Unreachable[Port]
+		case 0, 3:
+			resp.id, _ = byteToInt(buf[24:26])
+			resp.seq, _ = byteToInt(buf[26:28])
+		}
+
+		if seq != resp.seq && i.icmp {
+			du, _ := time.ParseDuration(i.wait)
+			if time.Since(ts) < du {
+				continue
+			}
+			return resp, fmt.Errorf("wrong packet")
+		} else {
+			break
+		}
 	}
-	if i.family == syscall.AF_INET6 && typ != 0 {
-		fromAddrStr := net.IP((from.(*syscall.SockaddrInet6).Addr)[:]).String()
-		return typ, code, fromAddrStr
-	}
-	return typ, code, ""
+	return resp, nil
 }
 
 // Done close the socket
@@ -261,25 +325,30 @@ func (i *Trace) NextHop(hop int) HopResp {
 	)
 	i.SetTTL(hop)
 	ts := time.Now().UnixNano()
-	err := i.Send()
+	seq, err := i.Send()
 	if err != nil {
 		return HopResp{num: hop, err: err}
 	}
-	t, _, ip := i.Recv()
+
+	resp, err := i.Recv(seq)
+	if err != nil {
+		r = HopResp{hop, "", "", 0, false, nil, Whois{}}
+		return r
+	}
+
 	elapsed := time.Now().UnixNano() - ts
-	if t == 64 || t == 11 || ip == i.ip.String() {
-		if i.resolve {
-			name, _ = net.LookupAddr(ip)
-		}
-		if len(name) > 0 {
-			r = HopResp{hop, name[0], ip, float64(elapsed) / 1e6, false, nil, Whois{}}
-		} else {
-			r = HopResp{hop, "", ip, float64(elapsed) / 1e6, false, nil, Whois{}}
-		}
+
+	if i.resolve {
+		name, _ = net.LookupAddr(resp.src.String())
+	}
+	if len(name) > 0 {
+		r = HopResp{hop, name[0], resp.src.String(), float64(elapsed) / 1e6, false, nil, Whois{}}
+	} else {
+		r = HopResp{hop, "", resp.src.String(), float64(elapsed) / 1e6, false, nil, Whois{}}
 	}
 	// reached to the target
 	for _, h := range i.ips {
-		if ip == h.String() {
+		if resp.src.String() == h.String() {
 			r.last = true
 			break
 		}
@@ -336,11 +405,11 @@ func (i *Trace) MRun() chan HopResp {
 				c <- hop
 				if hop.last && !setParam {
 					maxTTL = h
-					i.wait = fmt.Sprintf("%fms", hop.elapsed*2)
 					setParam = true
 				}
 				i.Done()
 			}
+			time.Sleep(1 * time.Second)
 		}
 		close(c)
 		i.Done()
@@ -452,11 +521,6 @@ func (i *Trace) TermUI() {
 				pkl.Items[r.num] = fmt.Sprintf("%.1f", float64(stats[r.num].pkl)*100/float64(stats[r.num].count))
 
 				ui.Render(ui.Body)
-
-				if r.last {
-					time.Sleep(1000 * time.Millisecond)
-				}
-
 			}
 		}
 	}()
@@ -627,6 +691,12 @@ func whois(ip string) (Whois, error) {
 		resp.asn = h.(map[string]interface{})["asn"].(float64)
 	}
 	return resp, nil
+}
+
+func byteToInt(buf []byte) (int, error) {
+	var y int16
+	err := binary.Read(bytes.NewReader(buf), binary.BigEndian, &y)
+	return int(y), err
 }
 
 func helpTrace() {
