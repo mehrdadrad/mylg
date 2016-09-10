@@ -1,11 +1,14 @@
+// Copyright 2016 Mehrdad Arshad Rad <arshad.rad@gmail.com>. All rights reserved.
+// Use of this source code is governed by a MIT license that can
+// be found in the LICENSE file.
+
 package icmp
 
 import (
-	"bytes"
-	"encoding/binary"
 	"fmt"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
+	"golang.org/x/net/ipv6"
 	"math/rand"
 	"net"
 	"os"
@@ -24,6 +27,10 @@ import (
 const (
 	// Default TX timeout
 	DefaultTXTimeout int64 = 1000
+	// ICMP type
+	IPv4ICMPTypeEchoReply              = 0
+	IPv4ICMPTypeDestinationUnreachable = 3
+	IPv4CMPTypeTimeExceeded            = 11
 )
 
 // Trace represents trace properties
@@ -62,12 +69,22 @@ type ICMPResp struct {
 	id   int
 	seq  int
 	src  net.IP
+	udp  struct{ dstPort int }
 }
 
 // Whois represents prefix info from RIPE
 type Whois struct {
 	holder string
 	asn    float64
+}
+
+// Stats represents statistic's fields
+type Stats struct {
+	count int64   // sent packet
+	min   float64 // minimum/best rtt
+	avg   float64 // average rtt
+	max   float64 // maximum/worst rtt
+	pkl   int64   // packet loss
 }
 
 // MHopResp represents multi hop's responses
@@ -120,7 +137,7 @@ func NewTrace(args string, cfg cli.Config) (*Trace, error) {
 		ip:      ip,
 		family:  family,
 		proto:   proto,
-		pSize:   64,
+		pSize:   52,
 		wait:    cli.SetFlag(flag, "w", cfg.Trace.Wait).(string),
 		icmp:    cli.SetFlag(flag, "I", false).(bool),
 		resolve: cli.SetFlag(flag, "n", true).(bool),
@@ -140,19 +157,24 @@ func (i *Trace) SetTTL(ttl int) {
 }
 
 // Send tries to send ICMP packet
-func (i *Trace) Send() (int, error) {
+func (i *Trace) Send(port int) (int, error) {
+	rand.Seed(time.Now().UTC().UnixNano())
 	var (
-		seq = rand.Intn(0xff)
-		fd  int
-		err error
+		seq    = rand.Intn(0xff)
+		sotype int
+		proto  int
+		err    error
 	)
 
 	if i.icmp {
-		fd, err = syscall.Socket(i.family, syscall.SOCK_RAW, syscall.IPPROTO_ICMP)
+		sotype = syscall.SOCK_RAW
+		proto = syscall.IPPROTO_ICMP
 	} else {
-		fd, err = syscall.Socket(i.family, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
+		sotype = syscall.SOCK_DGRAM
+		proto = syscall.IPPROTO_UDP
 	}
 
+	fd, err := syscall.Socket(i.family, sotype, proto)
 	if err != nil {
 		println(err.Error())
 	}
@@ -163,33 +185,41 @@ func (i *Trace) Send() (int, error) {
 		var b [4]byte
 		copy(b[:], i.ip.To4())
 		addr := syscall.SockaddrInet4{
-			Port: 33434,
+			Port: port,
 			Addr: b,
 		}
 
 		p, _ := (&icmp.Message{
 			Type: ipv4.ICMPTypeEcho, Code: 0,
 			Body: &icmp.Echo{
-				ID: 55, Seq: seq,
-				Data: []byte("myLG"),
+				ID: os.Getpid() & 0xffff, Seq: seq,
+				Data: []byte("myLG - [mylg.io]"),
 			},
 		}).Marshal(nil)
 
-		syscall.SetsockoptInt(fd, 0x0, syscall.IP_TTL, i.ttl)
+		syscall.SetsockoptInt(fd, syscall.IPPROTO_IP, syscall.IP_TTL, i.ttl)
 		if err := syscall.Sendto(fd, p, 0, &addr); err != nil {
 			return seq, err
 		}
-		//  err == syscall.EAGAIN
 	} else {
 		var b [16]byte
 		copy(b[:], i.ip.To16())
 		addr := syscall.SockaddrInet6{
-			Port:   33434,
+			Port:   port,
 			ZoneId: 0,
 			Addr:   b,
 		}
+
+		p, _ := (&icmp.Message{
+			Type: ipv6.ICMPTypeEchoRequest, Code: 0,
+			Body: &icmp.Echo{
+				ID: os.Getpid() & 0xffff, Seq: seq,
+				Data: []byte("myLG - [mylg.io]"),
+			},
+		}).Marshal(nil)
+
 		syscall.SetsockoptInt(fd, syscall.IPPROTO_IPV6, syscall.IP_TTL, i.ttl)
-		if err := syscall.Sendto(fd, []byte{0x0}, 0, &addr); err != nil {
+		if err := syscall.Sendto(fd, p, 0, &addr); err != nil {
 			return seq, err
 		}
 	}
@@ -261,25 +291,30 @@ func (i *Trace) Bind(port int) {
 }
 
 // Recv gets the replied icmp packet
-func (i *Trace) Recv(seq int) (ICMPResp, error) {
+func (i *Trace) Recv(seq int, port int) (ICMPResp, error) {
 	var (
-		buf  = make([]byte, 512)
+		b    = make([]byte, 512)
 		resp ICMPResp
 	)
 	ts := time.Now()
 	for {
-		n, _, err := syscall.Recvfrom(i.fd, buf, 0)
+		n, _, err := syscall.Recvfrom(i.fd, b, 0)
 
 		if err != nil {
+			du, _ := time.ParseDuration(i.wait)
+			if err == syscall.EAGAIN && time.Since(ts) < du {
+				continue
+			}
 			return resp, err
 		} else {
-			buf = buf[:n]
-			resp.typ = int(buf[20])  // ICMP Type
-			resp.code = int(buf[21]) // ICMP Code
+			b = b[:n]
 		}
 
+		resp.typ = int(b[20])  // ICMP Type
+		resp.code = int(b[21]) // ICMP Code
+
 		// parse header
-		h, err := icmp.ParseIPv4Header(buf)
+		h, err := icmp.ParseIPv4Header(b)
 		if err != nil {
 			return resp, err
 		}
@@ -287,19 +322,24 @@ func (i *Trace) Recv(seq int) (ICMPResp, error) {
 		resp.src = h.Src
 
 		switch resp.typ {
-		//ICMPv4 TimeExceeded
-		case 11:
-			resp.id, _ = byteToInt(buf[52:54])
-			resp.seq, _ = byteToInt(buf[54:56])
-		// ICMPv4 Reply (0),  Destination Unreachable[Port] (3)
-		// ICMP Protocol : ICMPv4 Reply
-		// UDP Protocol : Destination Unreachable[Port]
-		case 0, 3:
-			resp.id, _ = byteToInt(buf[24:26])
-			resp.seq, _ = byteToInt(buf[26:28])
+		case IPv4ICMPTypeEchoReply:
+			resp.id = int(b[24])<<8 | int(b[25])
+			resp.seq = int(b[26])<<8 | int(b[27])
+		case IPv4ICMPTypeDestinationUnreachable:
+			resp.udp.dstPort = int(b[28+20+2])<<8 | int(b[28+20+3])
+		case IPv4CMPTypeTimeExceeded:
+			resp.id = int(b[52])<<8 | int(b[53])
+			resp.seq = int(b[54])<<8 | int(b[55])
+			resp.udp.dstPort = int(b[50])<<8 | int(b[51])
 		}
 
 		if seq != resp.seq && i.icmp {
+			du, _ := time.ParseDuration(i.wait)
+			if time.Since(ts) < du {
+				continue
+			}
+			return resp, fmt.Errorf("wrong packet")
+		} else if port != resp.udp.dstPort && !i.icmp {
 			du, _ := time.ParseDuration(i.wait)
 			if time.Since(ts) < du {
 				continue
@@ -312,25 +352,22 @@ func (i *Trace) Recv(seq int) (ICMPResp, error) {
 	return resp, nil
 }
 
-// Done close the socket
-func (i *Trace) Done() {
-	syscall.Close(i.fd)
-}
-
 // NextHop pings the specific hop by set TTL
 func (i *Trace) NextHop(hop int) HopResp {
+	rand.Seed(time.Now().UTC().UnixNano())
 	var (
 		r    = HopResp{num: hop}
+		port = 33434 + rand.Intn(50)
 		name []string
 	)
 	i.SetTTL(hop)
 	ts := time.Now().UnixNano()
-	seq, err := i.Send()
+	seq, err := i.Send(port)
 	if err != nil {
 		return HopResp{num: hop, err: err}
 	}
 
-	resp, err := i.Recv(seq)
+	resp, err := i.Recv(seq, port)
 	if err != nil {
 		r = HopResp{hop, "", "", 0, false, nil, Whois{}}
 		return r
@@ -374,7 +411,7 @@ func (i *Trace) Run(retry int) chan []HopResp {
 				}
 			}
 			if i.ripe {
-				i.appendWhois(r[:])
+				i.addWhois(r[:])
 			}
 			c <- r
 			for _, R := range r {
@@ -385,7 +422,7 @@ func (i *Trace) Run(retry int) chan []HopResp {
 			r = r[:0]
 		}
 		close(c)
-		i.Done()
+		syscall.Close(i.fd)
 	}()
 	return c
 }
@@ -394,95 +431,183 @@ func (i *Trace) Run(retry int) chan []HopResp {
 func (i *Trace) MRun() chan HopResp {
 	var (
 		c        = make(chan HopResp, 1)
+		ASN      = make(map[string]Whois, 100)
 		maxTTL   = i.maxTTL
 		setParam = false
 	)
+
+	i.Bind(0)
 	go func() {
 		for {
 			for h := 1; h <= maxTTL; h++ {
-				i.Bind(h - 1)
 				hop := i.NextHop(h)
+				if w, ok := ASN[hop.ip]; ok {
+					hop.whois = w
+				} else if hop.ip != "" {
+					go func(ASN map[string]Whois) {
+						w, _ := whois(hop.ip)
+						ASN[hop.ip] = w
+					}(ASN)
+				}
 				c <- hop
 				if hop.last && !setParam {
 					maxTTL = h
 					setParam = true
 				}
-				i.Done()
 			}
 			time.Sleep(1 * time.Second)
 		}
 		close(c)
-		i.Done()
+		syscall.Close(i.fd)
 	}()
 	return c
 }
 
 // TermUI prints out trace loop by termui
 func (i *Trace) TermUI() {
-	var done = make(chan struct{})
 	if err := ui.Init(); err != nil {
-		panic(err)
+		println(err.Error())
+		return
 	}
 	defer ui.Close()
 
-	type Stats struct {
-		count int64   // sent packet
-		avg   float64 // average rtt
-		pkl   int64   // packet loss
-	}
-
 	var (
-		resp  = i.MRun()
-		hops  = ui.NewList()
-		rtt   = ui.NewList()
-		snt   = ui.NewList()
-		pkl   = ui.NewList()
-		stats = make([]Stats, 35)
-		lists = []*ui.List{hops, rtt, snt, pkl}
+		done = make(chan struct{})
+
+		resp = i.MRun()
+
+		// columns
+		hops = ui.NewList()
+		rtt  = ui.NewList()
+		snt  = ui.NewList()
+		pkl  = ui.NewList()
+
+		stats   = make([]Stats, 65)
+		lists   = []*ui.List{hops, rtt, snt, pkl}
+		display = 1
 	)
 
 	for _, l := range lists {
-		l.Items = make([]string, 35)
+		l.Items = make([]string, 65)
 		l.Height = 35
 		l.Border = false
 	}
 
+	// lince chart
+	lc := ui.NewLineChart()
+	lc.BorderLabel = fmt.Sprintf("RTT: %s", i.host)
+	lc.Height = 18
+	lc.X = 0
+	lc.Y = 0
+	lc.Mode = "dot"
+	lc.AxesColor = ui.ColorWhite
+	lc.LineColor = ui.ColorGreen | ui.AttrBold
+
 	// title
-	hops.Items[0] = "[Host](fg-bold)"
-	rtt.Items[0] = "[Last](fg-bold)"
+	hops.Items[0] = fmt.Sprintf("[%-50s %-6s %-6s](fg-bold)", "Host", "ASN", "Holder")
+	rtt.Items[0] = fmt.Sprintf("[%-6s %-6s %-6s %-6s](fg-bold)", "Last", "Avg", "Best", "Wrst")
 	snt.Items[0] = "[Sent](fg-bold)"
 	pkl.Items[0] = "[Loss%](fg-bold)"
 
-	//
-	par0 := ui.NewPar("Press [q] to quit")
-	par0.Height = 2
-	par0.Width = 20
-	par0.Y = 1
-	par0.Border = false
+	// header
+	header := ui.NewPar(fmt.Sprintf("myLG - traceroute to %s, %d hops max, %d byte packets", i.host, i.maxTTL, i.pSize))
+	header.Height = 1
+	header.Width = ui.TermWidth()
+	header.Y = 1
+	header.TextBgColor = ui.ColorBlue
+	header.Border = false
 
-	// layout
-	ui.Body.AddRows(
+	// menu
+	menu := ui.NewPar("Press [q] to quit, [r] to reset statistics, [d] to change display mode")
+	menu.Height = 2
+	menu.Width = 20
+	menu.Y = 1
+	menu.Border = false
+
+	// screens1 - trace statistics
+	screen1 := []*ui.Row{
 		ui.NewRow(
-			ui.NewCol(12, 0, par0),
+			ui.NewCol(12, 0, header),
 		),
 		ui.NewRow(
-			ui.NewCol(5, 0, hops),
+			ui.NewCol(12, 0, menu),
+		),
+		ui.NewRow(
+			ui.NewCol(6, 0, hops),
 			ui.NewCol(1, 0, pkl),
 			ui.NewCol(1, 0, snt),
-			ui.NewCol(1, 0, rtt),
+			ui.NewCol(4, 0, rtt),
 		),
-	)
+	}
+	// screen2 - trace line chart
+	screen2 := []*ui.Row{
+		ui.NewRow(
+			ui.NewCol(12, 0, header),
+		),
+		ui.NewRow(
+			ui.NewCol(12, 0, menu),
+		),
+		ui.NewRow(
+			ui.NewCol(12, 0, lc),
+		),
+	}
+
+	// init layout
+	ui.Body.AddRows(screen1...)
 	ui.Body.Align()
 	ui.Render(ui.Body)
+
+	ui.Handle("/sys/wnd/resize", func(e ui.Event) {
+		ui.Body.Width = ui.TermWidth()
+		ui.Body.Align()
+		ui.Render(ui.Body)
+	})
 
 	ui.Handle("/sys/kbd/q", func(ui.Event) {
 		done <- struct{}{}
 		ui.StopLoop()
 	})
+
+	// reset statistics and display
+	ui.Handle("/sys/kbd/r", func(ui.Event) {
+		for i := 1; i < 65; i++ {
+			for _, l := range lists {
+				l.Items[i] = ""
+			}
+			stats[i].count = 0
+			stats[i].avg = 0
+			stats[i].min = 0
+			stats[i].max = 0
+			stats[i].pkl = 0
+		}
+		lc.Data = lc.Data[:0]
+	})
+
+	// change display mode
+	ui.Handle("/sys/kbd/d", func(ui.Event) {
+		ui.Clear()
+
+		ui.Body = ui.NewGrid()
+		ui.Body.X = 0
+		ui.Body.Y = 0
+		ui.Body.BgColor = ui.ThemeAttr("bg")
+		ui.Body.Width = ui.TermWidth()
+
+		switch display {
+		case 0:
+			ui.Body.AddRows(screen1...)
+			display = 1
+		case 1:
+			ui.Body.AddRows(screen2...)
+			display = 0
+		}
+		ui.Body.Align()
+		ui.Render(ui.Body)
+	})
+
 	go func() {
 		var (
-			hop string
-			//who = make(map[string]Whois, 60)
+			hop, asn, holder string
 		)
 	LOOP:
 		for {
@@ -500,22 +625,44 @@ func (i *Trace) TermUI() {
 					hop = r.ip
 				}
 
+				if r.whois.asn > 0 {
+					asn = fmt.Sprintf("%.0f", r.whois.asn)
+					holder = strings.Fields(r.whois.holder)[0]
+				} else {
+					asn = ""
+					holder = ""
+				}
+
 				// statistics
 				stats[r.num].count++
 				snt.Items[r.num] = fmt.Sprintf("%d", stats[r.num].count)
 
 				if r.elapsed != 0 {
-					hops.Items[r.num] = fmt.Sprintf("[%-2d] %-40s", r.num, hop)
-					rtt.Items[r.num] = fmt.Sprintf("%.2f", r.elapsed)
+
+					stats[r.num].min = min(stats[r.num].min, r.elapsed)
+					stats[r.num].avg = avg(stats[r.num].avg, r.elapsed)
+					stats[r.num].max = max(stats[r.num].max, r.elapsed)
+
+					hops.Items[r.num] = fmt.Sprintf("[%-2d] %-45s %-6s %s", r.num, hop, asn, holder)
+					rtt.Items[r.num] = fmt.Sprintf("%-6.2f\t%-6.2f\t%-6.2f\t%-6.2f", r.elapsed, stats[r.num].avg, stats[r.num].min, stats[r.num].max)
+
+					lcShift(r, lc, ui.TermWidth())
+
 				} else if r.elapsed == 0 && hops.Items[r.num] == "" {
+
 					hops.Items[r.num] = fmt.Sprintf("[%-2d] %-40s", r.num, "???")
 					stats[r.num].pkl++
+
 				} else if !strings.Contains(hops.Items[r.num], "???") {
+
 					hops.Items[r.num] = termUICColor(hops.Items[r.num], "fg-red")
-					rtt.Items[r.num] = "?"
+					rtt.Items[r.num] = fmt.Sprintf("%-6.2s\t%-6.2f\t%-6.2f\t%-6.2f", "?", stats[r.num].avg, stats[r.num].min, stats[r.num].max)
 					stats[r.num].pkl++
+
 				} else {
+
 					stats[r.num].pkl++
+
 				}
 
 				pkl.Items[r.num] = fmt.Sprintf("%.1f", float64(stats[r.num].pkl)*100/float64(stats[r.num].count))
@@ -527,6 +674,19 @@ func (i *Trace) TermUI() {
 	ui.Loop()
 }
 
+// lcShift shifs line chart once it filled out
+func lcShift(r HopResp, lc *ui.LineChart, width int) {
+	if r.last {
+		t := time.Now()
+		lc.Data = append(lc.Data, r.elapsed)
+		lc.DataLabels = append(lc.DataLabels, t.Format("04:05"))
+		if len(lc.Data) > ui.TermWidth()-10 {
+			lc.Data = lc.Data[1:]
+			lc.DataLabels = lc.DataLabels[1:]
+		}
+	}
+}
+
 func termUICColor(m, color string) string {
 	if !strings.Contains(m, color) {
 		m = fmt.Sprintf("[%s](%s)", m, color)
@@ -534,6 +694,7 @@ func termUICColor(m, color string) string {
 	return m
 }
 
+// Print prints out trace result in normal or terminal mode
 func (i *Trace) Print() {
 	if i.term {
 		i.TermUI()
@@ -646,30 +807,32 @@ func fmtHops(m []HopResp, newLine int) string {
 	return msg
 }
 
-// appendWhois adds whois info to response if available
-func (i *Trace) appendWhois(R []HopResp) {
+// addWhois adds whois info to response if available
+func (i *Trace) addWhois(R []HopResp) {
 	var (
 		ips = make(map[string]Whois, 3)
 		w   Whois
 		err error
 	)
+
 	for _, r := range R {
 		ips[r.ip] = Whois{}
 	}
+
 	for ip := range ips {
 		if ip == "" {
 			continue
 		}
-		if i.family != syscall.AF_INET6 {
-			w, err = whois(ip)
-		} else {
-			w, err = whois(ip)
-		}
+
+		w, err = whois(ip)
+
 		if err != nil {
 			continue
 		}
+
 		ips[ip] = w
 	}
+
 	for i := range R {
 		R[i].whois = ips[R[i].ip]
 	}
@@ -678,6 +841,12 @@ func (i *Trace) appendWhois(R []HopResp) {
 // whois returns prefix whois info from RIPE
 func whois(ip string) (Whois, error) {
 	var resp Whois
+
+	_, net, err := net.ParseCIDR(ip + "/24")
+	if err != nil {
+		ip = net.String()
+	}
+
 	r := new(ripe.Prefix)
 	r.Set(ip)
 	r.GetData()
@@ -693,10 +862,26 @@ func whois(ip string) (Whois, error) {
 	return resp, nil
 }
 
-func byteToInt(buf []byte) (int, error) {
-	var y int16
-	err := binary.Read(bytes.NewReader(buf), binary.BigEndian, &y)
-	return int(y), err
+func min(a, b float64) float64 {
+	if a == 0 {
+		return b
+	}
+	if a < b {
+		return a
+	}
+	return b
+}
+func avg(a, b float64) float64 {
+	if a != 0 {
+		return (a + b) / 2
+	}
+	return b
+}
+func max(a, b float64) float64 {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 func helpTrace() {
