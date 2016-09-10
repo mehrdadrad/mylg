@@ -73,7 +73,7 @@ func NewPing(args string, cfg cli.Config) (*Ping, error) {
 	timeout := cli.SetFlag(flag, "t", cfg.Hping.Timeout).(string)
 	p.timeout, err = time.ParseDuration(timeout)
 	if err != nil {
-		return p, err
+		return p, fmt.Errorf("Failed to parse config.hping.timeout: %s. Correct syntax is <number>s/ms", err)
 	}
 	// set method
 	p.method = cli.SetFlag(flag, "m", cfg.Hping.Method).(string)
@@ -192,7 +192,7 @@ func (p *Ping) Ping() (Result, error) {
 		err   error
 	)
 
-	client := &http.Client{Timeout: p.timeout * time.Second}
+	client := &http.Client{Timeout: p.timeout}
 	sTime = time.Now()
 
 	if p.method == "POST" {
@@ -237,9 +237,9 @@ func help(cfg cli.Config) {
     usage:
           hping url [options]
 
-    options:		  
+    options:
           -c count       Send 'count' requests (default: %d)
-          -t timeout     Specifies a time limit for requests in ms/s (default is %s) 
+          -t timeout     Specifies a time limit for requests in ms/s (default is %s)
           -m method      HTTP methods: GET/POST/HEAD (default: %s)
           -d data        Sending the given data (text/json) (default: "%s")
 	`,
