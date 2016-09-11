@@ -8,7 +8,7 @@ my looking glass is an open source software utility which combines the functions
 ## Features
 * Popular looking glasses (ping/trace/bgp) like Telia, Level3
 * More than 200 countries DNS Lookup information 
-* Local fast ping and trace
+* Local fast ping and realtime trace
 * Packet analyzer - TCP/IP and other packets 
 * Local HTTP/HTTPS ping (GET, POST, HEAD)
 * RIPE information (ASN, IP/CIDR)
@@ -25,6 +25,7 @@ my looking glass is an open source software utility which combines the functions
 [![IMAGE Demo](http://mylg.io/img/youtube.jpg)](https://www.youtube.com/watch?v=QY2TAA3ljAA)
 
 ![IMAGE ALT TEXT HERE](http://mylg.io/img/packet_analyzer.png)
+![IMAGE ALT TEXT HERE](http://mylg.io/img/mylg_mtr.gif)
 ![IMAGE ALT TEXT HERE](http://mylg.io/img/mylg_dashboard.png)
 
 ### Usage
