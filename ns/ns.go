@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"sort"
@@ -176,7 +177,7 @@ func (d *Request) RunDig() {
 
 	println("Trying to query server:", d.Host, d.Country, d.City)
 
-	r, rtt, err := c.Exchange(m, d.Host+":53")
+	r, rtt, err := c.Exchange(m, net.JoinHostPort(d.Host, "53"))
 	if err != nil {
 		println(err.Error())
 		return
@@ -240,7 +241,7 @@ func (d *Request) RunDigTrace() {
 		}
 
 		for _, host = range nss {
-			r, rtt, err = c.Exchange(m, host+":53")
+			r, rtt, err = c.Exchange(m, net.JoinHostPort(host, "53"))
 			if err != nil {
 				println(err.Error())
 			} else {
