@@ -159,10 +159,11 @@ func (i *Trace) SetTTL(ttl int) {
 }
 
 // Send tries to send ICMP packet
-func (i *Trace) Send(port int) (int, error) {
+func (i *Trace) Send(port int) (int, int, error) {
 	rand.Seed(time.Now().UTC().UnixNano())
 	var (
 		seq    = rand.Intn(0xff)
+		id     = os.Getpid() & 0xffff
 		sotype int
 		proto  int
 		err    error
@@ -178,7 +179,7 @@ func (i *Trace) Send(port int) (int, error) {
 
 	fd, err := syscall.Socket(i.family, sotype, proto)
 	if err != nil {
-		println(err.Error())
+		return id, seq, err
 	}
 	defer syscall.Close(fd)
 
@@ -194,14 +195,14 @@ func (i *Trace) Send(port int) (int, error) {
 		p, _ := (&icmp.Message{
 			Type: ipv4.ICMPTypeEcho, Code: 0,
 			Body: &icmp.Echo{
-				ID: os.Getpid() & 0xffff, Seq: seq,
+				ID: id, Seq: seq,
 				Data: []byte("myLG - [mylg.io]"),
 			},
 		}).Marshal(nil)
 
 		syscall.SetsockoptInt(fd, syscall.IPPROTO_IP, syscall.IP_TTL, i.ttl)
 		if err := syscall.Sendto(fd, p, 0, &addr); err != nil {
-			return seq, err
+			return id, seq, err
 		}
 	} else {
 		var b [16]byte
@@ -222,10 +223,10 @@ func (i *Trace) Send(port int) (int, error) {
 
 		syscall.SetsockoptInt(fd, syscall.IPPROTO_IPV6, syscall.IP_TTL, i.ttl)
 		if err := syscall.Sendto(fd, p, 0, &addr); err != nil {
-			return seq, err
+			return id, seq, err
 		}
 	}
-	return seq, nil
+	return id, seq, nil
 }
 
 // SetReadDeadLine sets rx timeout
@@ -293,11 +294,12 @@ func (i *Trace) Bind(port int) {
 }
 
 // Recv gets the replied icmp packet
-func (i *Trace) Recv(seq int, port int) (ICMPResp, error) {
+func (i *Trace) Recv(id, seq int, port int) (ICMPResp, error) {
 	var (
 		b     = make([]byte, 512)
 		ts    = time.Now()
 		resp  ICMPResp
+		wId   bool
 		wSeq  bool
 		wDst  bool
 		wPort bool
@@ -325,6 +327,7 @@ func (i *Trace) Recv(seq int, port int) (ICMPResp, error) {
 			resp.id = int(b[24])<<8 | int(b[25])
 			resp.seq = int(b[26])<<8 | int(b[27])
 
+			wId = id != resp.id
 			wSeq = seq != resp.seq
 		case IPv4ICMPTypeDestinationUnreachable:
 			resp.udp.dstPort = int(b[50])<<8 | int(b[51])
@@ -343,7 +346,7 @@ func (i *Trace) Recv(seq int, port int) (ICMPResp, error) {
 			wDst = resp.ip.dst.String() != i.ip.String()
 		}
 
-		if i.icmp && wSeq || wDst || !i.icmp && wPort {
+		if i.icmp && wSeq || wDst || !i.icmp && wPort || wId {
 			du, _ := time.ParseDuration(i.wait)
 			if time.Since(ts) < du {
 				continue
@@ -366,12 +369,12 @@ func (i *Trace) NextHop(hop int) HopResp {
 	)
 	i.SetTTL(hop)
 	ts := time.Now().UnixNano()
-	seq, err := i.Send(port)
+	id, seq, err := i.Send(port)
 	if err != nil {
 		return HopResp{num: hop, err: err}
 	}
 
-	resp, err := i.Recv(seq, port)
+	resp, err := i.Recv(id, seq, port)
 	if err != nil {
 		r = HopResp{hop, "", "", 0, false, nil, Whois{}}
 		return r
