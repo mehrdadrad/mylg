@@ -6,9 +6,6 @@ package icmp
 
 import (
 	"fmt"
-	"golang.org/x/net/icmp"
-	"golang.org/x/net/ipv4"
-	"golang.org/x/net/ipv6"
 	"math/rand"
 	"net"
 	"os"
@@ -17,6 +14,10 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"golang.org/x/net/icmp"
+	"golang.org/x/net/ipv4"
+	"golang.org/x/net/ipv6"
 
 	ui "github.com/gizak/termui"
 
@@ -70,6 +71,7 @@ type ICMPResp struct {
 	seq  int
 	src  net.IP
 	udp  struct{ dstPort int }
+	ip   struct{ dst net.IP }
 }
 
 // Whois represents prefix info from RIPE
@@ -293,10 +295,14 @@ func (i *Trace) Bind(port int) {
 // Recv gets the replied icmp packet
 func (i *Trace) Recv(seq int, port int) (ICMPResp, error) {
 	var (
-		b    = make([]byte, 512)
-		resp ICMPResp
+		b     = make([]byte, 512)
+		ts    = time.Now()
+		resp  ICMPResp
+		wSeq  bool
+		wDst  bool
+		wPort bool
 	)
-	ts := time.Now()
+
 	for {
 		n, _, err := syscall.Recvfrom(i.fd, b, 0)
 
@@ -310,41 +316,39 @@ func (i *Trace) Recv(seq int, port int) (ICMPResp, error) {
 			b = b[:n]
 		}
 
-		resp.typ = int(b[20])  // ICMP Type
-		resp.code = int(b[21]) // ICMP Code
-
-		// parse header
-		h, err := icmp.ParseIPv4Header(b)
-		if err != nil {
-			return resp, err
-		}
-
-		resp.src = h.Src
+		resp.typ = int(b[20])                           // ICMP Type
+		resp.code = int(b[21])                          // ICMP Code
+		resp.src = net.IPv4(b[12], b[13], b[14], b[15]) // IP Src address
 
 		switch resp.typ {
 		case IPv4ICMPTypeEchoReply:
 			resp.id = int(b[24])<<8 | int(b[25])
 			resp.seq = int(b[26])<<8 | int(b[27])
+
+			wSeq = seq != resp.seq
 		case IPv4ICMPTypeDestinationUnreachable:
-			resp.udp.dstPort = int(b[28+20+2])<<8 | int(b[28+20+3])
+			resp.udp.dstPort = int(b[50])<<8 | int(b[51])
+			resp.ip.dst = net.IPv4(b[44], b[45], b[46], b[47])
+
+			wPort = port != resp.udp.dstPort
+			wDst = resp.ip.dst.String() != i.ip.String()
 		case IPv4CMPTypeTimeExceeded:
 			resp.id = int(b[52])<<8 | int(b[53])
 			resp.seq = int(b[54])<<8 | int(b[55])
 			resp.udp.dstPort = int(b[50])<<8 | int(b[51])
+			resp.ip.dst = net.IPv4(b[44], b[45], b[46], b[47])
+
+			wSeq = seq != resp.seq
+			wPort = port != resp.udp.dstPort
+			wDst = resp.ip.dst.String() != i.ip.String()
 		}
 
-		if seq != resp.seq && i.icmp {
+		if i.icmp && wSeq || wDst || !i.icmp && wPort {
 			du, _ := time.ParseDuration(i.wait)
 			if time.Since(ts) < du {
 				continue
 			}
-			return resp, fmt.Errorf("wrong packet")
-		} else if port != resp.udp.dstPort && !i.icmp {
-			du, _ := time.ParseDuration(i.wait)
-			if time.Since(ts) < du {
-				continue
-			}
-			return resp, fmt.Errorf("wrong packet")
+			return resp, fmt.Errorf("wrong response")
 		} else {
 			break
 		}
