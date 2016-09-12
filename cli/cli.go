@@ -201,18 +201,18 @@ func (r *Readline) Next() {
 // Run the main loop
 func (r *Readline) Run(cmd chan<- string, next chan struct{}) {
 	r.next = next
-	func() {
-		for {
-			line, err := r.instance.Readline()
-			if err != nil { // io.EOF, readline.ErrInterrupt
-				break
-			}
-			cmd <- line
-			if _, ok := <-next; !ok {
-				break
-			}
+	defer close(cmd)
+
+	for {
+		line, err := r.instance.Readline()
+		if err != nil { // io.EOF, readline.ErrInterrupt
+			break
 		}
-	}()
+		cmd <- line
+		if _, ok := <-next; !ok {
+			break
+		}
+	}
 }
 
 // Close the readline instance
