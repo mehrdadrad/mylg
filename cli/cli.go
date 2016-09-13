@@ -262,12 +262,28 @@ func checkUpdate(version string) {
 // help
 func Flag(args string) (string, map[string]interface{}) {
 	var (
-		r   = make(map[string]interface{}, 10)
-		err error
+		r      = make(map[string]interface{}, 10)
+		err    error
+		target string
 	)
+
 	args = strings.TrimSpace(args)
-	re := regexp.MustCompile(`(?i)-([a-z|0-9]+)={0,1}\s{0,1}([0-9|a-z|\-|'"{}:\/]*)`)
+	// target
+	re := regexp.MustCompile(`(?i)^[^-][\S|\w]*`)
+	t := re.FindStringSubmatch(args)
+	if len(t) > 0 {
+		target = t[0]
+	}
+	// range
+	re = regexp.MustCompile(`(?i)\s-([a-z|0-9]+)[=|\s]{0,1}(\d+\-\d+)`)
 	f := re.FindAllStringSubmatch(args, -1)
+	for _, kv := range f {
+		r[kv[1]] = kv[2]
+		args = strings.Replace(args, kv[0], "", 1)
+	}
+	// other flags
+	re = regexp.MustCompile(`(?i)\s{0,1}-([a-z|0-9]+)[=|\s]{0,1}([0-9|a-z|'"{}:\/]*)`)
+	f = re.FindAllStringSubmatch(args, -1)
 	for _, kv := range f {
 		if len(kv) > 1 {
 			// trim extra characters (' and ") from value
@@ -277,14 +293,14 @@ func Flag(args string) (string, map[string]interface{}) {
 			if err != nil {
 				r[kv[1]] = kv[2]
 			}
-			args = strings.Replace(args, kv[0], "", -1)
 		}
 	}
+	// help
 	if m, _ := regexp.MatchString(`(?i)help$`, args); m {
 		r["help"] = true
 	}
-	args = strings.TrimSpace(args)
-	return args, r
+
+	return target, r
 }
 
 // SetFlag returns command option(s)
