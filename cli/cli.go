@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/mehrdadrad/mylg/banner"
 	"gopkg.in/readline.v1"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"regexp"
@@ -203,10 +204,18 @@ func (r *Readline) Run(cmd chan<- string, next chan struct{}) {
 	r.next = next
 	defer close(cmd)
 
+LOOP:
 	for {
 		line, err := r.instance.Readline()
 		if err != nil { // io.EOF, readline.ErrInterrupt
-			break
+			switch err {
+			case io.EOF:
+				break LOOP
+			case readline.ErrInterrupt:
+			default:
+				println(err.Error())
+				break LOOP
+			}
 		}
 		cmd <- line
 		if _, ok := <-next; !ok {
