@@ -21,5 +21,7 @@ const b = `
 
 // Println print out banner information
 func Println(version string) {
-	fmt.Printf(b, version)
+	fmt.Printf("\033[2J")           // clear screen
+	fmt.Printf("\033[%d;%dH", 0, 0) // move cursor to x-0, y=0
+	fmt.Printf(b, version)          // print banner including version
 }
