@@ -471,10 +471,9 @@ func (i *Trace) MRun() chan HopResp {
 }
 
 // TermUI prints out trace loop by termui
-func (i *Trace) TermUI() {
+func (i *Trace) TermUI() error {
 	if err := ui.Init(); err != nil {
-		println(err.Error())
-		return
+		return err
 	}
 	defer ui.Close()
 
@@ -679,6 +678,7 @@ func (i *Trace) TermUI() {
 		}
 	}()
 	ui.Loop()
+	return nil
 }
 
 // lcShift shifs line chart once it filled out
@@ -704,7 +704,9 @@ func termUICColor(m, color string) string {
 // Print prints out trace result in normal or terminal mode
 func (i *Trace) Print() {
 	if i.term {
-		i.TermUI()
+		if err := i.TermUI(); err != nil {
+			fmt.Println(err.Error())
+		}
 	} else {
 		i.PrintPretty()
 	}
