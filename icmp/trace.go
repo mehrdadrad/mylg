@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"sort"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -27,11 +28,15 @@ import (
 
 const (
 	// Default TX timeout
-	DefaultTXTimeout int64 = 1000
-	// ICMP type
+	DefaultTXTimeout int64 = 2000
+	// ICMPv4 types
 	IPv4ICMPTypeEchoReply              = 0
 	IPv4ICMPTypeDestinationUnreachable = 3
-	IPv4CMPTypeTimeExceeded            = 11
+	IPv4ICMPTypeTimeExceeded           = 11
+	// ICMPv6 types
+	IPv6ICMPTypeEchoReply              = 129
+	IPv6ICMPTypeDestinationUnreachable = 1
+	IPv6ICMPTypeTimeExceeded           = 3
 )
 
 // Trace represents trace properties
@@ -91,6 +96,8 @@ type Stats struct {
 
 // MHopResp represents multi hop's responses
 type MHopResp []HopResp
+
+var statsMU sync.Mutex
 
 // NewTrace creates new trace object
 func NewTrace(args string, cfg cli.Config) (*Trace, error) {
@@ -216,12 +223,12 @@ func (i *Trace) Send(port int) (int, int, error) {
 		p, _ := (&icmp.Message{
 			Type: ipv6.ICMPTypeEchoRequest, Code: 0,
 			Body: &icmp.Echo{
-				ID: os.Getpid() & 0xffff, Seq: seq,
+				ID: id, Seq: seq,
 				Data: []byte("myLG - [mylg.io]"),
 			},
 		}).Marshal(nil)
 
-		syscall.SetsockoptInt(fd, syscall.IPPROTO_IPV6, syscall.IP_TTL, i.ttl)
+		syscall.SetsockoptInt(fd, syscall.IPPROTO_IPV6, 0x15, i.ttl)
 		if err := syscall.Sendto(fd, p, 0, &addr); err != nil {
 			return id, seq, err
 		}
@@ -318,32 +325,66 @@ func (i *Trace) Recv(id, seq int, port int) (ICMPResp, error) {
 			b = b[:n]
 		}
 
-		resp.typ = int(b[20])                           // ICMP Type
-		resp.code = int(b[21])                          // ICMP Code
-		resp.src = net.IPv4(b[12], b[13], b[14], b[15]) // IP Src address
+		if len(i.ip.To4()) == net.IPv4len {
+			// IPv4
+			resp.typ = int(b[20])                           // ICMP Type
+			resp.code = int(b[21])                          // ICMP Code
+			resp.src = net.IPv4(b[12], b[13], b[14], b[15]) // IP Src address
 
-		switch resp.typ {
-		case IPv4ICMPTypeEchoReply:
-			resp.id = int(b[24])<<8 | int(b[25])
-			resp.seq = int(b[26])<<8 | int(b[27])
+			switch resp.typ {
+			case IPv4ICMPTypeEchoReply:
+				resp.id = int(b[24])<<8 | int(b[25])
+				resp.seq = int(b[26])<<8 | int(b[27])
 
-			wId = id != resp.id
-			wSeq = seq != resp.seq
-		case IPv4ICMPTypeDestinationUnreachable:
-			resp.udp.dstPort = int(b[50])<<8 | int(b[51])
-			resp.ip.dst = net.IPv4(b[44], b[45], b[46], b[47])
+				wId = id != resp.id
+				wSeq = seq != resp.seq
+			case IPv4ICMPTypeDestinationUnreachable:
+				resp.udp.dstPort = int(b[50])<<8 | int(b[51])
+				resp.ip.dst = net.IPv4(b[44], b[45], b[46], b[47])
 
-			wPort = port != resp.udp.dstPort
-			wDst = resp.ip.dst.String() != i.ip.String()
-		case IPv4CMPTypeTimeExceeded:
-			resp.id = int(b[52])<<8 | int(b[53])
-			resp.seq = int(b[54])<<8 | int(b[55])
-			resp.udp.dstPort = int(b[50])<<8 | int(b[51])
-			resp.ip.dst = net.IPv4(b[44], b[45], b[46], b[47])
+				wPort = port != resp.udp.dstPort
+				wDst = resp.ip.dst.String() != i.ip.String()
+			case IPv4ICMPTypeTimeExceeded:
+				resp.id = int(b[52])<<8 | int(b[53])
+				resp.seq = int(b[54])<<8 | int(b[55])
+				resp.udp.dstPort = int(b[50])<<8 | int(b[51])
+				resp.ip.dst = net.IPv4(b[44], b[45], b[46], b[47])
 
-			wSeq = seq != resp.seq
-			wPort = port != resp.udp.dstPort
-			wDst = resp.ip.dst.String() != i.ip.String()
+				wSeq = seq != resp.seq
+				wPort = port != resp.udp.dstPort
+				wDst = resp.ip.dst.String() != i.ip.String()
+			}
+		} else {
+			// IPv6
+			h, _ := ipv6.ParseHeader(b)
+			resp.typ = int(b[40])
+			resp.code = int(b[41])
+			resp.src = h.Src
+			// TODO:
+			switch resp.typ {
+			case IPv6ICMPTypeEchoReply:
+				resp.id = int(b[44])<<8 | int(b[25])
+				resp.seq = int(b[46])<<8 | int(b[27])
+
+				wId = id != resp.id
+				wSeq = seq != resp.seq
+			case IPv6ICMPTypeDestinationUnreachable:
+				resp.udp.dstPort = int(b[70])<<8 | int(b[71])
+				//resp.ip.dst = net.IPv4(b[44], b[45], b[46], b[47])
+
+				wPort = port != resp.udp.dstPort
+				wDst = resp.ip.dst.String() != i.ip.String()
+			case IPv6ICMPTypeTimeExceeded:
+				resp.id = int(b[72])<<8 | int(b[73])
+				resp.seq = int(b[74])<<8 | int(b[75])
+				resp.udp.dstPort = int(b[70])<<8 | int(b[71])
+				//resp.ip.dst = net.IPv4(b[44], b[45], b[46], b[47])
+
+				wSeq = seq != resp.seq
+				wPort = port != resp.udp.dstPort
+				wDst = resp.ip.dst.String() != i.ip.String()
+			}
+
 		}
 
 		if i.icmp && wSeq || wDst || !i.icmp && wPort || wId {
@@ -364,7 +405,7 @@ func (i *Trace) NextHop(hop int) HopResp {
 	rand.Seed(time.Now().UTC().UnixNano())
 	var (
 		r    = HopResp{num: hop}
-		port = 33434 + rand.Intn(50)
+		port = 33434
 		name []string
 	)
 	i.SetTTL(hop)
@@ -472,6 +513,7 @@ func (i *Trace) MRun() chan HopResp {
 
 // TermUI prints out trace loop by termui
 func (i *Trace) TermUI() error {
+	ui.DefaultEvtStream = ui.NewEvtStream()
 	if err := ui.Init(); err != nil {
 		return err
 	}
@@ -488,13 +530,14 @@ func (i *Trace) TermUI() error {
 		snt  = ui.NewList()
 		pkl  = ui.NewList()
 
-		stats   = make([]Stats, 65)
-		lists   = []*ui.List{hops, rtt, snt, pkl}
-		display = 1
+		stats = make([]Stats, 65)
+		lists = []*ui.List{hops, rtt, snt, pkl}
 	)
 
 	for _, l := range lists {
 		l.Items = make([]string, 65)
+		l.X = 0
+		l.Y = 0
 		l.Height = 35
 		l.Border = false
 	}
@@ -524,7 +567,7 @@ func (i *Trace) TermUI() error {
 	header.Border = false
 
 	// menu
-	menu := ui.NewPar("Press [q] to quit, [r] to reset statistics, [d] to change display mode")
+	menu := ui.NewPar("Press [q] to quit, [r] to reset statistics, [1,2] to change display mode")
 	menu.Height = 2
 	menu.Width = 20
 	menu.Y = 1
@@ -576,6 +619,7 @@ func (i *Trace) TermUI() error {
 
 	// reset statistics and display
 	ui.Handle("/sys/kbd/r", func(ui.Event) {
+		statsMU.Lock()
 		for i := 1; i < 65; i++ {
 			for _, l := range lists {
 				l.Items[i] = ""
@@ -587,26 +631,21 @@ func (i *Trace) TermUI() error {
 			stats[i].pkl = 0
 		}
 		lc.Data = lc.Data[:0]
+		statsMU.Unlock()
 	})
 
-	// change display mode
-	ui.Handle("/sys/kbd/d", func(ui.Event) {
-		ui.Clear()
+	// change display mode to one
+	ui.Handle("/sys/kbd/1", func(e ui.Event) {
+		ui.Body.Rows = ui.Body.Rows[:0]
+		ui.Body.AddRows(screen1...)
+		ui.Body.Align()
+		ui.Render(ui.Body)
+	})
 
-		ui.Body = ui.NewGrid()
-		ui.Body.X = 0
-		ui.Body.Y = 0
-		ui.Body.BgColor = ui.ThemeAttr("bg")
-		ui.Body.Width = ui.TermWidth()
-
-		switch display {
-		case 0:
-			ui.Body.AddRows(screen1...)
-			display = 1
-		case 1:
-			ui.Body.AddRows(screen2...)
-			display = 0
-		}
+	// change display mode to two
+	ui.Handle("/sys/kbd/2", func(e ui.Event) {
+		ui.Body.Rows = ui.Body.Rows[:0]
+		ui.Body.AddRows(screen2...)
 		ui.Body.Align()
 		ui.Render(ui.Body)
 	})
@@ -640,6 +679,7 @@ func (i *Trace) TermUI() error {
 				}
 
 				// statistics
+				statsMU.Lock()
 				stats[r.num].count++
 				snt.Items[r.num] = fmt.Sprintf("%d", stats[r.num].count)
 
@@ -673,10 +713,12 @@ func (i *Trace) TermUI() error {
 
 				pkl.Items[r.num] = fmt.Sprintf("%.1f", float64(stats[r.num].pkl)*100/float64(stats[r.num].count))
 
+				statsMU.Unlock()
 				ui.Render(ui.Body)
 			}
 		}
 	}()
+
 	ui.Loop()
 	return nil
 }
