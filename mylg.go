@@ -474,6 +474,7 @@ func help() {
               Available commands:
 
               ping                        ping ip address or domain name
+              trace                       trace ip address or domain name (real-time w/ -r option)
               dig                         name server looking up
               whois                       resolve AS number/IP/CIDR to holder (provides by ripe ncc)
               hping                       Ping through HTTP/HTTPS w/ GET/HEAD methods
@@ -484,6 +485,7 @@ func help() {
               version                     shows mylg version
 
         Example:
+              mylg trace freebsd.org -r
               mylg whois 8.8.8.8
               mylg scan 127.0.0.1
               mylg dig google.com +trace

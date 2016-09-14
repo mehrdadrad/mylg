@@ -41,21 +41,21 @@ const (
 
 // Trace represents trace properties
 type Trace struct {
-	src     string
-	host    string
-	ip      net.IP
-	ips     []net.IP
-	ttl     int
-	fd      int
-	family  int
-	proto   int
-	wait    string
-	icmp    bool
-	resolve bool
-	ripe    bool
-	term    bool
-	pSize   int
-	maxTTL  int
+	src      string
+	host     string
+	ip       net.IP
+	ips      []net.IP
+	ttl      int
+	fd       int
+	family   int
+	proto    int
+	wait     string
+	icmp     bool
+	resolve  bool
+	ripe     bool
+	realTime bool
+	pSize    int
+	maxTTL   int
 }
 
 // HopResp represents hop's response
@@ -141,18 +141,18 @@ func NewTrace(args string, cfg cli.Config) (*Trace, error) {
 	}
 
 	return &Trace{
-		host:    target,
-		ips:     ips,
-		ip:      ip,
-		family:  family,
-		proto:   proto,
-		pSize:   52,
-		wait:    cli.SetFlag(flag, "w", cfg.Trace.Wait).(string),
-		icmp:    cli.SetFlag(flag, "I", false).(bool),
-		resolve: cli.SetFlag(flag, "n", true).(bool),
-		ripe:    cli.SetFlag(flag, "nr", true).(bool),
-		term:    cli.SetFlag(flag, "v", false).(bool),
-		maxTTL:  cli.SetFlag(flag, "m", 30).(int),
+		host:     target,
+		ips:      ips,
+		ip:       ip,
+		family:   family,
+		proto:    proto,
+		pSize:    52,
+		wait:     cli.SetFlag(flag, "w", cfg.Trace.Wait).(string),
+		icmp:     cli.SetFlag(flag, "I", false).(bool),
+		resolve:  cli.SetFlag(flag, "n", true).(bool),
+		ripe:     cli.SetFlag(flag, "nr", true).(bool),
+		realTime: cli.SetFlag(flag, "r", false).(bool),
+		maxTTL:   cli.SetFlag(flag, "m", 30).(int),
 	}, nil
 }
 
@@ -487,6 +487,7 @@ func (i *Trace) MRun() chan HopResp {
 	i.Bind(0)
 	go func() {
 		for {
+			begin := time.Now()
 			for h := 1; h <= maxTTL; h++ {
 				hop := i.NextHop(h)
 				if w, ok := ASN[hop.ip]; ok {
@@ -503,7 +504,10 @@ func (i *Trace) MRun() chan HopResp {
 					setParam = true
 				}
 			}
-			time.Sleep(1 * time.Second)
+			took := time.Since(begin).Seconds()
+			if took < 2 {
+				time.Sleep(time.Duration(2-took) * time.Second)
+			}
 		}
 		close(c)
 		syscall.Close(i.fd)
@@ -520,18 +524,22 @@ func (i *Trace) TermUI() error {
 	defer ui.Close()
 
 	var (
-		done = make(chan struct{})
+		done    = make(chan struct{})
+		routers = make([]map[string]Stats, 65)
 
 		resp = i.MRun()
 
 		// columns
 		hops = ui.NewList()
+		asn  = ui.NewList()
 		rtt  = ui.NewList()
 		snt  = ui.NewList()
 		pkl  = ui.NewList()
 
 		stats = make([]Stats, 65)
-		lists = []*ui.List{hops, rtt, snt, pkl}
+		lists = []*ui.List{hops, asn, rtt, snt, pkl}
+
+		rChanged bool
 	)
 
 	for _, l := range lists {
@@ -540,6 +548,10 @@ func (i *Trace) TermUI() error {
 		l.Y = 0
 		l.Height = 35
 		l.Border = false
+	}
+
+	for i := 1; i < 65; i++ {
+		routers[i] = make(map[string]Stats, 30)
 	}
 
 	// lince chart
@@ -553,13 +565,14 @@ func (i *Trace) TermUI() error {
 	lc.LineColor = ui.ColorGreen | ui.AttrBold
 
 	// title
-	hops.Items[0] = fmt.Sprintf("[%-50s %-6s %-6s](fg-bold)", "Host", "ASN", "Holder")
+	hops.Items[0] = fmt.Sprintf("[%-50s](fg-bold)", "Host")
+	asn.Items[0] = fmt.Sprintf("[ %-6s %-6s](fg-bold)", "ASN", "Holder")
 	rtt.Items[0] = fmt.Sprintf("[%-6s %-6s %-6s %-6s](fg-bold)", "Last", "Avg", "Best", "Wrst")
 	snt.Items[0] = "[Sent](fg-bold)"
 	pkl.Items[0] = "[Loss%](fg-bold)"
 
 	// header
-	header := ui.NewPar(fmt.Sprintf("myLG - traceroute to %s, %d hops max, %d byte packets", i.host, i.maxTTL, i.pSize))
+	header := ui.NewPar(fmt.Sprintf("myLG - traceroute to %s (%s), %d hops max, %d byte packets", i.host, i.ip, i.maxTTL, i.pSize))
 	header.Height = 1
 	header.Width = ui.TermWidth()
 	header.Y = 1
@@ -582,10 +595,11 @@ func (i *Trace) TermUI() error {
 			ui.NewCol(12, 0, menu),
 		),
 		ui.NewRow(
-			ui.NewCol(6, 0, hops),
+			ui.NewCol(5, 0, hops),
+			ui.NewCol(2, 0, asn),
 			ui.NewCol(1, 0, pkl),
 			ui.NewCol(1, 0, snt),
-			ui.NewCol(4, 0, rtt),
+			ui.NewCol(3, 0, rtt),
 		),
 	}
 	// screen2 - trace line chart
@@ -652,7 +666,7 @@ func (i *Trace) TermUI() error {
 
 	go func() {
 		var (
-			hop, asn, holder string
+			hop, as, holder string
 		)
 	LOOP:
 		for {
@@ -671,10 +685,10 @@ func (i *Trace) TermUI() error {
 				}
 
 				if r.whois.asn > 0 {
-					asn = fmt.Sprintf("%.0f", r.whois.asn)
+					as = fmt.Sprintf("%.0f", r.whois.asn)
 					holder = strings.Fields(r.whois.holder)[0]
 				} else {
-					asn = ""
+					as = ""
 					holder = ""
 				}
 
@@ -683,14 +697,28 @@ func (i *Trace) TermUI() error {
 				stats[r.num].count++
 				snt.Items[r.num] = fmt.Sprintf("%d", stats[r.num].count)
 
-				if r.elapsed != 0 {
+				router := routers[r.num][hop]
+				router.count++
 
+				if r.elapsed != 0 {
+					// hop level statistics
 					stats[r.num].min = min(stats[r.num].min, r.elapsed)
 					stats[r.num].avg = avg(stats[r.num].avg, r.elapsed)
 					stats[r.num].max = max(stats[r.num].max, r.elapsed)
+					// router level statistics
+					router.min = min(routers[r.num][hop].min, r.elapsed)
+					router.avg = avg(routers[r.num][hop].avg, r.elapsed)
+					router.max = max(routers[r.num][hop].max, r.elapsed)
+					// detect router changes
+					rChanged = routerChange(hop, hops.Items[r.num])
 
-					hops.Items[r.num] = fmt.Sprintf("[%-2d] %-45s %-6s %s", r.num, hop, asn, holder)
+					hops.Items[r.num] = fmt.Sprintf("[%-2d] %-45s", r.num, hop)
+					asn.Items[r.num] = fmt.Sprintf("%-6s %s", as, holder)
 					rtt.Items[r.num] = fmt.Sprintf("%-6.2f\t%-6.2f\t%-6.2f\t%-6.2f", r.elapsed, stats[r.num].avg, stats[r.num].min, stats[r.num].max)
+
+					if rChanged {
+						hops.Items[r.num] = termUICColor(hops.Items[r.num], "fg-bold")
+					}
 
 					lcShift(r, lc, ui.TermWidth())
 
@@ -698,21 +726,25 @@ func (i *Trace) TermUI() error {
 
 					hops.Items[r.num] = fmt.Sprintf("[%-2d] %-40s", r.num, "???")
 					stats[r.num].pkl++
+					router.pkl++
 
 				} else if !strings.Contains(hops.Items[r.num], "???") {
 
 					hops.Items[r.num] = termUICColor(hops.Items[r.num], "fg-red")
 					rtt.Items[r.num] = fmt.Sprintf("%-6.2s\t%-6.2f\t%-6.2f\t%-6.2f", "?", stats[r.num].avg, stats[r.num].min, stats[r.num].max)
 					stats[r.num].pkl++
+					router.pkl++
 
 				} else {
 
 					stats[r.num].pkl++
+					router.pkl++
 
 				}
 
-				pkl.Items[r.num] = fmt.Sprintf("%.1f", float64(stats[r.num].pkl)*100/float64(stats[r.num].count))
+				routers[r.num][hop] = router
 
+				pkl.Items[r.num] = fmt.Sprintf("%.1f", float64(stats[r.num].pkl)*100/float64(stats[r.num].count))
 				statsMU.Unlock()
 				ui.Render(ui.Body)
 			}
@@ -721,6 +753,25 @@ func (i *Trace) TermUI() error {
 
 	ui.Loop()
 	return nil
+}
+
+// routerChange detects if the router changed
+// to another one
+func routerChange(router, b string) bool {
+	if b != "" {
+		bRouter := strings.Fields(b)
+		if len(bRouter) < 2 {
+			return false
+		}
+		hop := strings.Split(b, "] ")
+		if len(hop) < 2 {
+			return false
+		}
+		if strings.Fields(hop[1])[0] != router {
+			return true
+		}
+	}
+	return false
 }
 
 // lcShift shifs line chart once it filled out
@@ -745,7 +796,7 @@ func termUICColor(m, color string) string {
 
 // Print prints out trace result in normal or terminal mode
 func (i *Trace) Print() {
-	if i.term {
+	if i.realTime {
 		if err := i.TermUI(); err != nil {
 			fmt.Println(err.Error())
 		}
@@ -940,6 +991,7 @@ func helpTrace() {
     usage:
           trace IP address / domain name [options]
     options:
+          -r             Real-time response time at each point along the way
           -n             Do not try to map IP addresses to host names
           -nr            Do not try to map IP addresses to ASN,Holder (RIPE NCC)
           -m MAX_TTL     Specifies the maximum number of hops
@@ -947,6 +999,7 @@ func helpTrace() {
           -6             Forces the trace command to use IPv6 (target should be hostname)
     Example:
           trace 8.8.8.8
+          trace freebsd.org -r
 	`)
 
 }
