@@ -169,16 +169,19 @@ func (i *Trace) SetTTL(ttl int) {
 func (i *Trace) Send(port int) (int, int, error) {
 	rand.Seed(time.Now().UTC().UnixNano())
 	var (
-		seq    = rand.Intn(0xff)
+		seq    = rand.Intn(0xff) //TODO: sequence
 		id     = os.Getpid() & 0xffff
 		sotype int
 		proto  int
 		err    error
 	)
 
-	if i.icmp {
+	if i.icmp && i.ip.To4 != nil {
 		sotype = syscall.SOCK_RAW
 		proto = syscall.IPPROTO_ICMP
+	} else if i.icmp && i.ip.To16 != nil {
+		sotype = syscall.SOCK_RAW
+		proto = syscall.IPPROTO_ICMPV6
 	} else {
 		sotype = syscall.SOCK_DGRAM
 		proto = syscall.IPPROTO_UDP
@@ -199,16 +202,14 @@ func (i *Trace) Send(port int) (int, int, error) {
 			Addr: b,
 		}
 
-		p, _ := (&icmp.Message{
-			Type: ipv4.ICMPTypeEcho, Code: 0,
-			Body: &icmp.Echo{
-				ID: id, Seq: seq,
-				Data: []byte("myLG - [mylg.io]"),
-			},
-		}).Marshal(nil)
+		m, err := icmpV4Message(id, seq)
+		if err != nil {
+			return id, seq, err
+		}
 
-		syscall.SetsockoptInt(fd, syscall.IPPROTO_IP, syscall.IP_TTL, i.ttl)
-		if err := syscall.Sendto(fd, p, 0, &addr); err != nil {
+		setIPv4TTL(fd, i.ttl)
+
+		if err := syscall.Sendto(fd, m, 0, &addr); err != nil {
 			return id, seq, err
 		}
 	} else {
@@ -220,16 +221,14 @@ func (i *Trace) Send(port int) (int, int, error) {
 			Addr:   b,
 		}
 
-		p, _ := (&icmp.Message{
-			Type: ipv6.ICMPTypeEchoRequest, Code: 0,
-			Body: &icmp.Echo{
-				ID: id, Seq: seq,
-				Data: []byte("myLG - [mylg.io]"),
-			},
-		}).Marshal(nil)
+		m, err := icmpV6Message(id, seq)
+		if err != nil {
+			return id, seq, err
+		}
 
-		syscall.SetsockoptInt(fd, syscall.IPPROTO_IPV6, 0x15, i.ttl)
-		if err := syscall.Sendto(fd, p, 0, &addr); err != nil {
+		setIPv6HopLimit(fd, i.ttl)
+
+		if err := syscall.Sendto(fd, m, 0, &addr); err != nil {
 			return id, seq, err
 		}
 	}
@@ -266,12 +265,17 @@ func (i *Trace) SetDeadLine() error {
 }
 
 // Bind starts to listen for ICMP reply
-func (i *Trace) Bind(port int) {
-	var err error
+func (i *Trace) Bind() error {
+	var (
+		err error
+		f   ipv6.ICMPFilter
+	)
+
 	i.fd, err = syscall.Socket(i.family, syscall.SOCK_RAW, i.proto)
 	if err != nil {
-		println("e2", err.Error())
+		return os.NewSyscallError("bindsocket", err)
 	}
+
 	err = i.SetDeadLine()
 	if err != nil {
 		println(err.Error())
@@ -279,41 +283,48 @@ func (i *Trace) Bind(port int) {
 
 	if i.family == syscall.AF_INET {
 		addr := syscall.SockaddrInet4{
-			Port: port,
+			Port: 0,
 			Addr: [4]byte{},
 		}
 
 		if err := syscall.Bind(i.fd, &addr); err != nil {
-			println("e3", err.Error())
+			return os.NewSyscallError("bindv4", err)
 		}
 	} else {
 		addr := syscall.SockaddrInet6{
-			Port:   port,
+			Port:   0,
 			ZoneId: 0,
 			Addr:   [16]byte{},
 		}
 
+		f.Accept(ipv6.ICMPTypeEchoRequest)
+		f.Accept(ipv6.ICMPTypeTimeExceeded)
+		f.Accept(ipv6.ICMPTypeDestinationUnreachable)
+
+		//TODO:
+		//syscall.SetsockoptICMPv6Filter(i.fd, syscall.AF_INET6, syscall.ICMP6_FILTER, f)
+
 		if err := syscall.Bind(i.fd, &addr); err != nil {
-			println("e3", err.Error())
+			return os.NewSyscallError("bindv6", err)
 		}
 
 	}
+	return nil
 }
 
 // Recv gets the replied icmp packet
-func (i *Trace) Recv(id, seq int, port int) (ICMPResp, error) {
+func (i *Trace) Recv(id, seq int) (ICMPResp, error) {
 	var (
-		b     = make([]byte, 512)
-		ts    = time.Now()
-		resp  ICMPResp
-		wId   bool
-		wSeq  bool
-		wDst  bool
-		wPort bool
+		b    = make([]byte, 512)
+		ts   = time.Now()
+		resp ICMPResp
+		wId  bool
+		wSeq bool
+		wDst bool
 	)
 
 	for {
-		n, _, err := syscall.Recvfrom(i.fd, b, 0)
+		n, from, err := syscall.Recvfrom(i.fd, b, 0)
 
 		if err != nil {
 			du, _ := time.ParseDuration(i.wait)
@@ -326,68 +337,19 @@ func (i *Trace) Recv(id, seq int, port int) (ICMPResp, error) {
 		}
 
 		if len(i.ip.To4()) == net.IPv4len {
-			// IPv4
-			resp.typ = int(b[20])                           // ICMP Type
-			resp.code = int(b[21])                          // ICMP Code
-			resp.src = net.IPv4(b[12], b[13], b[14], b[15]) // IP Src address
-
-			switch resp.typ {
-			case IPv4ICMPTypeEchoReply:
-				resp.id = int(b[24])<<8 | int(b[25])
-				resp.seq = int(b[26])<<8 | int(b[27])
-
-				wId = id != resp.id
-				wSeq = seq != resp.seq
-			case IPv4ICMPTypeDestinationUnreachable:
-				resp.udp.dstPort = int(b[50])<<8 | int(b[51])
-				resp.ip.dst = net.IPv4(b[44], b[45], b[46], b[47])
-
-				wPort = port != resp.udp.dstPort
-				wDst = resp.ip.dst.String() != i.ip.String()
-			case IPv4ICMPTypeTimeExceeded:
-				resp.id = int(b[52])<<8 | int(b[53])
-				resp.seq = int(b[54])<<8 | int(b[55])
-				resp.udp.dstPort = int(b[50])<<8 | int(b[51])
-				resp.ip.dst = net.IPv4(b[44], b[45], b[46], b[47])
-
-				wSeq = seq != resp.seq
-				wPort = port != resp.udp.dstPort
-				wDst = resp.ip.dst.String() != i.ip.String()
-			}
+			resp = icmpV4RespParser(b)
+			wId = resp.typ == IPv4ICMPTypeEchoReply && id != resp.id
+			wSeq = seq != resp.seq
+			wDst = resp.ip.dst.String() != i.ip.String()
 		} else {
-			// IPv6
-			h, _ := ipv6.ParseHeader(b)
-			resp.typ = int(b[40])
-			resp.code = int(b[41])
-			resp.src = h.Src
-			// TODO:
-			switch resp.typ {
-			case IPv6ICMPTypeEchoReply:
-				resp.id = int(b[44])<<8 | int(b[25])
-				resp.seq = int(b[46])<<8 | int(b[27])
-
-				wId = id != resp.id
-				wSeq = seq != resp.seq
-			case IPv6ICMPTypeDestinationUnreachable:
-				resp.udp.dstPort = int(b[70])<<8 | int(b[71])
-				//resp.ip.dst = net.IPv4(b[44], b[45], b[46], b[47])
-
-				wPort = port != resp.udp.dstPort
-				wDst = resp.ip.dst.String() != i.ip.String()
-			case IPv6ICMPTypeTimeExceeded:
-				resp.id = int(b[72])<<8 | int(b[73])
-				resp.seq = int(b[74])<<8 | int(b[75])
-				resp.udp.dstPort = int(b[70])<<8 | int(b[71])
-				//resp.ip.dst = net.IPv4(b[44], b[45], b[46], b[47])
-
-				wSeq = seq != resp.seq
-				wPort = port != resp.udp.dstPort
-				wDst = resp.ip.dst.String() != i.ip.String()
-			}
-
+			resp = icmpV6RespParser(b)
+			resp.src = net.IP(from.(*syscall.SockaddrInet6).Addr[:])
+			wId = resp.typ == IPv6ICMPTypeEchoReply && id != resp.id
+			wSeq = seq != resp.seq
+			wDst = resp.ip.dst.String() != i.ip.String()
 		}
 
-		if i.icmp && wSeq || wDst || !i.icmp && wPort || wId {
+		if (i.icmp && wSeq) || wDst || wId {
 			du, _ := time.ParseDuration(i.wait)
 			if time.Since(ts) < du {
 				continue
@@ -409,27 +371,28 @@ func (i *Trace) NextHop(hop int) HopResp {
 		name []string
 	)
 	i.SetTTL(hop)
-	ts := time.Now().UnixNano()
+	begin := time.Now()
+
 	id, seq, err := i.Send(port)
 	if err != nil {
 		return HopResp{num: hop, err: err}
 	}
 
-	resp, err := i.Recv(id, seq, port)
+	resp, err := i.Recv(id, seq)
 	if err != nil {
 		r = HopResp{hop, "", "", 0, false, nil, Whois{}}
 		return r
 	}
 
-	elapsed := time.Now().UnixNano() - ts
+	elapsed := time.Since(begin)
 
 	if i.resolve {
 		name, _ = net.LookupAddr(resp.src.String())
 	}
 	if len(name) > 0 {
-		r = HopResp{hop, name[0], resp.src.String(), float64(elapsed) / 1e6, false, nil, Whois{}}
+		r = HopResp{hop, name[0], resp.src.String(), elapsed.Seconds() * 1e3, false, nil, Whois{}}
 	} else {
-		r = HopResp{hop, "", resp.src.String(), float64(elapsed) / 1e6, false, nil, Whois{}}
+		r = HopResp{hop, "", resp.src.String(), elapsed.Seconds() * 1e3, false, nil, Whois{}}
 	}
 	// reached to the target
 	for _, h := range i.ips {
@@ -447,7 +410,7 @@ func (i *Trace) Run(retry int) chan []HopResp {
 		c = make(chan []HopResp, 1)
 		r []HopResp
 	)
-	i.Bind(0)
+	i.Bind()
 	go func() {
 	LOOP:
 		for h := 1; h <= i.maxTTL; h++ {
@@ -476,15 +439,17 @@ func (i *Trace) Run(retry int) chan []HopResp {
 }
 
 // MRun provides trace all hops in loop
-func (i *Trace) MRun() chan HopResp {
+func (i *Trace) MRun() (chan HopResp, error) {
 	var (
-		c        = make(chan HopResp, 1)
-		ASN      = make(map[string]Whois, 100)
-		maxTTL   = i.maxTTL
-		setParam = false
+		c      = make(chan HopResp, 1)
+		ASN    = make(map[string]Whois, 100)
+		maxTTL = i.maxTTL
 	)
 
-	i.Bind(0)
+	if err := i.Bind(); err != nil {
+		return c, err
+	}
+
 	go func() {
 		for {
 			begin := time.Now()
@@ -498,10 +463,11 @@ func (i *Trace) MRun() chan HopResp {
 						ASN[hop.ip] = w
 					}(ASN)
 				}
+
 				c <- hop
-				if hop.last && !setParam {
+
+				if hop.last && maxTTL == i.maxTTL {
 					maxTTL = h
-					setParam = true
 				}
 			}
 			took := time.Since(begin).Seconds()
@@ -512,7 +478,7 @@ func (i *Trace) MRun() chan HopResp {
 		close(c)
 		syscall.Close(i.fd)
 	}()
-	return c
+	return c, nil
 }
 
 // TermUI prints out trace loop by termui
@@ -527,8 +493,6 @@ func (i *Trace) TermUI() error {
 		done    = make(chan struct{})
 		routers = make([]map[string]Stats, 65)
 
-		resp = i.MRun()
-
 		// columns
 		hops = ui.NewList()
 		asn  = ui.NewList()
@@ -541,6 +505,11 @@ func (i *Trace) TermUI() error {
 
 		rChanged bool
 	)
+
+	resp, err := i.MRun()
+	if err != nil {
+		return err
+	}
 
 	for _, l := range lists {
 		l.Items = make([]string, 65)
@@ -572,7 +541,7 @@ func (i *Trace) TermUI() error {
 	pkl.Items[0] = "[Loss%](fg-bold)"
 
 	// header
-	header := ui.NewPar(fmt.Sprintf("myLG - traceroute to %s (%s), %d hops max, %d byte packets", i.host, i.ip, i.maxTTL, i.pSize))
+	header := ui.NewPar(fmt.Sprintf("myLG - traceroute to %s (%s), %d hops max", i.host, i.ip, i.maxTTL))
 	header.Height = 1
 	header.Width = ui.TermWidth()
 	header.Y = 1
@@ -701,14 +670,11 @@ func (i *Trace) TermUI() error {
 				router.count++
 
 				if r.elapsed != 0 {
+
 					// hop level statistics
-					stats[r.num].min = min(stats[r.num].min, r.elapsed)
-					stats[r.num].avg = avg(stats[r.num].avg, r.elapsed)
-					stats[r.num].max = max(stats[r.num].max, r.elapsed)
+					calcStatistics(&stats[r.num], r.elapsed)
 					// router level statistics
-					router.min = min(routers[r.num][hop].min, r.elapsed)
-					router.avg = avg(routers[r.num][hop].avg, r.elapsed)
-					router.max = max(routers[r.num][hop].max, r.elapsed)
+					calcStatistics(&router, r.elapsed)
 					// detect router changes
 					rChanged = routerChange(hop, hops.Items[r.num])
 
@@ -747,6 +713,12 @@ func (i *Trace) TermUI() error {
 				pkl.Items[r.num] = fmt.Sprintf("%.1f", float64(stats[r.num].pkl)*100/float64(stats[r.num].count))
 				statsMU.Unlock()
 				ui.Render(ui.Body)
+				// clean up in case of packet loss on the last hop at first try
+				if r.last {
+					for i := r.num + 1; i < 65; i++ {
+						hops.Items[i] = ""
+					}
+				}
 			}
 		}
 	}()
@@ -984,6 +956,119 @@ func max(a, b float64) float64 {
 		return a
 	}
 	return b
+}
+
+func calcStatistics(s *Stats, elapsed float64) {
+	s.min = min(s.min, elapsed)
+	s.avg = avg(s.avg, elapsed)
+	s.max = max(s.max, elapsed)
+}
+
+func setIPv4TOS(fd int, v int) error {
+	err := syscall.SetsockoptInt(fd, syscall.IPPROTO_IP, syscall.IP_TOS, v)
+	if err != nil {
+		return os.NewSyscallError("setsockopt", err)
+	}
+	return nil
+}
+
+func setIPv4TTL(fd int, v int) error {
+	err := syscall.SetsockoptInt(fd, syscall.IPPROTO_IP, syscall.IP_TTL, v)
+	if err != nil {
+		return os.NewSyscallError("setsockopt", err)
+	}
+	return nil
+}
+
+func setIPv6HopLimit(fd int, v int) error {
+	err := syscall.SetsockoptInt(fd, syscall.IPPROTO_IPV6, syscall.IPV6_UNICAST_HOPS, v)
+	if err != nil {
+		return os.NewSyscallError("setsockopt", err)
+	}
+	return nil
+}
+
+func icmpV4Message(id, seq int) ([]byte, error) {
+	m, err := (&icmp.Message{
+		Type: ipv4.ICMPTypeEcho, Code: 0,
+		Body: &icmp.Echo{
+			ID: id, Seq: seq,
+			Data: []byte("myLG - [mylg.io]"),
+		},
+	}).Marshal(nil)
+
+	if err != nil {
+		return m, os.NewSyscallError("icmpmsg", err)
+	}
+	return m, nil
+}
+
+func icmpV6Message(id, seq int) ([]byte, error) {
+	m, err := (&icmp.Message{
+		Type: ipv6.ICMPTypeEchoRequest, Code: 0,
+		Body: &icmp.Echo{
+			ID: id, Seq: seq,
+			Data: []byte("myLG - [mylg.io]"),
+		},
+	}).Marshal(nil)
+
+	if err != nil {
+		return m, os.NewSyscallError("icmpmsg", err)
+	}
+	return m, nil
+}
+
+func bytesToIPv6(b []byte) net.IP {
+	ip := make(net.IP, net.IPv6len)
+	copy(ip, b)
+	return ip
+}
+func icmpV4RespParser(b []byte) ICMPResp {
+	var resp ICMPResp
+
+	resp.typ = int(b[20])                           // ICMP Type
+	resp.code = int(b[21])                          // ICMP Code
+	resp.src = net.IPv4(b[12], b[13], b[14], b[15]) // IP Src address
+
+	switch resp.typ {
+	case IPv4ICMPTypeEchoReply:
+		resp.id = int(b[24])<<8 | int(b[25])
+		resp.seq = int(b[26])<<8 | int(b[27])
+	case IPv4ICMPTypeDestinationUnreachable:
+		resp.ip.dst = net.IPv4(b[44], b[45], b[46], b[47])
+	case IPv4ICMPTypeTimeExceeded:
+		resp.id = int(b[52])<<8 | int(b[53])
+		resp.seq = int(b[54])<<8 | int(b[55])
+		resp.ip.dst = net.IPv4(b[44], b[45], b[46], b[47])
+	}
+
+	return resp
+}
+
+func icmpV6RespParser(b []byte) ICMPResp {
+	var resp ICMPResp
+
+	resp.typ = int(b[0])
+	resp.code = int(b[1])
+
+	//getting time exceeded w/ less than 32 bytes
+	if len(b) < 44 {
+		return resp
+	}
+
+	switch resp.typ {
+	case IPv6ICMPTypeEchoReply:
+		resp.id = int(b[44])<<8 | int(b[25])
+		resp.seq = int(b[46])<<8 | int(b[27])
+	case IPv6ICMPTypeDestinationUnreachable:
+		resp.ip.dst = bytesToIPv6(b[32:48])
+	case IPv6ICMPTypeTimeExceeded:
+		resp.id = int(b[32])<<8 | int(b[33])
+		resp.seq = int(b[34])<<8 | int(b[35])
+		resp.ip.dst = bytesToIPv6(b[32:48])
+	}
+
+	return resp
 }
 
 func helpTrace() {
