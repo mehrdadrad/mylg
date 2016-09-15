@@ -20,39 +20,11 @@ import (
 	"github.com/mehrdadrad/mylg/cli"
 )
 
-// IANA ICMP
-const (
-	ProtocolIPv4ICMP = 1  // IANA ICMP for IPv4
-	ProtocolIPv6ICMP = 58 // IANA ICMP for IPv6
-)
-
 // packet represents ping packet
 type packet struct {
 	bytes []byte
 	addr  net.Addr
 	err   error
-}
-
-// Ping represents ping request
-type Ping struct {
-	m         icmp.Message
-	id        int
-	seq       int
-	pSize     int
-	count     int
-	addr      *net.IPAddr
-	addrs     []net.IP
-	target    string
-	isV4Avail bool
-	isV6Avail bool
-	isCIDR    bool
-	forceV4   bool
-	forceV6   bool
-	network   string
-	source    string
-	timeout   time.Duration
-	interval  time.Duration
-	MaxRTT    time.Duration
 }
 
 // Response represent ping response
