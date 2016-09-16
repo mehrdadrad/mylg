@@ -238,6 +238,9 @@ func (r *Readline) Help() {
 func checkUpdate(version string) {
 	type mylg struct {
 		Version string
+		Update  struct {
+			Enabled bool
+		}
 	}
 	var appCtl mylg
 
@@ -260,7 +263,7 @@ func checkUpdate(version string) {
 	if err != nil {
 		return
 	}
-	if version != appCtl.Version {
+	if appCtl.Update.Enabled && version != appCtl.Version {
 		fmt.Printf("New version is available (v%s) at http://mylg.io/download\n", appCtl.Version)
 	}
 }
