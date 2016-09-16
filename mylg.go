@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	version = "0.2.3"
+	version = "0.2.4"
 )
 
 // Provider represents looking glass
@@ -231,6 +231,7 @@ func dump() {
 	if p == nil || err != nil {
 		return
 	}
+	println(p.Banner())
 	for l := range p.Open() {
 		l.PrintPretty()
 	}
