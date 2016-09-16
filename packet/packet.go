@@ -70,7 +70,7 @@ var (
 	timeout     = 100 * time.Nanosecond
 	handle      *pcap.Handle
 	addrs       = make(map[string]struct{}, 20)
-	ifName      string
+	dev         string
 
 	options Options
 	filter  string
@@ -106,8 +106,11 @@ func NewPacket(args string) (*Packet, error) {
 	log.SetFlags(0)
 	log.SetOutput(new(logWriter))
 
+	// return first available interface and all ip addresses
+	dev, addrs = lookupDev()
+
 	return &Packet{
-		device: cli.SetFlag(flag, "i", "").(string),
+		device: cli.SetFlag(flag, "i", dev).(string),
 	}, nil
 }
 
@@ -121,12 +124,6 @@ func (p *Packet) Open() chan *Packet {
 	)
 	// capture interrupt w/ s channel
 	signal.Notify(s, os.Interrupt)
-
-	// return first available interface and all ip addresses
-	ifName, addrs = lookupDev()
-	if p.device == "" {
-		p.device = ifName
-	}
 
 	go func() {
 		var counter int
@@ -171,6 +168,15 @@ func (p *Packet) Open() chan *Packet {
 		}
 	}()
 	return c
+}
+
+// Banner prints out info that related to
+// packet capturing
+func (p *Packet) Banner() string {
+	return fmt.Sprintf("Interface: %s, capture size: %d bytes",
+		p.device,
+		snapLen,
+	)
 }
 
 // PrintPretty prints out the captured data
@@ -415,7 +421,7 @@ func lookupDev() (string, map[string]struct{}) {
 	ifs, _ := net.Interfaces()
 	for _, i := range ifs {
 		addrs, _ := i.Addrs()
-		if i.Flags == 19 && ifName == "" {
+		if len(addrs) > 0 && i.Flags == 19 && ifName == "" {
 			ifName = i.Name
 		}
 		for _, addr := range addrs {
@@ -427,12 +433,14 @@ func lookupDev() (string, map[string]struct{}) {
 
 func printDev() {
 	var (
-		status  = "DOWN"
-		columns []string
+		status   = "DOWN"
+		columns  []string
+		addrsStr []string
 	)
 
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Name", "MAC", "Status", "MTU", "Multicast", "Broadcast", "PointToPoint", "Loopback"})
+	table.SetHeader([]string{"Name", "MAC", "Status", "MTU", "IP Addresses", "Multicast", "Broadcast", "PointToPoint", "Loopback"})
+
 	ifs, _ := net.Interfaces()
 	for _, i := range ifs {
 		if strings.Contains(i.Flags.String(), "up") {
@@ -440,7 +448,11 @@ func printDev() {
 		} else {
 			status = "DOWN"
 		}
-		columns = append(columns, i.Name, i.HardwareAddr.String(), status, fmt.Sprintf("%d", i.MTU))
+		addrs, _ := i.Addrs()
+		for _, addr := range addrs {
+			addrsStr = append(addrsStr, addr.String())
+		}
+		columns = append(columns, i.Name, i.HardwareAddr.String(), status, fmt.Sprintf("%d", i.MTU), strings.Join(addrsStr, "\n"))
 		for _, flag := range []string{"multicast", "broadcast", "pointtopoint", "loopback"} {
 			if strings.Contains(i.Flags.String(), flag) {
 				columns = append(columns, "\u2713")
@@ -450,6 +462,7 @@ func printDev() {
 		}
 		table.Append(columns)
 		columns = columns[:0]
+		addrsStr = addrsStr[:0]
 	}
 	table.Render()
 }
