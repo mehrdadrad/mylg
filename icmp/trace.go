@@ -233,7 +233,7 @@ func (i *Trace) Recv(id, seq int) (ICMPResp, error) {
 		b    = make([]byte, 512)
 		ts   = time.Now()
 		resp ICMPResp
-		wId  bool
+		wID  bool
 		wSeq bool
 		wDst bool
 	)
@@ -253,18 +253,18 @@ func (i *Trace) Recv(id, seq int) (ICMPResp, error) {
 
 		if len(i.ip.To4()) == net.IPv4len {
 			resp = icmpV4RespParser(b)
-			wId = resp.typ == IPv4ICMPTypeEchoReply && id != resp.id
+			wID = resp.typ == IPv4ICMPTypeEchoReply && id != resp.id
 			wSeq = seq != resp.seq
 			wDst = resp.ip.dst.String() != i.ip.String()
 		} else {
 			resp = icmpV6RespParser(b)
 			resp.src = net.IP(from.(*syscall.SockaddrInet6).Addr[:])
-			wId = resp.typ == IPv6ICMPTypeEchoReply && id != resp.id
+			wID = resp.typ == IPv6ICMPTypeEchoReply && id != resp.id
 			wSeq = seq != resp.seq
 			wDst = resp.ip.dst.String() != i.ip.String()
 		}
 
-		if (i.icmp && wSeq) || wDst || wId {
+		if (i.icmp && wSeq) || wDst || wID {
 			du, _ := time.ParseDuration(i.wait)
 			if time.Since(ts) < du {
 				continue
@@ -302,7 +302,7 @@ func (i *Trace) NextHop(hop int) HopResp {
 	elapsed := time.Since(begin)
 
 	if i.resolve {
-		name, _ = net.LookupAddr(resp.src.String())
+		name, _ = lookupAddr(resp.src)
 	}
 	if len(name) > 0 {
 		r = HopResp{hop, name[0], resp.src.String(), elapsed.Seconds() * 1e3, false, nil, Whois{}}
@@ -366,6 +366,11 @@ func (i *Trace) MRun() (chan HopResp, error) {
 	}
 
 	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				syscall.Close(i.fd)
+			}
+		}()
 		for {
 			for h := 1; h <= maxTTL; h++ {
 				hop := i.NextHop(h)
@@ -386,8 +391,6 @@ func (i *Trace) MRun() (chan HopResp, error) {
 			}
 			time.Sleep(1 * time.Second)
 		}
-		close(c)
-		syscall.Close(i.fd)
 	}()
 	return c, nil
 }
@@ -629,6 +632,7 @@ func (i *Trace) TermUI() error {
 				}
 			}
 		}
+		close(resp)
 	}()
 
 	ui.Loop()
@@ -864,6 +868,23 @@ func max(a, b float64) float64 {
 		return a
 	}
 	return b
+}
+func lookupAddr(ip net.IP) ([]string, error) {
+	var (
+		c = make(chan []string, 1)
+		r []string
+	)
+
+	go func() {
+		n, _ := net.LookupAddr(ip.String())
+		c <- n
+	}()
+	select {
+	case r = <-c:
+		return r, nil
+	case <-time.After(1 * time.Second):
+		return r, fmt.Errorf("lookup.addr timeout")
+	}
 }
 
 func calcStatistics(s *Stats, elapsed float64) {
