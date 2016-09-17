@@ -16,18 +16,26 @@ import (
 )
 
 const (
-	DefaultTXTimeout int64 = 2000 // Default TX timeout
+	// DefaultTXTimeout is socket send timeout
+	DefaultTXTimeout int64 = 2000
+	// ProtocolIPv4ICMP is IANA ICMP IPv4
+	ProtocolIPv4ICMP = 1
+	// ProtocolIPv6ICMP is IANA ICMP IPv6
+	ProtocolIPv6ICMP = 58
 
-	ProtocolIPv4ICMP = 1  // IANA ICMP for IPv4
-	ProtocolIPv6ICMP = 58 // IANA ICMP for IPv6
+	// IPv4ICMPTypeEchoReply is ICMPv4 Echo Reply
+	IPv4ICMPTypeEchoReply = 0
+	// IPv4ICMPTypeDestinationUnreachable is ICMPv4 Destination Unreachable
+	IPv4ICMPTypeDestinationUnreachable = 3
+	// IPv4ICMPTypeTimeExceeded is ICMPv4 Time Exceeded
+	IPv4ICMPTypeTimeExceeded = 11
 
-	IPv4ICMPTypeEchoReply              = 0  // ICMPv4 Echo Reply
-	IPv4ICMPTypeDestinationUnreachable = 3  // ICMPv4 Destination Unreachable
-	IPv4ICMPTypeTimeExceeded           = 11 // ICMPv4 Time Exceeded
-
-	IPv6ICMPTypeEchoReply              = 129 // ICMPv4 Echo Reply
-	IPv6ICMPTypeDestinationUnreachable = 1   // ICMPv4 Destination Unreachable
-	IPv6ICMPTypeTimeExceeded           = 3   // ICMPv4 Time Exceeded
+	// IPv6ICMPTypeEchoReply is ICMPv6 Echo Reply
+	IPv6ICMPTypeEchoReply = 129
+	// IPv6ICMPTypeDestinationUnreachable is ICMPv6 Destination Unreachable
+	IPv6ICMPTypeDestinationUnreachable = 1
+	//IPv6ICMPTypeTimeExceeded is ICMPv6 Time Exceeded
+	IPv6ICMPTypeTimeExceeded = 3
 )
 
 // Trace represents trace properties
