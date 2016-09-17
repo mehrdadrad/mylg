@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"regexp"
 	"sort"
 	"strings"
 	"syscall"
@@ -281,9 +282,11 @@ func (i *Trace) Recv(id, seq int) (ICMPResp, error) {
 func (i *Trace) NextHop(hop int) HopResp {
 	rand.Seed(time.Now().UTC().UnixNano())
 	var (
-		r    = HopResp{num: hop}
-		port = 33434
-		name []string
+		r        = HopResp{num: hop}
+		dnsCache = make(map[string][]string)
+		port     = 33434
+		name     []string
+		ok       bool
 	)
 	i.SetTTL(hop)
 	begin := time.Now()
@@ -302,7 +305,10 @@ func (i *Trace) NextHop(hop int) HopResp {
 	elapsed := time.Since(begin)
 
 	if i.resolve {
-		name, _ = lookupAddr(resp.src)
+		if name, ok = dnsCache[resp.src.String()]; !ok {
+			name, _ = lookupAddr(resp.src)
+			dnsCache[resp.src.String()] = name
+		}
 	}
 	if len(name) > 0 {
 		r = HopResp{hop, name[0], resp.src.String(), elapsed.Seconds() * 1e3, false, nil, Whois{}}
@@ -327,6 +333,11 @@ func (i *Trace) Run(retry int) chan []HopResp {
 	)
 	i.Bind()
 	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				syscall.Close(i.fd)
+			}
+		}()
 	LOOP:
 		for h := 1; h <= i.maxTTL; h++ {
 			for n := 0; n < retry; n++ {
@@ -388,6 +399,7 @@ func (i *Trace) MRun() (chan HopResp, error) {
 				if hop.last && maxTTL == i.maxTTL {
 					maxTTL = h
 				}
+				time.Sleep(100 * time.Millisecond)
 			}
 			time.Sleep(1 * time.Second)
 		}
@@ -600,7 +612,7 @@ func (i *Trace) TermUI() error {
 
 					lcShift(r, lc, ui.TermWidth())
 
-				} else if r.elapsed == 0 && hops.Items[r.num] == "" {
+				} else if hops.Items[r.num] == "" {
 
 					hops.Items[r.num] = fmt.Sprintf("[%-2d] %-40s", r.num, "???")
 					stats[r.num].pkl++
@@ -608,13 +620,15 @@ func (i *Trace) TermUI() error {
 
 				} else if !strings.Contains(hops.Items[r.num], "???") {
 
-					hops.Items[r.num] = termUICColor(hops.Items[r.num], "fg-red")
+					hop = rmUIMetaData(hops.Items[r.num])
+					hop = fmt.Sprintf("[%-2d] %-45s", r.num, hop)
+					hops.Items[r.num] = termUICColor(hop, "fg-red")
 					rtt.Items[r.num] = fmt.Sprintf("%-6.2s\t%-6.2f\t%-6.2f\t%-6.2f", "?", stats[r.num].avg, stats[r.num].min, stats[r.num].max)
 					stats[r.num].pkl++
 					router.pkl++
 
 				} else {
-
+					hops.Items[r.num] = fmt.Sprintf("[%-2d] %-45s", r.num, "???")
 					stats[r.num].pkl++
 					router.pkl++
 
@@ -669,6 +683,15 @@ func lcShift(r HopResp, lc *ui.LineChart, width int) {
 			lc.DataLabels = lc.DataLabels[1:]
 		}
 	}
+}
+
+func rmUIMetaData(m string) string {
+	var rgx = []string{`\[+\d+\s*\]\s`, `\]\(.*\)`}
+	for _, r := range rgx {
+		re := regexp.MustCompile(r)
+		m = re.ReplaceAllString(m, "")
+	}
+	return m
 }
 
 func termUICColor(m, color string) string {
@@ -754,6 +777,7 @@ LOOP:
 			}
 			//fmt.Printf("%#v\n", r)
 		case <-sigCh:
+			close(resp)
 			break LOOP
 		}
 	}
