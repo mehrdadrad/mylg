@@ -21,9 +21,11 @@ type Route struct {
 	HandlerFunc http.HandlerFunc
 }
 
+// APIHandler represents API function w/ cli arg
 type APIHandler func(w http.ResponseWriter, r *http.Request, cfg cli.Config)
 
-func APIWarpper(handler APIHandler, cfg cli.Config) func(w http.ResponseWriter, r *http.Request) {
+// APIWrapper wraps API func including cli arg
+func APIWrapper(handler APIHandler, cfg cli.Config) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		handler(w, r, cfg)
 	}
@@ -61,7 +63,7 @@ func Run(cfg cli.Config) {
 			"API",
 			"POST",
 			"/api/{name}",
-			APIWarpper(API, cfg),
+			APIWrapper(API, cfg),
 		},
 	}
 
