@@ -61,13 +61,13 @@ type HPing struct {
 
 // Web represents web command options
 type Web struct {
-	Port    int    `json:port`
-	Address string `json:address`
+	Port    int    `json:"port"`
+	Address string `json:"address"`
 }
 
 // Scan represents scan command options
 type Scan struct {
-	Port string `json:port`
+	Port string `json:"port"`
 }
 
 // Trace represents trace command options
