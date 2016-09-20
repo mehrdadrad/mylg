@@ -196,7 +196,7 @@ func (i *Trace) Bind() error {
 
 	i.fd, err = syscall.Socket(i.family, syscall.SOCK_RAW, i.proto)
 	if err != nil {
-		return os.NewSyscallError("bindsocket", err)
+		return os.NewSyscallError("bind.socket", err)
 	}
 
 	err = i.SetDeadLine()
@@ -326,12 +326,16 @@ func (i *Trace) NextHop(hop int) HopResp {
 }
 
 // Run provides trace based on the other methods
-func (i *Trace) Run(retry int) chan []HopResp {
+func (i *Trace) Run(retry int) (chan []HopResp, error) {
 	var (
 		c = make(chan []HopResp, 1)
 		r []HopResp
 	)
-	i.Bind()
+
+	if err := i.Bind(); err != nil {
+		return c, err
+	}
+
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
@@ -361,7 +365,7 @@ func (i *Trace) Run(retry int) chan []HopResp {
 		close(c)
 		syscall.Close(i.fd)
 	}()
-	return c
+	return c, nil
 }
 
 // MRun provides trace all hops in loop
@@ -717,8 +721,14 @@ func (i *Trace) PrintPretty() {
 	var (
 		counter int
 		sigCh   = make(chan os.Signal, 1)
-		resp    = i.Run(3)
+		resp    = make(chan []HopResp, 1)
+		err     error
 	)
+
+	if resp, err = i.Run(3); err != nil {
+		println(err.Error())
+		return
+	}
 
 	signal.Notify(sigCh, os.Interrupt)
 	defer signal.Stop(sigCh)
