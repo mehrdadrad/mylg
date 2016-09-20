@@ -25,7 +25,8 @@ my looking glass is an open source software utility which combines the functions
 [![IMAGE Demo](http://mylg.io/img/youtube.jpg)](https://www.youtube.com/watch?v=QY2TAA3ljAA)
 
 ![IMAGE ALT TEXT HERE](http://mylg.io/img/packet_analyzer.png)
-![IMAGE ALT TEXT HERE](http://mylg.io/img/mylg_mtr.gif)
+![IMAGE ALT TEXT HERE](http://mylg.io/img/mylg_rt_trace.gif)
+![IMAGE ALT TEXT HERE](http://mylg.io/img/mylg_rt_trace2.gif)
 ![IMAGE ALT TEXT HERE](http://mylg.io/img/mylg_dashboard.png)
 
 ### Usage
