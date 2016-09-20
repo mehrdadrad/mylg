@@ -38,23 +38,36 @@ func NewScan(args string, cfg cli.Config) (Scan, error) {
 
 	pRange := cli.SetFlag(flag, "p", cfg.Scan.Port).(string)
 
-	re := regexp.MustCompile(`(\d+)-(\d+)`)
+	re := regexp.MustCompile(`(\d+)(\-{0,1}(\d*))`)
 	f := re.FindStringSubmatch(pRange)
-	if len(f) == 3 {
-		scan.target = args
-		scan.minPort, err = strconv.Atoi(f[1])
-		scan.maxPort, err = strconv.Atoi(f[2])
-		if err != nil {
-			return scan, err
-		}
+
+	if len(f) != 4 {
+		return scan, fmt.Errorf("error! please try scan help")
 	}
+
+	scan.target = args
+	if len(f) == 4 && f[2] != "" {
+		scan.minPort, err = strconv.Atoi(f[1])
+		scan.maxPort, err = strconv.Atoi(f[3])
+	} else {
+		scan.minPort, err = strconv.Atoi(f[1])
+		scan.maxPort, err = strconv.Atoi(f[1])
+	}
+
+	if err != nil {
+		return scan, err
+	}
+
 	if !scan.IsCIDR() {
-		ipAddr, err := net.ResolveIPAddr("ip4", scan.target)
+		ipAddr, err := net.ResolveIPAddr("ip", scan.target)
 		if err != nil {
 			return scan, err
 		}
 		scan.target = ipAddr.String()
+	} else {
+		return scan, fmt.Errorf("it doesn't support CIDR")
 	}
+
 	return scan, nil
 }
 
@@ -121,6 +134,7 @@ func help(cfg cli.Config) {
     usage:
           scan ip/host [-p portrange]
     example:
+          scan 8.8.8.8 -p 53	
           scan www.google.com -p %s
 	`,
 		cfg.Scan.Port)
