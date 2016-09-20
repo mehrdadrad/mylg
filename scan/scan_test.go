@@ -14,7 +14,7 @@ var (
 func TestIsCIDR(t *testing.T) {
 	var err error
 	s, err = scan.NewScan("8.8.8.0/24", cfg)
-	if err != nil {
+	if err == nil {
 		t.Error("NewScan failed")
 	}
 	if !s.IsCIDR() {
