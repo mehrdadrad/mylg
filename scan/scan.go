@@ -101,7 +101,7 @@ func host(ipAddr string, minPort, maxPort int) {
 	for i := minPort; i <= maxPort; i++ {
 		wg.Add(1)
 		go func(i int) {
-			conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", ipAddr, i), 1*time.Second)
+			conn, err := net.DialTimeout("tcp", net.JoinHostPort(ipAddr, fmt.Sprintf("%d", i)), 1*time.Second)
 			if err != nil {
 				wg.Done()
 				return
