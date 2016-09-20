@@ -279,22 +279,18 @@ func Flag(args string) (string, map[string]interface{}) {
 		target string
 	)
 
-	args = strings.TrimSpace(args)
-	// target
-	re := regexp.MustCompile(`(?i)^[^-][\S|\w]*`)
-	t := re.FindStringSubmatch(args)
-	if len(t) > 0 {
-		target = t[0]
-	}
+	// in case we have args without target
+	args = " " + args
+
 	// range
-	re = regexp.MustCompile(`(?i)\s-([a-z|0-9]+)[=|\s]{0,1}(\d+\-\d+)`)
+	re := regexp.MustCompile(`(?i)\s-([a-z|0-9]+)[=|\s]{0,1}(\d+\-\d+)`)
 	f := re.FindAllStringSubmatch(args, -1)
 	for _, kv := range f {
 		r[kv[1]] = kv[2]
 		args = strings.Replace(args, kv[0], "", 1)
 	}
-	// other flags
-	re = regexp.MustCompile(`(?i)\s{0,1}-([a-z|0-9]+)[=|\s]{0,1}([0-9|a-z|'"{}:\/]*)`)
+	// noon-boolean flags
+	re = regexp.MustCompile(`(?i)\s{1}-([a-z|0-9]+)[=|\s]([0-9|a-z|'"{}:\/]+)`)
 	f = re.FindAllStringSubmatch(args, -1)
 	for _, kv := range f {
 		if len(kv) > 1 {
@@ -305,7 +301,23 @@ func Flag(args string) (string, map[string]interface{}) {
 			if err != nil {
 				r[kv[1]] = kv[2]
 			}
+			args = strings.Replace(args, kv[0], "", 1)
 		}
+	}
+	// boolean flags
+	re = regexp.MustCompile(`(?i)\s-([a-z|0-9]+)`)
+	f = re.FindAllStringSubmatch(args, -1)
+	for _, kv := range f {
+		if len(kv) == 2 {
+			r[kv[1]] = ""
+			args = strings.Replace(args, kv[0], "", 1)
+		}
+	}
+	// target
+	re = regexp.MustCompile(`(?i)^[^-][\S|\w\s]*`)
+	t := re.FindStringSubmatch(args)
+	if len(t) > 0 {
+		target = strings.TrimSpace(t[0])
 	}
 	// help
 	if m, _ := regexp.MatchString(`(?i)help$`, args); m {
