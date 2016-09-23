@@ -8,16 +8,8 @@ import (
 
 var c *cli.Readline
 
-func TestInitPrompt(t *testing.T) {
-	c = cli.Init("local", "test")
-	p := c.GetPrompt()
-	if p != "local" {
-		t.Error("Init cli prompt failed")
-	}
-}
-
 func TestSetPrompt(t *testing.T) {
-	c = cli.Init("local", "test")
+	c = cli.Init("test")
 	c.SetPrompt("mylg")
 	p := c.GetPrompt()
 	if p != "mylg" {
