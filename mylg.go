@@ -99,7 +99,7 @@ func init() {
 	// with interface
 	if len(eArgs) == 1 {
 		// initialize cli
-		c = cli.Init("local", version)
+		c = cli.Init(version)
 		go c.Run(req, nxt)
 		// start web server
 		go httpd.Run(cfg)
@@ -109,9 +109,8 @@ func init() {
 	// initialize name server
 	nsr = ns.NewRequest()
 	go nsr.Init()
-	// set default provider, promot
-	cPName = "local"
-	prompt = "local"
+	// set local as default
+	local()
 }
 
 func main() {
@@ -138,7 +137,7 @@ LOOP:
 				c.Next()
 				continue
 			}
-			subReq := cli.CMDReg.FindStringSubmatch(request)
+			subReq := cli.CMDRgx().FindStringSubmatch(request)
 			if len(subReq) == 0 {
 				println("syntax error")
 				c.Next()
