@@ -4,8 +4,8 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/chzyer/readline"
 	"github.com/mehrdadrad/mylg/banner"
-	"gopkg.in/readline.v1"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -24,6 +24,7 @@ const usage = `Usage:
 	lg                          change mode to external looking glass
 	ns                          change mode to name server looking up
 	ping                        ping ip address or domain name
+	trace                       trace ip address or domain name (real-time w/ -r option)
 	dig                         name server looking up
 	whois                       resolve AS number/IP/CIDR to holder (provides by ripe ncc)
 	hping                       Ping through HTTP/HTTPS w/ GET/HEAD methods
@@ -43,44 +44,41 @@ type Readline struct {
 }
 
 var (
-	// CMDReg holds validation command regex
-	CMDReg, _ = regexp.Compile(
-		`(ping|trace|bgp|lg|ns|dig|dump|disc|whois|peering|scan|hping|connect|node|local|mode|help|web|show|set|exit|quit)\s{0,1}(.*)`)
+	cmds = []string{
+		"ping",
+		"trace",
+		"bgp",
+		"hping",
+		"connect",
+		"node",
+		"local",
+		"lg",
+		"ns",
+		"dig",
+		"whois",
+		"scan",
+		"dump",
+		"disc",
+		"peering",
+		"help",
+		"web",
+		"set",
+		"exit",
+		"show",
+	}
 )
 
 // Init set readline imain items
-func Init(prompt, version string) *Readline {
+func Init(version string) *Readline {
 	var (
 		r         Readline
 		err       error
-		completer = readline.NewPrefixCompleter(
-			readline.PcItem("ping"),
-			readline.PcItem("trace"),
-			readline.PcItem("bgp"),
-			readline.PcItem("hping"),
-			readline.PcItem("connect"),
-			readline.PcItem("node"),
-			readline.PcItem("local"),
-			readline.PcItem("lg"),
-			readline.PcItem("ns"),
-			readline.PcItem("dig"),
-			readline.PcItem("whois"),
-			readline.PcItem("scan"),
-			readline.PcItem("dump"),
-			readline.PcItem("disc"),
-			readline.PcItem("peering"),
-			readline.PcItem("help"),
-			readline.PcItem("web"),
-			readline.PcItem("set"),
-			readline.PcItem("exit"),
-			readline.PcItem("show",
-				readline.PcItem("config"),
-			),
-		)
+		completer = readline.NewPrefixCompleter(pcItems()...)
 	)
+
 	r.completer = completer
 	r.instance, err = readline.NewEx(&readline.Config{
-		Prompt:          prompt + "> ",
+		Prompt:          "local> ",
 		HistoryFile:     "/tmp/myping",
 		InterruptPrompt: "^C",
 		EOFPrompt:       "exit",
@@ -91,7 +89,7 @@ func Init(prompt, version string) *Readline {
 	}
 	banner.Println(version) // print banner
 	go checkUpdate(version) // check update version
-	r.prompt = prompt       // init local prompt
+	//r.prompt = prompt       // init local prompt
 	return &r
 }
 
@@ -232,6 +230,21 @@ func (r *Readline) Close(next chan struct{}) {
 // Help print out the main help
 func (r *Readline) Help() {
 	fmt.Println(usage)
+}
+
+// CMDRex returns commands regex for validation
+func CMDRgx() *regexp.Regexp {
+	expr := fmt.Sprintf(`(%s)\s{0,1}(.*)`, strings.Join(cmds, "|"))
+	re, _ := regexp.Compile(expr)
+	return re
+}
+
+func pcItems() []readline.PrefixCompleterInterface {
+	var i []readline.PrefixCompleterInterface
+	for _, c := range cmds {
+		i = append(i, readline.PcItem(c))
+	}
+	return i
 }
 
 // checkUpdate checks if any new version is available
