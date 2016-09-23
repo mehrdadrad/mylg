@@ -3,10 +3,12 @@ package scan
 
 import (
 	"fmt"
+	"math/rand"
 	"net"
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -101,20 +103,24 @@ func host(ipAddr string, minPort, maxPort int) {
 	for i := minPort; i <= maxPort; i++ {
 		wg.Add(1)
 		go func(i int) {
-			conn, err := net.DialTimeout("tcp", net.JoinHostPort(ipAddr, fmt.Sprintf("%d", i)), 1*time.Second)
-			if err != nil {
-				wg.Done()
-				return
+			for {
+				conn, err := net.DialTimeout("tcp", net.JoinHostPort(ipAddr, fmt.Sprintf("%d", i)), 2*time.Second)
+				if err != nil {
+					if strings.Contains(err.Error(), "too many open files") {
+						// random back-off
+						time.Sleep(time.Duration(10+rand.Int31n(30)) * time.Millisecond)
+						continue
+					}
+					wg.Done()
+					return
+				}
+				conn.Close()
+				break
 			}
 			counter++
 			table.Append([]string{"TCP", fmt.Sprintf("%d", i), "Open", ""})
 			wg.Done()
-			err = conn.Close()
-			if err != nil {
-				println(err.Error())
-			}
 		}(i)
-		time.Sleep(8 * time.Millisecond)
 	}
 
 	wg.Wait()
@@ -132,10 +138,12 @@ func host(ipAddr string, minPort, maxPort int) {
 func help(cfg cli.Config) {
 	fmt.Printf(`
     usage:
-          scan ip/host [-p portrange]
+          scan ip/host [option]
+    options:
+          -p port-range or port number      specified range or port number (default is %s)
     example:
           scan 8.8.8.8 -p 53	
-          scan www.google.com -p %s
+          scan www.google.com -p 1-500
 	`,
 		cfg.Scan.Port)
 }
