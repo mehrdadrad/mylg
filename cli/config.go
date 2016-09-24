@@ -34,11 +34,16 @@ var defaultConfig = `{
 		"wait"  : "2s"
 	},
 	"snmp" : {
-		"community" : "public",
-		"timeout" : "1s",
-		"version" : "2c",
-		"retries" : 1,
-		"port"    : 161
+		"community"     : "public",
+		"timeout"       : "1s",
+		"version"       : "2c",
+		"retries"       : 1,
+		"port"          : 161,
+		"securitylevel" : "noauthnopriv",
+		"authpass"      : "nopass",
+		"authproto"     : "sha",
+		"Privacypass"   : "nopass",
+		"Privacyproto"  : "aes"
 	}
 }`
 
@@ -85,11 +90,16 @@ type Trace struct {
 
 // SNMP represents nms command options
 type SNMP struct {
-	Community string `json:"community"`
-	Timeout   string `json:"timeout"`
-	Version   string `json:"version"`
-	Retries   int    `json:"retries"`
-	Port      int    `json:"port"`
+	Community     string `json:"community"`
+	Timeout       string `json:"timeout"`
+	Version       string `json:"version"`
+	Retries       int    `json:"retries"`
+	Port          int    `json:"port"`
+	Securitylevel string `json:"securitylevel"`
+	Authpass      string `json:"authpass"`
+	Authproto     string `json:"authproto"`
+	Privacypass   string `json:"privacypass"`
+	Privacyproto  string `json:"privacyproto"`
 }
 
 // WriteConfig write config to disk
@@ -408,7 +418,7 @@ func ShowConfig(s *Config) {
 			subCmd := vv.Type().Field(j).Name
 			subCmd = strings.ToLower(subCmd)
 			value := vv.Field(j)
-			fmt.Printf("set %-8s %-10s %v\n", cmd, subCmd, value)
+			fmt.Printf("set %-8s %-15s %v\n", cmd, subCmd, value)
 		}
 	}
 }
