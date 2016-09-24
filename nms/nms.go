@@ -5,6 +5,7 @@ package nms
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -32,7 +33,7 @@ func NewClient(args string, cfg cli.Config) (Client, error) {
 
 	_, flags := cli.Flag(args)
 	if _, ok := flags["help"]; ok {
-		help()
+		help(cfg)
 		return client, nil
 	}
 
@@ -55,21 +56,50 @@ func NewClient(args string, cfg cli.Config) (Client, error) {
 	return client, err
 }
 
-// ShowInterface shows interface(s) information based on
-// Specific portocol (SNMP/SSH/...) for now it support only SNMP
-func (c *Client) ShowInterface() {
-	c.snmpShowInterface()
+// ShowInterface prints out interface(s) information based on
+// specific portocol (SNMP/SSH/...) for now it supports only SNMP
+func (c *Client) ShowInterface(filter string) error {
+	if c.SNMP != nil {
+		c.snmpShowInterface(filter)
+	} else {
+		return fmt.Errorf("snmp not connected, try connect help")
+	}
+	return nil
 }
 
-func (c *Client) snmpShowInterface() {
+// snmpGetIdx finds SNMP index(es) based on the filter
+func (c *Client) snmpGetIdx(filter string) []int {
+	var res []int
+
+	filter = fmt.Sprintf("^%s$", filter)
+	filter = strings.Replace(filter, "*", ".*", -1)
+	re := regexp.MustCompile(filter)
+
+	r, _ := c.SNMP.BulkWalk(OID["ifDescr"])
+	for _, v := range r {
+		a := strings.Split(v.Oid.String(), ".")
+		if re.MatchString(v.Variable.String()) {
+			idx, _ := strconv.Atoi(a[len(a)-1])
+			res = append(res, idx)
+		}
+	}
+	return res
+}
+
+func (c *Client) snmpShowInterface(filter string) {
 	var (
 		data [][][]string
 		once sync.Once
+		idxs []int
 		spin = spinner.New(spinner.CharSets[26], 220*time.Millisecond)
 	)
 
+	if len(strings.TrimSpace(filter)) > 1 {
+		idxs = c.snmpGetIdx(filter)
+	}
+
 	for range []int{0, 1} {
-		sample, err := c.snmpGetInterfaces()
+		sample, err := c.snmpGetInterfaces(idxs)
 		if err != nil {
 			return
 		}
@@ -97,25 +127,14 @@ func (c *Client) snmpShowInterface() {
 	table.Render()
 }
 
-func normalize(time0, time1 []string, t int) []string {
-	var f = []int{8, 8, 1, 1, 1, 1, 1, 1}
-
-	for _, i := range []int{1, 2, 3, 4} {
-		n, _ := strconv.Atoi(time0[i])
-		n = n * f[i-1]
-		m, _ := strconv.Atoi(time1[i])
-		m = m * f[i-1]
-		time1[i] = fmt.Sprintf("%d", (m-n)/t)
-	}
-	return time1
-}
-
-func (c *Client) snmpGetInterfaces() ([][]string, error) {
+func (c *Client) snmpGetInterfaces(filter []int) ([][]string, error) {
 	var (
-		data   = make([][]string, 100)
-		maxIdx = 0
-		oids   []string
-		cols   [][]string
+		data = make([][]string, 100)
+		oids []string
+		cols [][]string
+		res  [][]string
+		err  error
+		r    []*snmpgo.VarBind
 	)
 
 	cols = append(cols, []string{"Interface", "ifDescr"})
@@ -128,14 +147,28 @@ func (c *Client) snmpGetInterfaces() ([][]string, error) {
 	cols = append(cols, []string{"Error In", "ifInErrors"})
 	cols = append(cols, []string{"Error Out", "ifOutErrors"})
 
-	for _, c := range cols {
-		oids = append(oids, OID[c[1]])
-		data[0] = append(data[0], c[0])
-	}
+	if len(filter) < 1 {
+		for _, c := range cols {
+			oids = append(oids, OID[c[1]])
+			data[0] = append(data[0], c[0])
+		}
 
-	r, err := c.SNMP.BulkWalk(oids...)
-	if err != nil {
-		return data, err
+		r, err = c.SNMP.BulkWalk(oids...)
+		if err != nil {
+			return data, err
+		}
+	} else {
+		for _, c := range cols {
+			for _, idx := range filter {
+				oids = append(oids, fmt.Sprintf("%s.%d", OID[c[1]], idx))
+			}
+			data[0] = append(data[0], c[0])
+		}
+
+		r, err = c.SNMP.GetOIDs(oids...)
+		if err != nil {
+			return data, err
+		}
 	}
 
 	for _, v := range r {
@@ -153,11 +186,29 @@ func (c *Client) snmpGetInterfaces() ([][]string, error) {
 			}
 			colNum++
 		}
-		if idx > maxIdx {
-			maxIdx = idx
+	}
+
+	// remove empty slices
+	for i := range data {
+		if len(data[i]) != 0 {
+			res = append(res, data[i])
 		}
 	}
-	return data[:maxIdx+1], nil
+
+	return res, nil
+}
+
+func normalize(time0, time1 []string, t int) []string {
+	var f = []int{8, 8, 1, 1, 1, 1, 1, 1}
+
+	for _, i := range []int{1, 2, 3, 4} {
+		n, _ := strconv.Atoi(time0[i])
+		n = n * f[i-1]
+		m, _ := strconv.Atoi(time1[i])
+		m = m * f[i-1]
+		time1[i] = fmt.Sprintf("%d", (m-n)/t)
+	}
+	return time1
 }
 
 func trim(s string, n int) string {
@@ -175,13 +226,23 @@ func printEff(s string) {
 	println("")
 }
 
-func help() {
-	fmt.Println(`
-        Usage:
+func help(cfg cli.Config) {
+	fmt.Printf(`
+        SNMP Usage:
               connect host [options]
 
         Options:
+              -v version    Specifies the protocol version: 1/2c/3 (default: %s)
+              -c community  Community string for SNMPv1/v2c transactions (default: %s)
+              -t timeout    Specify a timeout in format "ms", "s", "m" (default: %s)
+              -p port       Specify SNMP port number (default: %d)
+              -r retries    Specifies the number of retries (default:%d)
         Example:
               connect 127.0.0.1 -c public
-		`)
+		`,
+		cfg.Snmp.Version,
+		cfg.Snmp.Community,
+		cfg.Snmp.Timeout,
+		cfg.Snmp.Port,
+		cfg.Snmp.Retries)
 }
