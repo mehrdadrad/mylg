@@ -435,16 +435,37 @@ func setNMS() {
 
 // setConfig
 func setConfig() {
-	cli.SetConfig(args, &cfg)
+	if err := cli.SetConfig(args, &cfg); err != nil {
+		println(err.Error())
+	}
 }
 
 // show command
 func show() {
-	switch args {
+	var err error
+
+	re := regexp.MustCompile(`^([a-z]+)\s*(.*)$`)
+	m := re.FindStringSubmatch(args)
+
+	if len(m) < 3 {
+		return
+	}
+
+	subItem := m[1]
+	subArgs := m[2]
+
+	switch subItem {
 	case "config":
 		cli.ShowConfig(&cfg)
 	case "interface":
-		nmsClient.ShowInterface()
+		if strings.HasPrefix(prompt, "nms") {
+			err = nmsClient.ShowInterface(subArgs)
+		} else {
+			println("it's available under nms")
+		}
+		if err != nil {
+			println(err.Error())
+		}
 	}
 }
 
