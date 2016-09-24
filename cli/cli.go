@@ -30,7 +30,7 @@ const usage = `Usage:
 	hping                       Ping through HTTP/HTTPS w/ GET/HEAD methods
 	scan                        scan tcp ports (you can provide range >scan host minport maxport)
 	dump                        prints out a description of the contents of packets on a network interface
-	disc                        discover all the devices on a LAN                
+	disc                        discover all the devices on a LAN
 	peering                     peering information (provides by peeringdb.com)
 	web                         web dashboard - opens dashboard at your default browser
 	`

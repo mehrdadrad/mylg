@@ -181,10 +181,6 @@ func help() {
               connect host [options]
 
         Options:
-              -c
-              -t
-              -r
-              -v			  
         Example:
               connect 127.0.0.1 -c public
 		`)
