@@ -3,6 +3,7 @@ package nms
 import (
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/k-sone/snmpgo"
@@ -39,12 +40,17 @@ type SNMPClient struct {
 // NewSNMP sets and validates SNMP parameters
 func NewSNMP(a string, cfg cli.Config) (*SNMPClient, error) {
 	var (
-		host, flag = cli.Flag(a)
-		community  = cli.SetFlag(flag, "c", cfg.Snmp.Community).(string)
-		timeout    = cli.SetFlag(flag, "t", cfg.Snmp.Timeout).(string)
-		version    = cli.SetFlag(flag, "v", cfg.Snmp.Version).(string)
-		retries    = cli.SetFlag(flag, "r", cfg.Snmp.Retries).(int)
-		port       = cli.SetFlag(flag, "p", cfg.Snmp.Port).(int)
+		host, flag    = cli.Flag(a)
+		community     = cli.SetFlag(flag, "c", cfg.Snmp.Community).(string)
+		timeout       = cli.SetFlag(flag, "t", cfg.Snmp.Timeout).(string)
+		version       = cli.SetFlag(flag, "v", cfg.Snmp.Version).(string)
+		retries       = cli.SetFlag(flag, "r", cfg.Snmp.Retries).(int)
+		port          = cli.SetFlag(flag, "p", cfg.Snmp.Port).(int)
+		securityLevel = cli.SetFlag(flag, "l", cfg.Snmp.Securitylevel).(string)
+		privacyProto  = cli.SetFlag(flag, "x", cfg.Snmp.Privacyproto).(string)
+		privacyPass   = cli.SetFlag(flag, "X", cfg.Snmp.Privacypass).(string)
+		authProto     = cli.SetFlag(flag, "a", cfg.Snmp.Authproto).(string)
+		authPass      = cli.SetFlag(flag, "A", cfg.Snmp.Authpass).(string)
 	)
 
 	tDuration, err := time.ParseDuration(timeout)
@@ -66,13 +72,31 @@ func NewSNMP(a string, cfg cli.Config) (*SNMPClient, error) {
 	case "2", "2c":
 		args.Version = snmpgo.V2c
 	case "3":
+		authProto = strings.ToUpper(authProto)
+		privacyProto = strings.ToUpper(privacyProto)
+		// set SNMP3 configuration
 		args.Version = snmpgo.V3
+		args.AuthProtocol = snmpgo.AuthProtocol(authProto)
+		args.AuthPassword = authPass
+		args.PrivProtocol = snmpgo.PrivProtocol(privacyProto)
+		args.PrivPassword = privacyPass
 	default:
 		return &SNMPClient{}, fmt.Errorf("wrong version")
 	}
 
-	if args.Version == snmpgo.V3 {
-		checkAuth()
+	// set security level - SNMP3
+	switch strings.ToLower(securityLevel) {
+	case "noauthnopriv":
+		args.SecurityLevel = snmpgo.NoAuthNoPriv
+	case "authnopriv":
+		args.SecurityLevel = snmpgo.AuthNoPriv
+	case "authpriv":
+		args.SecurityLevel = snmpgo.AuthPriv
+	}
+
+	// check args before try to connect
+	if err = argsValidate(&args); err != nil {
+		return &SNMPClient{}, err
 	}
 
 	return &SNMPClient{
@@ -80,10 +104,6 @@ func NewSNMP(a string, cfg cli.Config) (*SNMPClient, error) {
 		Host:     host,
 		SysDescr: "",
 	}, nil
-}
-
-func checkAuth() {
-	//TODO
 }
 
 // BulkWalk retrieves a subtree of management values
@@ -103,7 +123,7 @@ func (c *SNMPClient) BulkWalk(oid ...string) ([]*snmpgo.VarBind, error) {
 		return r, err
 	}
 	defer snmp.Close()
-	pdu, err := snmp.GetBulkWalk(oids, 0, 100)
+	pdu, err := snmp.GetBulkWalk(oids, 0, 150)
 	if err != nil {
 		return r, err
 	}
@@ -136,4 +156,39 @@ func (c *SNMPClient) GetOIDs(oid ...string) ([]*snmpgo.VarBind, error) {
 	r = pdu.VarBinds()
 
 	return r, nil
+}
+
+// inspired from snmpgo/client.go -> validate()
+func argsValidate(a *snmpgo.SNMPArguments) error {
+	// check version
+	v := a.Version
+	if v != snmpgo.V1 && v != snmpgo.V2c && v != snmpgo.V3 {
+		return fmt.Errorf("unknown SNMP version")
+	}
+	// check SNMPv3
+	if v == snmpgo.V3 {
+		// RFC3414 Section 5
+		if l := len(a.UserName); l < 1 || l > 32 {
+			return fmt.Errorf("username length is range 1..32")
+		}
+		if a.SecurityLevel > snmpgo.NoAuthNoPriv {
+			// RFC3414 Section 11.2
+			if len(a.AuthPassword) < 8 {
+				return fmt.Errorf("authpass is at least 8 characters in length")
+			}
+			if p := a.AuthProtocol; p != snmpgo.Md5 && p != snmpgo.Sha {
+				return fmt.Errorf("illegal authproto")
+			}
+		}
+		if a.SecurityLevel > snmpgo.AuthNoPriv {
+			// RFC3414 Section 11.2
+			if len(a.PrivPassword) < 8 {
+				return fmt.Errorf("privacypass is at least 8 characters in length")
+			}
+			if p := a.PrivProtocol; p != snmpgo.Des && p != snmpgo.Aes {
+				return fmt.Errorf("illegal privacyproto")
+			}
+		}
+	}
+	return nil
 }
