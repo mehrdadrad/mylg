@@ -90,7 +90,7 @@ func (c *Client) snmpShowInterface() {
 	data[0] = data[0][1:] // remove title row
 	data[1] = data[1][1:] // remove title row
 
-	for i, _ := range data[0] {
+	for i := range data[0] {
 		row := normalize(data[0][i], data[1][i], 10)
 		table.Append(row)
 	}
