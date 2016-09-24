@@ -281,50 +281,73 @@ func cfgFile() (string, error) {
 	return user.HomeDir + "/.mylg.config", nil
 }
 
+//
+func optionType(v reflect.Value, opt string) string {
+	opt = strings.Title(opt)
+	for i := 0; i < v.NumField(); i++ {
+		if v.Type().Field(i).Name == opt {
+			return v.Type().Field(i).Type.Name()
+		}
+	}
+	return "nan"
+}
+
 // SetConfig handles update option's value
-func SetConfig(args string, s *Config) {
+func SetConfig(args string, s *Config) error {
 	var (
-		v     reflect.Value
-		i     int64
-		float float64
-		err   error
+		v       reflect.Value
+		integer int64
+		float   float64
+		err     error
 	)
 
 	args = strings.ToLower(args)
 	f := strings.Fields(args)
 	if len(f) < 3 {
-		println("syntax error!")
 		helpSet()
-		return
+		return fmt.Errorf("syntax error")
 	}
+
+	cmd, opt, val := f[0], f[1], f[2]
+	opt = strings.Title(opt)
 
 	v = reflect.ValueOf(s)
 	v = reflect.Indirect(v)
-	v = v.FieldByName(strings.Title(f[0]))
+	v = v.FieldByName(strings.Title(cmd))
 
-	if v.IsValid() {
-		if i, err = strconv.ParseInt(f[2], 10, 64); err == nil {
-			// integer
-			err = SetValue(v.Addr(), strings.Title(f[1]), i)
-		} else if float, err = strconv.ParseFloat(f[2], 64); err == nil {
-			// float
-			err = SetValue(v.Addr(), strings.Title(f[1]), float)
+	if !v.IsValid() {
+		return fmt.Errorf("invalid command")
+	}
+
+	switch optionType(v, opt) {
+	case "string":
+		// string
+		err = SetValue(v.Addr(), opt, fmt.Sprintf("%v", val))
+	case "int":
+		// integer
+		if integer, err = strconv.ParseInt(val, 10, 64); err == nil {
+			err = SetValue(v.Addr(), strings.Title(opt), integer)
 		} else {
-			// string
-			err = SetValue(v.Addr(), strings.Title(f[1]), f[2])
+			err = fmt.Errorf("the value should be integer")
 		}
-	} else {
-		err = fmt.Errorf("invalid")
+	case "float":
+		// float
+		if float, err = strconv.ParseFloat(val, 64); err == nil {
+			err = SetValue(v.Addr(), opt, float)
+		} else {
+			err = fmt.Errorf("the value should be float")
+		}
+	default:
+		err = fmt.Errorf("invalid option")
 	}
 
 	if err != nil {
-		println(err.Error())
-	} else {
-		if err = WriteConfig(*s); err != nil {
-			println(err.Error())
-		}
+		return err
 	}
 
+	// save config
+	err = WriteConfig(*s)
+	return err
 }
 
 // SetValue set optioni's value
