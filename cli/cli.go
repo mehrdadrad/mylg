@@ -245,7 +245,7 @@ func pcItems() []readline.PrefixCompleterInterface {
 	var (
 		i        []readline.PrefixCompleterInterface
 		subItems = map[string][]readline.PrefixCompleterInterface{
-			"set": []readline.PrefixCompleterInterface{
+			"set": {
 				readline.PcItem("snmp",
 					readline.PcItem("community"),
 					readline.PcItem("version"),
