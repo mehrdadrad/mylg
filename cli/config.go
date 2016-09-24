@@ -32,6 +32,13 @@ var defaultConfig = `{
 	},
 	"trace" : {
 		"wait"  : "2s"
+	},
+	"snmp" : {
+		"community" : "public",
+		"timeout" : "1s",
+		"version" : "2c",
+		"retries" : 1,
+		"port"    : 161
 	}
 }`
 
@@ -42,6 +49,7 @@ type Config struct {
 	Web   Web   `json:"web"`
 	Scan  Scan  `json:"scan"`
 	Trace Trace `json:"trace"`
+	Snmp  SNMP  `json:"snmp"`
 }
 
 // Ping represents ping command options
@@ -73,6 +81,15 @@ type Scan struct {
 // Trace represents trace command options
 type Trace struct {
 	Wait string `json:"wait"`
+}
+
+// SNMP represents nms command options
+type SNMP struct {
+	Community string `json:"community"`
+	Timeout   string `json:"timeout"`
+	Version   string `json:"version"`
+	Retries   int    `json:"retries"`
+	Port      int    `json:"port"`
 }
 
 // WriteConfig write config to disk
@@ -275,7 +292,8 @@ func SetConfig(args string, s *Config) {
 
 	args = strings.ToLower(args)
 	f := strings.Fields(args)
-	if len(f) < 1 {
+	if len(f) < 3 {
+		println("syntax error!")
 		helpSet()
 		return
 	}
