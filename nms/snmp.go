@@ -42,6 +42,7 @@ func NewSNMP(a string, cfg cli.Config) (*SNMPClient, error) {
 		host, flag = cli.Flag(a)
 		community  = cli.SetFlag(flag, "c", cfg.Snmp.Community).(string)
 		timeout    = cli.SetFlag(flag, "t", cfg.Snmp.Timeout).(string)
+		version    = cli.SetFlag(flag, "v", cfg.Snmp.Version).(string)
 		retries    = cli.SetFlag(flag, "r", cfg.Snmp.Retries).(int)
 		port       = cli.SetFlag(flag, "p", cfg.Snmp.Port).(int)
 	)
@@ -52,15 +53,22 @@ func NewSNMP(a string, cfg cli.Config) (*SNMPClient, error) {
 	}
 
 	args := snmpgo.SNMPArguments{
-		Version:   snmpgo.V2c,
 		Timeout:   tDuration,
 		Address:   net.JoinHostPort(host, fmt.Sprintf("%d", port)),
 		Retries:   uint(retries),
 		Community: community,
 	}
 
-	if err := chkVersion(flag, &args); err != nil {
-		return &SNMPClient{}, err
+	// set SNMP version
+	switch version {
+	case "1":
+		args.Version = snmpgo.V1
+	case "2", "2c":
+		args.Version = snmpgo.V2c
+	case "3":
+		args.Version = snmpgo.V3
+	default:
+		return &SNMPClient{}, fmt.Errorf("wrong version")
 	}
 
 	if args.Version == snmpgo.V3 {
@@ -72,22 +80,6 @@ func NewSNMP(a string, cfg cli.Config) (*SNMPClient, error) {
 		Host:     host,
 		SysDescr: "",
 	}, nil
-}
-
-func chkVersion(flags map[string]interface{}, args *snmpgo.SNMPArguments) error {
-	if v, ok := flags["v"]; ok {
-		switch v.(type) {
-		case int:
-			if v == 1 {
-				args.Version = snmpgo.V1
-			} else if v == 3 {
-				args.Version = snmpgo.V3
-			} else {
-				return fmt.Errorf("wrong snmp version")
-			}
-		}
-	}
-	return nil
 }
 
 func checkAuth() {
