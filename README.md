@@ -2,18 +2,19 @@
 
 ![IMAGE](http://mylg.io/wp-content/uploads/2016/08/logo_mylgio_xxsmall.png)
 ###myLG, Command line Network Diagnostic Tool
-my looking glass is an open source software utility which combines the functions of the different network probes in one network diagnostic tool.
+myLG is an open source software utility which combines the functions of the different network probes in one network diagnostic tool.
 
 
 ## Features
-* Popular looking glasses (ping/trace/bgp) like Telia, Level3
+* Popular looking glasses (ping/trace/bgp): Telia, Level3
 * More than 200 countries DNS Lookup information 
-* Local fast ping and realtime trace
-* Packet analyzer - TCP/IP and other packets 
+* Local ping and real-time trace route
+* Packet analyzer - TCP/IP and other packets
+* Quick NMS (network management system)
 * Local HTTP/HTTPS ping (GET, POST, HEAD)
 * RIPE information (ASN, IP/CIDR)
 * PeeringDB information
-* Port scanning fast
+* Port scanning
 * Network LAN Discovery
 * Web dashboard
 * Configureable options
