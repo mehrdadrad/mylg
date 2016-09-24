@@ -55,6 +55,7 @@ var (
 		"lg",
 		"ns",
 		"dig",
+		"nms",
 		"whois",
 		"scan",
 		"dump",
@@ -87,9 +88,10 @@ func Init(version string) *Readline {
 	if err != nil {
 		panic(err)
 	}
+
 	banner.Println(version) // print banner
 	go checkUpdate(version) // check update version
-	//r.prompt = prompt       // init local prompt
+
 	return &r
 }
 
@@ -240,9 +242,46 @@ func CMDRgx() *regexp.Regexp {
 }
 
 func pcItems() []readline.PrefixCompleterInterface {
-	var i []readline.PrefixCompleterInterface
+	var (
+		i        []readline.PrefixCompleterInterface
+		subItems = map[string][]readline.PrefixCompleterInterface{
+			"set": []readline.PrefixCompleterInterface{
+				readline.PcItem("snmp",
+					readline.PcItem("community"),
+					readline.PcItem("version"),
+					readline.PcItem("timeout"),
+				),
+				readline.PcItem("ping",
+					readline.PcItem("interval"),
+					readline.PcItem("count"),
+					readline.PcItem("timeout"),
+				),
+				readline.PcItem("hping",
+					readline.PcItem("method"),
+					readline.PcItem("count"),
+					readline.PcItem("timeout"),
+					readline.PcItem("data"),
+				),
+				readline.PcItem("web",
+					readline.PcItem("port"),
+					readline.PcItem("address"),
+				),
+				readline.PcItem("scan",
+					readline.PcItem("port"),
+				),
+				readline.PcItem("trace",
+					readline.PcItem("wait"),
+				),
+			},
+		}
+	)
+
 	for _, c := range cmds {
-		i = append(i, readline.PcItem(c))
+		if _, ok := subItems[c]; !ok {
+			i = append(i, readline.PcItem(c))
+		} else {
+			i = append(i, readline.PcItem(c, subItems[c]...))
+		}
 	}
 	return i
 }
