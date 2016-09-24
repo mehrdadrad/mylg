@@ -319,7 +319,7 @@ func (a *disc) PrintPretty() {
 		counter++
 	}
 	table.Render()
-	println(counter, "host has been found")
+	println(counter, "host(s) has been found")
 }
 
 // IsBSD checks OS
