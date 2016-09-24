@@ -106,7 +106,7 @@ func (c *Client) snmpShowInterface(filter string) {
 		data = append(data, sample)
 		once.Do(
 			func() {
-				fmt.Printf("* %d interfaces (physical/logical) has been found\n", len(sample)-1)
+				fmt.Printf("%d interfaces (physical/logical) has been found\n", len(sample)-1)
 				spin.Prefix = "please wait "
 				spin.Start()
 				time.Sleep(10 * time.Second)
@@ -232,11 +232,17 @@ func help(cfg cli.Config) {
               connect host [options]
 
         Options:
-              -v version    Specifies the protocol version: 1/2c/3 (default: %s)
-              -c community  Community string for SNMPv1/v2c transactions (default: %s)
-              -t timeout    Specify a timeout in format "ms", "s", "m" (default: %s)
-              -p port       Specify SNMP port number (default: %d)
-              -r retries    Specifies the number of retries (default:%d)
+              -v version           Specifies the protocol version: 1/2c/3 (default: %s)
+              -c community         Community string for SNMPv1/v2c transactions (default: %s)
+              -t timeout           Specify a timeout in format "ms", "s", "m" (default: %s)
+              -p port              Specify SNMP port number (default: %d)
+              -r retries           Specifies the number of retries (default:%d)
+              -l security level    Security level (NoAuthNoPriv|AuthNoPriv|AuthPriv) (default: %s)
+              -a auth protocol     Authentication protocol (MD5|SHA) (default: %s)
+              -A auth password     Authentication protocol pass phrase
+              -x privacy protocol  Privacy protocol (DES|AES) (default: %s)
+              -X privacy password  Privacy protocol pass phrase
+
         Example:
               connect 127.0.0.1 -c public
 		`,
@@ -244,5 +250,8 @@ func help(cfg cli.Config) {
 		cfg.Snmp.Community,
 		cfg.Snmp.Timeout,
 		cfg.Snmp.Port,
-		cfg.Snmp.Retries)
+		cfg.Snmp.Retries,
+		cfg.Snmp.Securitylevel,
+		cfg.Snmp.Authproto,
+		cfg.Snmp.Privacyproto)
 }
