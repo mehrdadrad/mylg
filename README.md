@@ -43,7 +43,7 @@ my looking glass is an open source software utility which combines the functions
            Free Network Diagnostic Tool
              www.facebook.com/mylg.io
                   http://mylg.io
-================== myLG v0.2.3 ==================
+================== myLG v0.2.4 ==================
 
 local> hping google.com -c 5
 HPING google.com (216.58.216.14), Method: HEAD, DNSLookup: 44.3652 ms
@@ -170,14 +170,22 @@ The data provided from www.peeringdb.com
 
 local> disc
 Network LAN Discovery
-+---------------+-------------------+------+-----------+--------------------------------+
-|      IP       |        MAC        | HOST | INTERFACE |       ORGANIZATION NAME        |
-+---------------+-------------------+------+-----------+--------------------------------+
-| 192.168.0.1   | a4:2b:b0:eb:9a:b4 | NA   | en0       | TP-LINK TECHNOLOGIES CO.,LTD.  |
-| 192.168.0.103 | ac:bc:32:b4:33:23 | NA   | en0       | Apple, Inc.                    |
-| 192.168.0.105 | 40:b8:9a:60:55:9e | NA   | en0       | Hon Hai Precision Ind.         |
-| 224.0.0.251   | 1:0:5e:0:0:fb     | NA   | en0       | NA                             |
-+---------------+-------------------+------+-----------+--------------------------------+
++--------------+-------------------+------+-----------+-------------------+
+|      IP      |        MAC        | HOST | INTERFACE | ORGANIZATION NAME |
++--------------+-------------------+------+-----------+-------------------+
+| 172.16.0.0   | ff:ff:ff:ff:ff:ff | NA   | en0       | NA                |
+| 172.16.1.1   | e4:8d:8c:7a:66:26 | NA   | en0       | Routerboard.com   |
+| 172.16.1.10  | ac:bc:32:b4:33:23 | NA   | en0       | Apple, Inc.       |
+| 172.16.1.205 | 74:e5:b:97:11:28  | NA   | en0       | NA                |
+| 172.16.1.254 | 54:4a:0:33:b4:2f  | NA   | en0       | NA                |
+| 172.16.2.12  | d4:f4:6f:7b:8f:cf | NA   | en0       | Apple, Inc.       |
+| 172.16.2.13  | 5c:ad:cf:23:7:f9  | NA   | en0       | Apple, Inc.       |
+| 172.16.2.111 | d0:a6:37:72:cf:2d | NA   | en0       | Apple, Inc.       |
+| 192.168.33.0 | ff:ff:ff:ff:ff:ff | NA   | vboxnet0  | NA                |
+| 192.168.33.1 | a:0:27:0:0:0      | NA   | vboxnet0  | NA                |
+| 224.0.0.251  | 1:0:5e:0:0:fb     | NA   | en0       | NA                |
++--------------+-------------------+------+-----------+-------------------+
+11 host(s) has been found
 
 local> whois 8.8.8.8
 +------------+-------+--------------------------+
