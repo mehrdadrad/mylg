@@ -20,6 +20,7 @@ import (
 	"github.com/mehrdadrad/mylg/http/ping"
 	"github.com/mehrdadrad/mylg/icmp"
 	"github.com/mehrdadrad/mylg/lg"
+	"github.com/mehrdadrad/mylg/nms"
 	"github.com/mehrdadrad/mylg/ns"
 	"github.com/mehrdadrad/mylg/packet"
 	"github.com/mehrdadrad/mylg/peeringdb"
@@ -44,18 +45,19 @@ type Provider interface {
 }
 
 var (
-	pNames = providerNames()
-	req    = make(chan string, 1)
-	nxt    = make(chan struct{}, 1)
-	spin   = spinner.New(spinner.CharSets[26], 220*time.Millisecond)
-	eArgs  = os.Args
-	args   string
-	prompt string
-	cPName string
-	noIf   bool = true
-	cfg    cli.Config
-	nsr    *ns.Request
-	c      *cli.Readline
+	pNames    = providerNames()
+	req       = make(chan string, 1)
+	nxt       = make(chan struct{}, 1)
+	spin      = spinner.New(spinner.CharSets[26], 220*time.Millisecond)
+	eArgs     = os.Args
+	args      string
+	prompt    string
+	cPName    string
+	noIf      bool = true
+	cfg       cli.Config
+	nmsClient nms.Client
+	nsr       *ns.Request
+	c         *cli.Readline
 
 	// register looking glass hosts
 	providers = map[string]Provider{
@@ -78,6 +80,7 @@ var (
 		"peering": peeringDB,    // peering DB
 		"hping":   hping,        // hping
 		"dig":     dig,          // dig
+		"nms":     setNMS,       // network management system
 		"node":    node,         // change node
 		"connect": connect,      // connect to a country or LG
 		"local":   local,        // local
@@ -96,6 +99,12 @@ var (
 func init() {
 	// load configuration
 	cfg = cli.LoadConfig()
+	// initialize name server
+	nsr = ns.NewRequest()
+	go nsr.Init()
+	// set current provider, prompt
+	cPName = "local"
+	prompt = "local"
 	// with interface
 	if len(eArgs) == 1 {
 		// initialize cli
@@ -105,12 +114,10 @@ func init() {
 		go httpd.Run(cfg)
 		// set interface enabled
 		noIf = false
+		// set local as default
+		local()
 	}
-	// initialize name server
-	nsr = ns.NewRequest()
-	go nsr.Init()
-	// set local as default
-	local()
+
 }
 
 func main() {
@@ -265,6 +272,16 @@ func connect() {
 			c.SetPrompt("ns/" + args)
 			c.UpdateCompleter("node", nsr.NodeList())
 		}
+
+	case strings.HasPrefix(prompt, "nms"):
+		nmsClient, err = nms.NewClient(args, cfg)
+		if err != nil {
+			println("error:", err.Error())
+		} else if nmsClient.Host == "" {
+			return
+		} else {
+			c.SetPrompt("nms/" + nmsClient.Host)
+		}
 	}
 }
 
@@ -409,15 +426,25 @@ func discovery() {
 	d.PrintPretty()
 }
 
+// nms
+func setNMS() {
+	items := []string{"interface", "config"}
+	c.UpdateCompleter("show", items)
+	c.SetPrompt("nms")
+}
+
 // setConfig
 func setConfig() {
 	cli.SetConfig(args, &cfg)
 }
 
-// showConfig
+// show command
 func show() {
-	if args == "config" {
+	switch args {
+	case "config":
 		cli.ShowConfig(&cfg)
+	case "interface":
+		nmsClient.ShowInterface()
 	}
 }
 
@@ -448,6 +475,7 @@ func whoisLookup() {
 func local() {
 	nsr.Local()
 	cPName = "local"
+	c.UpdateCompleter("show", []string{"config"})
 	c.SetPrompt(cPName)
 }
 
