@@ -13,10 +13,9 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
-
-	ui "github.com/gizak/termui"
 
 	"github.com/mehrdadrad/mylg/cli"
 	"github.com/mehrdadrad/mylg/ripe"
@@ -73,6 +72,7 @@ func NewTrace(args string, cfg cli.Config) (*Trace, error) {
 		family:   family,
 		proto:    proto,
 		pSize:    52,
+		uiTheme:  cli.SetFlag(flag, "t", cfg.Trace.Theme).(string),
 		wait:     cli.SetFlag(flag, "w", cfg.Trace.Wait).(string),
 		icmp:     cli.SetFlag(flag, "I", false).(bool),
 		resolve:  cli.SetFlag(flag, "n", true).(bool),
@@ -374,6 +374,7 @@ func (i *Trace) MRun() (chan HopResp, error) {
 		c      = make(chan HopResp, 1)
 		ASN    = make(map[string]Whois, 100)
 		maxTTL = i.maxTTL
+		MU     sync.Mutex
 	)
 
 	if err := i.Bind(); err != nil {
@@ -393,6 +394,8 @@ func (i *Trace) MRun() (chan HopResp, error) {
 					hop.whois = w
 				} else if hop.ip != "" {
 					go func(ASN map[string]Whois) {
+						MU.Lock()
+						defer MU.Unlock()
 						w, _ := whois(hop.ip)
 						ASN[hop.ip] = w
 					}(ASN)
@@ -409,252 +412,6 @@ func (i *Trace) MRun() (chan HopResp, error) {
 		}
 	}()
 	return c, nil
-}
-
-// TermUI prints out trace loop by termui
-func (i *Trace) TermUI() error {
-	ui.DefaultEvtStream = ui.NewEvtStream()
-	if err := ui.Init(); err != nil {
-		return err
-	}
-	defer ui.Close()
-
-	var (
-		done    = make(chan struct{})
-		routers = make([]map[string]Stats, 65)
-
-		// columns
-		hops = ui.NewList()
-		asn  = ui.NewList()
-		rtt  = ui.NewList()
-		snt  = ui.NewList()
-		pkl  = ui.NewList()
-
-		stats = make([]Stats, 65)
-		lists = []*ui.List{hops, asn, rtt, snt, pkl}
-
-		rChanged bool
-	)
-
-	resp, err := i.MRun()
-	if err != nil {
-		return err
-	}
-
-	for _, l := range lists {
-		l.Items = make([]string, 65)
-		l.X = 0
-		l.Y = 0
-		l.Height = 35
-		l.Border = false
-	}
-
-	for i := 1; i < 65; i++ {
-		routers[i] = make(map[string]Stats, 30)
-	}
-
-	// lince chart
-	lc := ui.NewLineChart()
-	lc.BorderLabel = fmt.Sprintf("RTT: %s", i.host)
-	lc.Height = 18
-	lc.X = 0
-	lc.Y = 0
-	lc.Mode = "dot"
-	lc.AxesColor = ui.ColorWhite
-	lc.LineColor = ui.ColorGreen | ui.AttrBold
-
-	// title
-	hops.Items[0] = fmt.Sprintf("[%-50s](fg-bold)", "Host")
-	asn.Items[0] = fmt.Sprintf("[ %-6s %-6s](fg-bold)", "ASN", "Holder")
-	rtt.Items[0] = fmt.Sprintf("[%-6s %-6s %-6s %-6s](fg-bold)", "Last", "Avg", "Best", "Wrst")
-	snt.Items[0] = "[Sent](fg-bold)"
-	pkl.Items[0] = "[Loss%](fg-bold)"
-
-	// header
-	header := ui.NewPar(fmt.Sprintf("myLG - traceroute to %s (%s), %d hops max", i.host, i.ip, i.maxTTL))
-	header.Height = 1
-	header.Width = ui.TermWidth()
-	header.Y = 1
-	header.TextBgColor = ui.ColorBlue
-	header.Border = false
-
-	// menu
-	menu := ui.NewPar("Press [q] to quit, [r] to reset statistics, [1,2] to change display mode")
-	menu.Height = 2
-	menu.Width = 20
-	menu.Y = 1
-	menu.Border = false
-
-	// screens1 - trace statistics
-	screen1 := []*ui.Row{
-		ui.NewRow(
-			ui.NewCol(12, 0, header),
-		),
-		ui.NewRow(
-			ui.NewCol(12, 0, menu),
-		),
-		ui.NewRow(
-			ui.NewCol(5, 0, hops),
-			ui.NewCol(2, 0, asn),
-			ui.NewCol(1, 0, pkl),
-			ui.NewCol(1, 0, snt),
-			ui.NewCol(3, 0, rtt),
-		),
-	}
-	// screen2 - trace line chart
-	screen2 := []*ui.Row{
-		ui.NewRow(
-			ui.NewCol(12, 0, header),
-		),
-		ui.NewRow(
-			ui.NewCol(12, 0, menu),
-		),
-		ui.NewRow(
-			ui.NewCol(12, 0, lc),
-		),
-	}
-
-	// init layout
-	ui.Body.AddRows(screen1...)
-	ui.Body.Align()
-	ui.Render(ui.Body)
-
-	ui.Handle("/sys/wnd/resize", func(e ui.Event) {
-		ui.Body.Width = ui.TermWidth()
-		ui.Body.Align()
-		ui.Render(ui.Body)
-	})
-
-	ui.Handle("/sys/kbd/q", func(ui.Event) {
-		done <- struct{}{}
-		ui.StopLoop()
-	})
-
-	// reset statistics and display
-	ui.Handle("/sys/kbd/r", func(ui.Event) {
-		for i := 1; i < 65; i++ {
-			for _, l := range lists {
-				l.Items[i] = ""
-			}
-			stats[i].count = 0
-			stats[i].avg = 0
-			stats[i].min = 0
-			stats[i].max = 0
-			stats[i].pkl = 0
-		}
-		lc.Data = lc.Data[:0]
-		lc.DataLabels = lc.DataLabels[:0]
-	})
-
-	// change display mode to one
-	ui.Handle("/sys/kbd/1", func(e ui.Event) {
-		ui.Body.Rows = ui.Body.Rows[:0]
-		ui.Body.AddRows(screen1...)
-		ui.Body.Align()
-		ui.Render(ui.Body)
-	})
-
-	// change display mode to two
-	ui.Handle("/sys/kbd/2", func(e ui.Event) {
-		ui.Body.Rows = ui.Body.Rows[:0]
-		ui.Body.AddRows(screen2...)
-		ui.Body.Align()
-		ui.Render(ui.Body)
-	})
-
-	go func() {
-		var (
-			hop, as, holder string
-		)
-	LOOP:
-		for {
-			select {
-			case <-done:
-				break LOOP
-			case r, ok := <-resp:
-				if !ok {
-					break LOOP
-				}
-
-				if r.hop != "" {
-					hop = r.hop
-				} else {
-					hop = r.ip
-				}
-
-				if r.whois.asn > 0 {
-					as = fmt.Sprintf("%.0f", r.whois.asn)
-					holder = strings.Fields(r.whois.holder)[0]
-				} else {
-					as = ""
-					holder = ""
-				}
-
-				// statistics
-				stats[r.num].count++
-				snt.Items[r.num] = fmt.Sprintf("%d", stats[r.num].count)
-
-				router := routers[r.num][hop]
-				router.count++
-
-				if r.elapsed != 0 {
-
-					// hop level statistics
-					calcStatistics(&stats[r.num], r.elapsed)
-					// router level statistics
-					calcStatistics(&router, r.elapsed)
-					// detect router changes
-					rChanged = routerChange(hop, hops.Items[r.num])
-
-					hops.Items[r.num] = fmt.Sprintf("[%-2d] %-45s", r.num, hop)
-					asn.Items[r.num] = fmt.Sprintf("%-6s %s", as, holder)
-					rtt.Items[r.num] = fmt.Sprintf("%-6.2f\t%-6.2f\t%-6.2f\t%-6.2f", r.elapsed, stats[r.num].avg, stats[r.num].min, stats[r.num].max)
-
-					if rChanged {
-						hops.Items[r.num] = termUICColor(hops.Items[r.num], "fg-bold")
-					}
-
-					lcShift(r, lc, ui.TermWidth())
-
-				} else if hops.Items[r.num] == "" {
-
-					hops.Items[r.num] = fmt.Sprintf("[%-2d] %-40s", r.num, "???")
-					stats[r.num].pkl++
-					router.pkl++
-
-				} else if !strings.Contains(hops.Items[r.num], "???") {
-
-					hop = rmUIMetaData(hops.Items[r.num])
-					hop = fmt.Sprintf("[%-2d] %-45s", r.num, hop)
-					hops.Items[r.num] = termUICColor(hop, "fg-red")
-					rtt.Items[r.num] = fmt.Sprintf("%-6.2s\t%-6.2f\t%-6.2f\t%-6.2f", "?", stats[r.num].avg, stats[r.num].min, stats[r.num].max)
-					stats[r.num].pkl++
-					router.pkl++
-
-				} else {
-					hops.Items[r.num] = fmt.Sprintf("[%-2d] %-45s", r.num, "???")
-					stats[r.num].pkl++
-					router.pkl++
-
-				}
-
-				routers[r.num][hop] = router
-
-				pkl.Items[r.num] = fmt.Sprintf("%.1f", float64(stats[r.num].pkl)*100/float64(stats[r.num].count))
-				ui.Render(ui.Body)
-				// clean up in case of packet loss on the last hop at first try
-				if r.last {
-					for i := r.num + 1; i < 65; i++ {
-						hops.Items[i] = ""
-					}
-				}
-			}
-		}
-		close(resp)
-	}()
-
-	ui.Loop()
-	return nil
 }
 
 // routerChange detects if the router changed
@@ -674,19 +431,6 @@ func routerChange(router, b string) bool {
 		}
 	}
 	return false
-}
-
-// lcShift shifs line chart once it filled out
-func lcShift(r HopResp, lc *ui.LineChart, width int) {
-	if r.last {
-		t := time.Now()
-		lc.Data = append(lc.Data, r.elapsed)
-		lc.DataLabels = append(lc.DataLabels, t.Format("04:05"))
-		if len(lc.Data) > ui.TermWidth()-10 {
-			lc.Data = lc.Data[1:]
-			lc.DataLabels = lc.DataLabels[1:]
-		}
-	}
 }
 
 func rmUIMetaData(m string) string {
@@ -938,6 +682,7 @@ func helpTrace() {
           -m MAX_TTL     Specifies the maximum number of hops
           -4             Forces the trace command to use IPv4 (target should be hostname)
           -6             Forces the trace command to use IPv6 (target should be hostname)
+          -t             Specify the real-time terminal theme (dark|light)
     Example:
           trace 8.8.8.8
           trace freebsd.org -r
