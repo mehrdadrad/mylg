@@ -31,7 +31,8 @@ var defaultConfig = `{
 		"port"     : "1-500"
 	},
 	"trace" : {
-		"wait"  : "2s"
+		"wait"  : "2s",
+		"theme" : "dark"
 	},
 	"snmp" : {
 		"community"     : "public",
@@ -85,7 +86,8 @@ type Scan struct {
 
 // Trace represents trace command options
 type Trace struct {
-	Wait string `json:"wait"`
+	Wait  string `json:"wait"`
+	Theme string `json:"theme"`
 }
 
 // SNMP represents nms command options
