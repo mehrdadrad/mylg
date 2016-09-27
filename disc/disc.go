@@ -86,7 +86,7 @@ func (a *disc) PingLan() {
 	}
 	defer syscall.Close(fd)
 	// Set options
-	syscall.SetsockoptInt(fd, 0x0, syscall.IP_TTL, 10)
+	syscall.SetsockoptInt(fd, 0x0, syscall.IP_TTL, 1)
 	ifs, _ := net.Interfaces()
 	for _, i := range ifs {
 		addrs, _ := i.Addrs()
@@ -343,13 +343,13 @@ func search(data, key string) bool {
 // help shows disc help
 func help() {
 	fmt.Println(`
-    Network LAN Discovery	
+    Network LAN Discovery
     usage:
           disc [search keyword]
     Example:
           disc
           disc 5c:a:5b:aa:4a:99
           disc apple
-          disc 192.168.0.10		  
+          disc 192.168.0.10
 	`)
 }
