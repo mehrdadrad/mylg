@@ -271,6 +271,7 @@ func pcItems() []readline.PrefixCompleterInterface {
 				),
 				readline.PcItem("trace",
 					readline.PcItem("wait"),
+					readline.PcItem("theme"),
 				),
 			},
 		}
