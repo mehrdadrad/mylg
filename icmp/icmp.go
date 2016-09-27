@@ -55,6 +55,8 @@ type Trace struct {
 	realTime bool
 	pSize    int
 	maxTTL   int
+
+	uiTheme string
 }
 
 // Ping represents ping request
