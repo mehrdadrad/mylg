@@ -314,7 +314,7 @@ It can be built for Linux and Darwin. there is libpcap dependency:
 - LINUX
 apt-get install libpcap-dev
 - OSX
-brew install libpcap
+brew install homebrew/dupes/libpcap
 ```
 
 Given that the Go Language compiler is installed, you can build and run:
