@@ -79,6 +79,7 @@ func NewTrace(args string, cfg cli.Config) (*Trace, error) {
 		ripe:     cli.SetFlag(flag, "nr", true).(bool),
 		realTime: cli.SetFlag(flag, "r", false).(bool),
 		maxTTL:   cli.SetFlag(flag, "m", 30).(int),
+		km:       cli.SetFlag(flag, "km", false).(bool),
 	}, nil
 }
 

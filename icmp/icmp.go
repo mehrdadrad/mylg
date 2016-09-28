@@ -57,6 +57,7 @@ type Trace struct {
 	maxTTL   int
 
 	uiTheme string
+	km      bool
 }
 
 // Ping represents ping request

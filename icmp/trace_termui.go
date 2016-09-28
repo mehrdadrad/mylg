@@ -2,10 +2,14 @@ package icmp
 
 import (
 	"fmt"
+	"math"
+	"net"
 	"strings"
 	"time"
 
 	ui "github.com/gizak/termui"
+
+	"github.com/mehrdadrad/mylg/ripe"
 )
 
 // Widgets represents termui widgets
@@ -23,6 +27,27 @@ type Widgets struct {
 	BCPKL *ui.BarChart
 }
 
+type Geo struct {
+	// CountrySrc Geo country source
+	CountrySrc string
+	// CountryDst Geo country destination
+	CountryDst string
+	// CitySrc Geo country source
+	CitySrc string
+	// CityDst Geo country source
+	CityDst string
+	// Latitude Geo source
+	LatSrc float64
+	// Latitude Geo destination
+	LatDst float64
+	// Longitude Geo source
+	LonSrc float64
+	// Longitude Geo destination
+	LonDst float64
+	// Distance holds src to dst distance
+	Distance float64
+}
+
 // TermUI prints out trace loop by termui
 func (i *Trace) TermUI() error {
 	ui.DefaultEvtStream = ui.NewEvtStream()
@@ -34,12 +59,12 @@ func (i *Trace) TermUI() error {
 	uiTheme(i.uiTheme)
 
 	var (
-		done    = make(chan struct{})
+		done    = make(chan struct{}, 2)
 		routers = make([]map[string]Stats, 65)
 		stats   = make([]Stats, 65)
 
-		w = initWidgets()
-
+		begin    = time.Now()
+		w        = initWidgets()
 		rChanged bool
 	)
 
@@ -58,6 +83,9 @@ func (i *Trace) TermUI() error {
 
 	screen1, screen2 := w.makeScreens()
 	w.eventsHandler(done, screen1, screen2, stats)
+
+	// update header each second
+	go w.updateHeader(i, begin, done)
 
 	// init layout
 	ui.Body.AddRows(screen1...)
@@ -108,7 +136,7 @@ func (i *Trace) TermUI() error {
 					// detect router changes
 					rChanged = routerChange(hop, w.Hops.Items[r.num])
 
-					w.Hops.Items[r.num] = fmt.Sprintf("[%-2d] %-45s", r.num, hop)
+					w.Hops.Items[r.num] = fmt.Sprintf("[%-2d] %s", r.num, hop)
 					w.ASN.Items[r.num] = fmt.Sprintf("%-6s %s", as, holder)
 					w.RTT.Items[r.num] = fmt.Sprintf("%-6.2f\t%-6.2f\t%-6.2f\t%-6.2f", r.elapsed, stats[r.num].avg, stats[r.num].min, stats[r.num].max)
 
@@ -127,14 +155,14 @@ func (i *Trace) TermUI() error {
 				} else if !strings.Contains(w.Hops.Items[r.num], "???") {
 
 					hop = rmUIMetaData(w.Hops.Items[r.num])
-					hop = fmt.Sprintf("[%-2d] %-45s", r.num, hop)
+					hop = fmt.Sprintf("[%-2d] %s", r.num, hop)
 					w.Hops.Items[r.num] = termUICColor(hop, "fg-red")
 					w.RTT.Items[r.num] = fmt.Sprintf("%-6.2s\t%-6.2f\t%-6.2f\t%-6.2f", "?", stats[r.num].avg, stats[r.num].min, stats[r.num].max)
 					stats[r.num].pkl++
 					router.pkl++
 
 				} else {
-					w.Hops.Items[r.num] = fmt.Sprintf("[%-2d] %-45s", r.num, "???")
+					w.Hops.Items[r.num] = fmt.Sprintf("[%-2d] %s", r.num, "???")
 					stats[r.num].pkl++
 					router.pkl++
 
@@ -146,7 +174,6 @@ func (i *Trace) TermUI() error {
 				} else {
 					w.BCPKL.DataLabels = append(w.BCPKL.DataLabels, fmt.Sprintf("H%d", r.num))
 					w.BCPKL.Data = append(w.BCPKL.Data, int(stats[r.num].pkl))
-
 				}
 
 				routers[r.num][hop] = router
@@ -158,7 +185,6 @@ func (i *Trace) TermUI() error {
 					for i := r.num + 1; i < 65; i++ {
 						w.Hops.Items[i] = ""
 					}
-					//bc.DataLabels = bc.DataLabels[:r.num]
 				}
 			}
 		}
@@ -174,12 +200,12 @@ func (i *Trace) bridgeWidgetsTrace(w *Widgets) {
 	w.LCRTT.BorderLabel = fmt.Sprintf("RTT: %s", i.host)
 	// title
 	t := fmt.Sprintf(
-		"──[ myLG ]───────── traceroute to %s (%s), %d hops max",
+		"──[ myLG ]── traceroute to %s (%s), %d hops max, elapsed: 0s",
 		i.host,
 		i.ip,
 		i.maxTTL,
 	)
-	t += strings.Repeat(" ", ui.TermWidth()-len(t))
+	t += strings.Repeat(" ", 20)
 	w.Header.Text = t
 }
 
@@ -246,6 +272,7 @@ func menuWidget() *ui.Par {
 func (w *Widgets) eventsHandler(done chan struct{}, s1, s2 []*ui.Row, stats []Stats) {
 	// exit
 	ui.Handle("/sys/kbd/q", func(ui.Event) {
+		done <- struct{}{}
 		done <- struct{}{}
 		ui.StopLoop()
 	})
@@ -332,6 +359,82 @@ func (w *Widgets) makeScreens() ([]*ui.Row, []*ui.Row) {
 	return screen1, screen2
 }
 
+func (w *Widgets) updateHeader(i *Trace, begin time.Time, done chan struct{}) {
+	var (
+		c       = time.Tick(1 * time.Second)
+		geo     Geo
+		unit            = "miles"
+		eRadius float64 = 3961
+	)
+
+	geo.CitySrc = "..."
+	geo.CityDst = "..."
+
+	go getGeo(i.ip, &geo)
+
+	if i.km {
+		unit = "km"
+		eRadius = 6373
+	}
+LOOP:
+	for {
+		select {
+		case <-done:
+			break LOOP
+		case <-c:
+			h := strings.Split(w.Header.Text, "hops max")
+			if len(h) < 1 {
+				break LOOP
+			}
+			seconds := fmt.Sprintf("%.0fs", time.Since(begin).Seconds())
+			du, _ := time.ParseDuration(seconds)
+			s := fmt.Sprintf("%shops max, elapsed: %s %s (%s) -> %s (%s) %.0f %s ",
+				h[0],
+				du.String(),
+				geo.CitySrc,
+				geo.CountrySrc,
+				geo.CityDst,
+				geo.CountryDst,
+				distance(geo, eRadius),
+				unit,
+			)
+			w.Header.Text = s
+			ui.Render(ui.Body)
+		}
+	}
+}
+
+func getGeo(ipDst net.IP, geo *Geo) {
+	// find station public ip address and geo
+	ip, err := ripe.MyIPAddr()
+	// find src, dst geo
+	if err == nil {
+		p := new(ripe.Prefix)
+		p.Set(ip)
+		p.GetGeoData()
+		for _, g := range p.GeoData.Data.Locations {
+			if g.City != "" {
+				geo.CitySrc = g.City
+				geo.CountrySrc = g.Country
+				geo.LatSrc = g.Latitude
+				geo.LonSrc = g.Longitude
+				break
+			}
+		}
+		p.Set(ipDst.String())
+		p.GetGeoData()
+		for _, g := range p.GeoData.Data.Locations {
+			if g.City != "" {
+				geo.CityDst = g.City
+				geo.CountryDst = g.Country
+				geo.LatDst = g.Latitude
+				geo.LonDst = g.Longitude
+				break
+			}
+		}
+
+	}
+}
 func initWidgets() *Widgets {
 	var (
 		hops = ui.NewList()
@@ -352,7 +455,7 @@ func initWidgets() *Widgets {
 	}
 
 	// title
-	hops.Items[0] = fmt.Sprintf("[%-50s](fg-bold)", "Host")
+	hops.Items[0] = fmt.Sprintf("[%s](fg-bold)", "Host")
 	asn.Items[0] = fmt.Sprintf("[ %-6s %-6s](fg-bold)", "ASN", "Holder")
 	rtt.Items[0] = fmt.Sprintf("[%-6s %-6s %-6s %-6s](fg-bold)", "Last", "Avg", "Best", "Wrst")
 	snt.Items[0] = "[Sent](fg-bold)"
@@ -392,4 +495,26 @@ func uiTheme(t string) {
 		ui.ColorMap["border.fg"] = ui.ColorCyan
 	}
 	ui.Clear()
+}
+
+func distance(geo Geo, r float64) float64 {
+
+	geo.LonSrc = d2r(geo.LonSrc)
+	geo.LonDst = d2r(geo.LonDst)
+	geo.LatSrc = d2r(geo.LatSrc)
+	geo.LatDst = d2r(geo.LatDst)
+
+	deltaLon := geo.LonDst - geo.LonSrc
+	deltaLat := geo.LatDst - geo.LatSrc
+
+	a := hsin(deltaLat) + math.Cos(geo.LatDst)*math.Cos(geo.LatSrc)*hsin(deltaLon)
+	c := 2 * r * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+
+	return c
+}
+func d2r(i float64) float64 {
+	return i * math.Pi / 180
+}
+func hsin(i float64) float64 {
+	return math.Pow(math.Sin(i/2), 2)
 }
