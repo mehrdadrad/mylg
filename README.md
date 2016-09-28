@@ -326,7 +326,7 @@ go get
 go build mylg
 ```
 
-## Licence
+## License
 This project is licensed under MIT license. Please read the LICENSE file.
 
 
