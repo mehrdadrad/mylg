@@ -1,9 +1,9 @@
-#[![Build Status](https://travis-ci.org/mehrdadrad/mylg.svg?branch=master)](https://travis-ci.org/mehrdadrad/mylg) [![Go Report Card](https://goreportcard.com/badge/github.com/mehrdadrad/mylg)](https://goreportcard.com/report/github.com/mehrdadrad/mylg) [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/mehrdadrad/mylg?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge) 
+# [![Build Status](https://travis-ci.org/mehrdadrad/mylg.svg?branch=master)](https://travis-ci.org/mehrdadrad/mylg) [![Go Report Card](https://goreportcard.com/badge/github.com/mehrdadrad/mylg)](https://goreportcard.com/report/github.com/mehrdadrad/mylg) [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/mehrdadrad/mylg?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge) 
 
 ![IMAGE](http://mylg.io/wp-content/uploads/2016/08/logo_mylgio_xxsmall.png)
-###myLG, Command line Network Diagnostic Tool
-myLG is an open source software utility which combines the functions of the different network probes in one network diagnostic tool.
 
+### myLG, Command line Network Diagnostic Tool
+myLG is an open source software utility which combines the functions of the different network probes in one network diagnostic tool.
 
 ## Features
 * Popular looking glasses (ping/trace/bgp): Telia, Level3
@@ -21,6 +21,24 @@ myLG is an open source software utility which combines the functions of the diff
 * Direct access to commands from shell
 * Support vi and emacs mode, almost all basic features
 * CLI auto complete and history features
+
+## Build
+It can be built for Linux and Darwin. there is libpcap dependency:
+```
+- LINUX
+apt-get install libpcap-dev
+- OSX
+brew install libpcap
+```
+
+Given that the Go Language compiler is installed, you can build and run:
+
+```
+git clone https://github.com/mehrdadrad/mylg.git
+cd mylg
+go get
+go build mylg
+```
 
 ## Demo
 [![IMAGE Demo](http://mylg.io/img/youtube.jpg)](https://www.youtube.com/watch?v=QY2TAA3ljAA)
@@ -308,27 +326,9 @@ The data provided from www.peeringdb.com
 +-------------------+--------+-------+-----------------+------------------------+
 
 ```
-## Build
-It can be built for Linux and Darwin. there is libpcap dependency:
-```
-- LINUX
-apt-get install libpcap-dev
-- OSX
-brew install libpcap
-```
-
-Given that the Go Language compiler is installed, you can build and run:
-
-```
-git clone https://github.com/mehrdadrad/mylg.git
-cd mylg
-go get
-go build mylg
-```
 
 ## License
 This project is licensed under MIT license. Please read the LICENSE file.
-
 
 ## Contribute 
 Welcomes any kind of contribution, please follow the next steps:
