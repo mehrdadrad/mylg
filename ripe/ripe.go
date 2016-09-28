@@ -24,8 +24,23 @@ const (
 	// RIPEASNURL holds RIPE ASN path
 	RIPEASNURL = "/data/as-overview/data.json?resource=AS"
 	// RIPEGeoURL holds Geo path
-	RIPEGeoURL = "/data/geoloc/data.json?resource=AS"
+	RIPEGeoURL = "/data/geoloc/data.json?resource="
+	// RIPEMyIPURL
+	RIPEMyIPURL = "/data/whats-my-ip/data.json"
 )
+
+// Geo represents RIPE NCC Geo format
+type Geo struct {
+	Status string
+	Data   struct {
+		Locations []struct {
+			City      string
+			Country   string
+			Longitude float64
+			Latitude  float64
+		}
+	}
+}
 
 // ASN represents ASN information
 type ASN struct {
@@ -38,6 +53,7 @@ type ASN struct {
 type Prefix struct {
 	Resource string
 	Data     map[string]interface{}
+	GeoData  Geo
 }
 
 // kv represents key/value(float64) in sort func
@@ -76,6 +92,24 @@ func (p *Prefix) GetData() bool {
 	body, _ := ioutil.ReadAll(resp.Body)
 	json.Unmarshal(body, &p.Data)
 	return true
+}
+
+// GetGeoData gets Geo information from RIPE NCC
+func (p *Prefix) GetGeoData() error {
+	if len(p.Resource) < 6 {
+		return fmt.Errorf("prefix invalid")
+	}
+	resp, err := http.Get(RIPEAPI + RIPEGeoURL + p.Resource)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("check your prefix (HTTP code: %d) ", resp.StatusCode)
+	}
+	defer resp.Body.Close()
+	body, _ := ioutil.ReadAll(resp.Body)
+	json.Unmarshal(body, &p.GeoData)
+	return nil
 }
 
 // PrettyPrint print ASN information (holder)
@@ -148,7 +182,7 @@ func (a *ASN) GetGeoData() bool {
 		println("error: AS number invalid")
 		return false
 	}
-	resp, err := http.Get(RIPEAPI + RIPEGeoURL + a.Number)
+	resp, err := http.Get(RIPEAPI + RIPEGeoURL + "AS" + a.Number)
 	if err != nil {
 		println(err.Error())
 		return false
@@ -257,4 +291,31 @@ func sortMapFloat(m map[string]float64) []kv {
 		}
 	}
 	return r
+}
+
+// MyIPAddr gets public ip address
+func MyIPAddr() (string, error) {
+	var (
+		d struct {
+			Status string
+			Data   struct {
+				IP string
+			}
+		}
+		myIP string
+	)
+	resp, err := http.Get(RIPEAPI + RIPEMyIPURL)
+	if err != nil {
+		return myIP, err
+	}
+	if resp.StatusCode != 200 {
+		return myIP, fmt.Errorf("HTTP code: %d returned", resp.StatusCode)
+	}
+	defer resp.Body.Close()
+	body, _ := ioutil.ReadAll(resp.Body)
+	json.Unmarshal(body, &d)
+	myIP = d.Data.IP
+
+	return myIP, nil
+
 }
