@@ -234,7 +234,7 @@ func (r *Readline) Help() {
 	fmt.Println(usage)
 }
 
-// CMDRex returns commands regex for validation
+// CMDRgx returns commands regex for validation
 func CMDRgx() *regexp.Regexp {
 	expr := fmt.Sprintf(`(%s)\s{0,1}(.*)`, strings.Join(cmds, "|"))
 	re, _ := regexp.Compile(expr)

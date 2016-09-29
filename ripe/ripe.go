@@ -25,7 +25,7 @@ const (
 	RIPEASNURL = "/data/as-overview/data.json?resource=AS"
 	// RIPEGeoURL holds Geo path
 	RIPEGeoURL = "/data/geoloc/data.json?resource="
-	// RIPEMyIPURL
+	// RIPEMyIPURL holds myIP path
 	RIPEMyIPURL = "/data/whats-my-ip/data.json"
 )
 

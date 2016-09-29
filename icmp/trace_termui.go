@@ -27,6 +27,7 @@ type Widgets struct {
 	BCPKL *ui.BarChart
 }
 
+// Geo represents IP Geo params
 type Geo struct {
 	// CountrySrc Geo country source
 	CountrySrc string

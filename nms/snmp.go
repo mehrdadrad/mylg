@@ -12,6 +12,7 @@ import (
 )
 
 var (
+	// OID holds essentiall OIDs that need for each interface
 	OID = map[string]string{
 		"sysDescr":             "1.3.6.1.2.1.1.1.0",
 		"ifDescr":              "1.3.6.1.2.1.2.2.1.2",
@@ -27,7 +28,7 @@ var (
 		"ifInErrors":           "1.3.6.1.2.1.2.2.1.14",
 		"ifOutDiscards":        "1.3.6.1.2.1.2.2.1.19",
 		"ifOutErrors":          "1.3.6.1.2.1.2.2.1.20",
-	} // OID holds essentiall OIDs that need for each interface
+	}
 )
 
 // SNMPClient represents all necessary SNMP parameters
