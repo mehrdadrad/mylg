@@ -49,10 +49,10 @@ type Geo struct {
 }
 
 // TermUI prints out trace loop by termui
-func (i *Trace) TermUI() error {
+func (i *Trace) TermUI() (string, error) {
 	ui.DefaultEvtStream = ui.NewEvtStream()
 	if err := ui.Init(); err != nil {
-		return err
+		return "", err
 	}
 	defer ui.Close()
 
@@ -65,6 +65,7 @@ func (i *Trace) TermUI() error {
 
 		begin    = time.Now()
 		w        = initWidgets()
+		rp       string
 		rChanged bool
 	)
 
@@ -74,7 +75,7 @@ func (i *Trace) TermUI() error {
 	// run loop trace route
 	resp, err := i.MRun()
 	if err != nil {
-		return err
+		return rp, err
 	}
 
 	for i := 1; i < 65; i++ {
@@ -188,11 +189,18 @@ func (i *Trace) TermUI() error {
 				}
 			}
 		}
-		close(resp)
+		if _, ok := <-resp; ok {
+			close(resp)
+		}
 	}()
 
 	ui.Loop()
-	return nil
+
+	if i.report {
+		rp = report(w)
+	}
+
+	return rp, nil
 }
 
 func (i *Trace) bridgeWidgetsTrace(w *Widgets) {
@@ -495,6 +503,33 @@ func uiTheme(t string) {
 		ui.ColorMap["border.fg"] = ui.ColorCyan
 	}
 	ui.Clear()
+}
+
+func report(w *Widgets) string {
+	// TODO: fixing output format
+	var (
+		r      string
+		format = "%-45s %-6s %-15s %s %s\n"
+	)
+	r = fmt.Sprintf(format,
+		"Host",
+		"ASN     Holder",
+		"Sent",
+		"Lost%",
+		"Avg Best Wrst",
+	)
+	for i := 1; i < 65; i++ {
+		if w.Hops.Items[i] != "" {
+			r += fmt.Sprintf(format,
+				w.Hops.Items[i],
+				w.ASN.Items[i],
+				w.Snt.Items[i],
+				w.Pkl.Items[i],
+				w.RTT.Items[i],
+			)
+		}
+	}
+	return r
 }
 
 func distance(geo Geo, r float64) float64 {
