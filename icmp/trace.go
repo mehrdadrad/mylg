@@ -10,7 +10,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -437,22 +436,6 @@ func routerChange(router, b string) bool {
 		}
 	}
 	return false
-}
-
-func rmUIMetaData(m string) string {
-	var rgx = []string{`\[+\d+\s*\]\s`, `\]\(.*\)`}
-	for _, r := range rgx {
-		re := regexp.MustCompile(r)
-		m = re.ReplaceAllString(m, "")
-	}
-	return m
-}
-
-func termUICColor(m, color string) string {
-	if !strings.Contains(m, color) {
-		m = fmt.Sprintf("[%s](%s)", m, color)
-	}
-	return m
 }
 
 // Print prints out trace result in normal or terminal mode

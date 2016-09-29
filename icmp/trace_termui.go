@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"regexp"
 	"strings"
 	"time"
 
@@ -198,7 +199,7 @@ func (i *Trace) TermUI() (string, error) {
 	ui.Loop()
 
 	if i.report {
-		rp = report(w)
+		rp = report(w, i)
 	}
 
 	return rp, nil
@@ -506,21 +507,31 @@ func uiTheme(t string) {
 	ui.Clear()
 }
 
-func report(w *Widgets) string {
-	// TODO: fixing output format
+func report(w *Widgets, i *Trace) string {
 	var (
 		r      string
-		format = "%-45s %-6s %-15s %s %s\n"
+		format = "%-45s %-25s %-5s %-6s %s\n"
 	)
-	r = fmt.Sprintf(format,
+
+	r = fmt.Sprintf("──[ myLG ]── traceroute to %s (%s)\n",
+		i.host,
+		i.ip,
+	)
+
+	r += fmt.Sprintf(format,
 		"Host",
-		"ASN     Holder",
+		"ASN    Holder",
 		"Sent",
 		"Lost%",
-		"Avg Best Wrst",
+		"Last       Avg     Best    Wrst",
 	)
+
 	for i := 1; i < 65; i++ {
 		if w.Hops.Items[i] != "" {
+
+			w.Hops.Items[i] = rmUIMetaData(w.Hops.Items[i])
+			w.Hops.Items[i] = trimLongStr(w.Hops.Items[i], 40)
+
 			r += fmt.Sprintf(format,
 				w.Hops.Items[i],
 				w.ASN.Items[i],
@@ -531,6 +542,28 @@ func report(w *Widgets) string {
 		}
 	}
 	return r
+}
+func trimLongStr(s string, l int) string {
+	if len(s) > l {
+		return s[:l] + "..."
+	}
+	return s
+}
+
+func rmUIMetaData(m string) string {
+	var rgx = []string{`\[+\d+\s*\]\s`, `\]\(.*\)`}
+	for _, r := range rgx {
+		re := regexp.MustCompile(r)
+		m = re.ReplaceAllString(m, "")
+	}
+	return m
+}
+
+func termUICColor(m, color string) string {
+	if !strings.Contains(m, color) {
+		m = fmt.Sprintf("[%s](%s)", m, color)
+	}
+	return m
 }
 
 func distance(geo Geo, r float64) float64 {
