@@ -79,6 +79,8 @@ func NewTrace(args string, cfg cli.Config) (*Trace, error) {
 		ripe:     cli.SetFlag(flag, "nr", true).(bool),
 		realTime: cli.SetFlag(flag, "r", false).(bool),
 		maxTTL:   cli.SetFlag(flag, "m", 30).(int),
+		count:    cli.SetFlag(flag, "c", -1).(int),
+		report:   cli.SetFlag(flag, "R", false).(bool),
 		km:       cli.SetFlag(flag, "km", false).(bool),
 	}, nil
 }
@@ -266,7 +268,7 @@ func (i *Trace) Recv(id, seq int) (ICMPResp, error) {
 			wDst = resp.ip.dst.String() != i.ip.String()
 		}
 
-		if (i.icmp && wSeq) || wDst || wID {
+		if (i.icmp && wSeq) || (!i.icmp && (wDst || wID)) {
 			du, _ := time.ParseDuration(i.wait)
 			if time.Since(ts) < du {
 				continue
@@ -411,6 +413,9 @@ func (i *Trace) MRun() (chan HopResp, error) {
 			}
 			time.Sleep(1 * time.Second)
 		}
+		if _, ok := <-c; ok {
+			close(c)
+		}
 	}()
 	return c, nil
 }
@@ -453,8 +458,10 @@ func termUICColor(m, color string) string {
 // Print prints out trace result in normal or terminal mode
 func (i *Trace) Print() {
 	if i.realTime {
-		if err := i.TermUI(); err != nil {
+		if rep, err := i.TermUI(); err != nil {
 			fmt.Println(err.Error())
+		} else if rep != "" {
+			fmt.Println(rep)
 		}
 	} else {
 		i.PrintPretty()
@@ -684,6 +691,7 @@ func helpTrace() {
           -4             Forces the trace command to use IPv4 (target should be hostname)
           -6             Forces the trace command to use IPv6 (target should be hostname)
           -t             Specify the real-time terminal theme (dark|light)
+          -I             Use ICMP instead of UDP datagrams
     Example:
           trace 8.8.8.8
           trace freebsd.org -r
