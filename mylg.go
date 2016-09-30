@@ -422,7 +422,7 @@ func discovery() {
 	wg.Wait()
 	spin.Stop()
 
-	println("Network LAN Discovery")
+	println("\nNetwork LAN Discovery")
 	d.PrintPretty()
 }
 
