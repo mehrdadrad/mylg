@@ -47,8 +47,12 @@ func NewClient(args string, cfg cli.Config) (Client, error) {
 
 		r, err := client.SNMP.GetOIDs(OID["sysDescr"])
 		if err != nil {
-			println(err.Error())
-		} else {
+			return client, err
+		}
+		switch r[0].Variable.(type) {
+		case *snmpgo.NoSucheObject, *snmpgo.NoSucheInstance, *snmpgo.EndOfMibView:
+			return client, fmt.Errorf("no such object / instance")
+		case *snmpgo.OctetString:
 			descr := r[0].Variable.(*snmpgo.OctetString).String()
 			printEff(trim("Connected: "+descr, 80))
 		}
@@ -59,10 +63,11 @@ func NewClient(args string, cfg cli.Config) (Client, error) {
 // ShowInterface prints out interface(s) information based on
 // specific portocol (SNMP/SSH/...) for now it supports only SNMP
 func (c *Client) ShowInterface(filter string) error {
-	if c.SNMP != nil {
-		c.snmpShowInterface(filter)
-	} else {
+	if c.SNMP == nil {
 		return fmt.Errorf("snmp not connected, try connect help")
+	}
+	if err := c.snmpShowInterface(filter); err != nil {
+		return err
 	}
 	return nil
 }
@@ -86,7 +91,7 @@ func (c *Client) snmpGetIdx(filter string) []int {
 	return res
 }
 
-func (c *Client) snmpShowInterface(filter string) {
+func (c *Client) snmpShowInterface(filter string) error {
 	var (
 		data [][][]string
 		once sync.Once
@@ -101,8 +106,12 @@ func (c *Client) snmpShowInterface(filter string) {
 	for range []int{0, 1} {
 		sample, err := c.snmpGetInterfaces(idxs)
 		if err != nil {
-			return
+			return err
 		}
+		if len(sample)-1 < 1 {
+			return fmt.Errorf("could not find any interface")
+		}
+
 		data = append(data, sample)
 		once.Do(
 			func() {
@@ -125,6 +134,8 @@ func (c *Client) snmpShowInterface(filter string) {
 		table.Append(row)
 	}
 	table.Render()
+
+	return nil
 }
 
 func (c *Client) snmpGetInterfaces(filter []int) ([][]string, error) {

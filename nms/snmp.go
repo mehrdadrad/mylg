@@ -124,7 +124,7 @@ func (c *SNMPClient) BulkWalk(oid ...string) ([]*snmpgo.VarBind, error) {
 		return r, err
 	}
 	defer snmp.Close()
-	pdu, err := snmp.GetBulkWalk(oids, 0, 150)
+	pdu, err := snmp.GetBulkWalk(oids, 0, 10)
 	if err != nil {
 		return r, err
 	}
@@ -154,6 +154,10 @@ func (c *SNMPClient) GetOIDs(oid ...string) ([]*snmpgo.VarBind, error) {
 	if err != nil {
 		return r, err
 	}
+	if pdu.ErrorStatus() != snmpgo.NoError {
+		return r, fmt.Errorf("%d %d", pdu.ErrorStatus(), pdu.ErrorIndex())
+	}
+
 	r = pdu.VarBinds()
 
 	return r, nil
