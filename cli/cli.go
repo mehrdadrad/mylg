@@ -342,19 +342,23 @@ func Flag(args string) (string, map[string]interface{}) {
 		r[kv[1]] = kv[2]
 		args = strings.Replace(args, kv[0], "", 1)
 	}
-	// noon-boolean flags
-	re = regexp.MustCompile(`(?i)\s{1}-([a-z|0-9]+)[=|\s]([0-9|a-z|'"{}:\/]+)`)
-	f = re.FindAllStringSubmatch(args, -1)
-	for _, kv := range f {
-		if len(kv) > 1 {
-			// trim extra characters (' and ") from value
-			kv[2] = strings.Trim(kv[2], "'")
-			kv[2] = strings.Trim(kv[2], `"`)
-			r[kv[1]], err = strconv.Atoi(kv[2])
-			if err != nil {
-				r[kv[1]] = kv[2]
+	// none-boolean flags
+	for _, rgx := range []string{
+		`(?i)\s{1}-([a-z]+)[=|\s](-[0-9]+)`, // negative number
+		`(?i)\s{1}-([a-z|0-9]+)[=|\s]([0-9|a-z|'"{}:\/]+)`} {
+		re = regexp.MustCompile(rgx)
+		f = re.FindAllStringSubmatch(args, -1)
+		for _, kv := range f {
+			if len(kv) > 1 {
+				// trim extra characters (' and ") from value
+				kv[2] = strings.Trim(kv[2], "'")
+				kv[2] = strings.Trim(kv[2], `"`)
+				r[kv[1]], err = strconv.Atoi(kv[2])
+				if err != nil {
+					r[kv[1]] = kv[2]
+				}
+				args = strings.Replace(args, kv[0], "", 1)
 			}
-			args = strings.Replace(args, kv[0], "", 1)
 		}
 	}
 	// boolean flags

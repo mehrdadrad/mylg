@@ -80,6 +80,29 @@ func TestFlagIntValue(t *testing.T) {
 	}
 }
 
+func TestFlagIntNegativeValue(t *testing.T) {
+	url, flag := cli.Flag("www.mylg.io -option=-1976")
+	if _, ok := flag["option"]; !ok {
+		t.Error("flag unexpected option")
+	} else if flag["option"] != -1976 {
+		t.Error("flag unexpected int negative value")
+	}
+	if url != "www.mylg.io" {
+		t.Error("")
+		println("url", url)
+	}
+	url, flag = cli.Flag("www.mylg.io -option -1976")
+	if _, ok := flag["option"]; !ok {
+		t.Error("flag unexpected option")
+	} else if flag["option"] != -1976 {
+		t.Error("flag unexpected int negative value")
+	}
+	if url != "www.mylg.io" {
+		t.Error("")
+		println("url", url)
+	}
+}
+
 func TestFlagBoolianOptions(t *testing.T) {
 	url, flag := cli.Flag("www.mylg.io -n -nr")
 	if _, ok := flag["n"]; !ok {
