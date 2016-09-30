@@ -345,7 +345,7 @@ func Flag(args string) (string, map[string]interface{}) {
 	// none-boolean flags
 	for _, rgx := range []string{
 		`(?i)\s{1}-([a-z]+)[=|\s](-[0-9]+)`, // negative number
-		`(?i)\s{1}-([a-z|0-9]+)[=|\s]([0-9|a-z|'"{}:\/]+)`} {
+		`(?i)\s{1}-([a-z|0-9]+)[=|\s]([0-9|a-z|'"{}:\/_@!#$%^&*)(\+]+)`} {
 		re = regexp.MustCompile(rgx)
 		f = re.FindAllStringSubmatch(args, -1)
 		for _, kv := range f {
