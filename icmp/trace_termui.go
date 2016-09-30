@@ -106,6 +106,8 @@ func (i *Trace) TermUI() (string, error) {
 				break LOOP
 			case r, ok := <-resp:
 				if !ok {
+					done <- struct{}{}
+					ui.StopLoop()
 					break LOOP
 				}
 
@@ -117,7 +119,7 @@ func (i *Trace) TermUI() (string, error) {
 
 				if r.whois.asn > 0 {
 					as = fmt.Sprintf("%.0f", r.whois.asn)
-					holder = strings.Fields(r.whois.holder)[0]
+					holder = trimASNHolder(r.whois.holder)
 				} else {
 					as = ""
 					holder = ""
@@ -375,12 +377,17 @@ func (w *Widgets) updateHeader(i *Trace, begin time.Time, done chan struct{}) {
 		geo     Geo
 		unit            = "miles"
 		eRadius float64 = 3961
+		pSize   string  = fmt.Sprintf("%d", i.pSize)
 	)
 
 	geo.CitySrc = "..."
 	geo.CityDst = "..."
 
 	go getGeo(i.ip, &geo)
+
+	if i.pSize < 0 {
+		pSize = fmt.Sprintf("random max %d", -1*i.pSize)
+	}
 
 	if i.km {
 		unit = "km"
@@ -398,8 +405,9 @@ LOOP:
 			}
 			seconds := fmt.Sprintf("%.0fs", time.Since(begin).Seconds())
 			du, _ := time.ParseDuration(seconds)
-			s := fmt.Sprintf("%shops max, elapsed: %s %s (%s) -> %s (%s) %.0f %s ",
+			s := fmt.Sprintf("%shops max, packet size: %s bytes, elapsed: %s %s (%s) -> %s (%s) %.0f %s ",
 				h[0],
+				pSize,
 				du.String(),
 				geo.CitySrc,
 				geo.CountrySrc,
@@ -543,6 +551,18 @@ func report(w *Widgets, i *Trace) string {
 	}
 	return r
 }
+
+func trimASNHolder(h string) string {
+	h = strings.Fields(h)[0]
+	h = strings.Split(h, "-")[0]
+
+	if len(h) > 12 {
+		h = h[:10] + "..."
+	}
+
+	return h
+}
+
 func trimLongStr(s string, l int) string {
 	if len(s) > l {
 		return s[:l] + "..."

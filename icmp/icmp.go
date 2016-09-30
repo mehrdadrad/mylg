@@ -5,6 +5,7 @@
 package icmp
 
 import (
+	"math/rand"
 	"net"
 	"os"
 	"syscall"
@@ -175,12 +176,12 @@ func icmpV6RespParser(b []byte) ICMPResp {
 	return resp
 }
 
-func icmpV6Message(id, seq int) ([]byte, error) {
+func icmpV6Message(id, seq, pSize int) ([]byte, error) {
 	m, err := (&icmp.Message{
 		Type: ipv6.ICMPTypeEchoRequest, Code: 0,
 		Body: &icmp.Echo{
 			ID: id, Seq: seq,
-			Data: []byte("myLG - [mylg.io]"),
+			Data: icmpPayload(pSize, false),
 		},
 	}).Marshal(nil)
 
@@ -190,12 +191,12 @@ func icmpV6Message(id, seq int) ([]byte, error) {
 	return m, nil
 }
 
-func icmpV4Message(id, seq int) ([]byte, error) {
+func icmpV4Message(id, seq, pSize int) ([]byte, error) {
 	m, err := (&icmp.Message{
 		Type: ipv4.ICMPTypeEcho, Code: 0,
 		Body: &icmp.Echo{
 			ID: id, Seq: seq,
-			Data: []byte("myLG - [mylg.io]"),
+			Data: icmpPayload(pSize, true),
 		},
 	}).Marshal(nil)
 
@@ -203,6 +204,26 @@ func icmpV4Message(id, seq int) ([]byte, error) {
 		return m, os.NewSyscallError("icmpmsg", err)
 	}
 	return m, nil
+}
+
+func icmpPayload(pSize int, isIPv4 bool) []byte {
+	var gData int
+
+	if isIPv4 {
+		gData = absInt(pSize) - (20 + 8 + 8)
+	} else {
+		gData = absInt(pSize) - (40 + 8 + 8)
+	}
+
+	// in case small packet requested
+	if gData < 0 {
+		gData = 0
+	}
+
+	if pSize >= 0 {
+		return make([]byte, gData)
+	}
+	return make([]byte, rand.Intn(gData))
 }
 
 func setIPv4TOS(fd int, v int) error {
@@ -227,4 +248,11 @@ func setIPv6HopLimit(fd int, v int) error {
 		return os.NewSyscallError("setsockopt", err)
 	}
 	return nil
+}
+
+func absInt(i int) int {
+	if i < 0 {
+		return i * -1
+	}
+	return i
 }

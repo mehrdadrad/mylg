@@ -70,7 +70,7 @@ func NewTrace(args string, cfg cli.Config) (*Trace, error) {
 		ip:       ip,
 		family:   family,
 		proto:    proto,
-		pSize:    52,
+		pSize:    cli.SetFlag(flag, "p", 52).(int),
 		uiTheme:  cli.SetFlag(flag, "t", cfg.Trace.Theme).(string),
 		wait:     cli.SetFlag(flag, "w", cfg.Trace.Wait).(string),
 		icmp:     cli.SetFlag(flag, "I", false).(bool),
@@ -130,7 +130,7 @@ func (i *Trace) Send(port int) (int, int, error) {
 			Addr: b,
 		}
 
-		m, err := icmpV4Message(id, seq)
+		m, err := icmpV4Message(id, seq, i.pSize)
 		if err != nil {
 			return id, seq, err
 		}
@@ -149,7 +149,7 @@ func (i *Trace) Send(port int) (int, int, error) {
 			Addr:   b,
 		}
 
-		m, err := icmpV6Message(id, seq)
+		m, err := icmpV6Message(id, seq, i.pSize)
 		if err != nil {
 			return id, seq, err
 		}
@@ -377,6 +377,7 @@ func (i *Trace) MRun() (chan HopResp, error) {
 		ASN    = make(map[string]Whois, 100)
 		maxTTL = i.maxTTL
 		MU     sync.Mutex
+		count  int
 	)
 
 	if err := i.Bind(); err != nil {
@@ -389,6 +390,7 @@ func (i *Trace) MRun() (chan HopResp, error) {
 				syscall.Close(i.fd)
 			}
 		}()
+	LOOP:
 		for {
 			for h := 1; h <= maxTTL; h++ {
 				hop := i.NextHop(h)
@@ -410,11 +412,13 @@ func (i *Trace) MRun() (chan HopResp, error) {
 				}
 				time.Sleep(100 * time.Millisecond)
 			}
+			count++
+			if i.count > 0 && count >= i.count {
+				break LOOP
+			}
 			time.Sleep(1 * time.Second)
 		}
-		if _, ok := <-c; ok {
-			close(c)
-		}
+		close(c)
 	}()
 	return c, nil
 }
@@ -670,10 +674,12 @@ func helpTrace() {
           -r             Real-time response time at each point along the way
           -n             Do not try to map IP addresses to host names
           -nr            Do not try to map IP addresses to ASN,Holder (RIPE NCC)
-          -m MAX_TTL     Specifies the maximum number of hops
+          -m MAX_TTL     Set the maximum number of hops
           -4             Forces the trace command to use IPv4 (target should be hostname)
           -6             Forces the trace command to use IPv6 (target should be hostname)
-          -t             Specify the real-time terminal theme (dark|light)
+          -t             Set the real-time terminal theme (dark|light)
+          -c             Set the number of pings sent
+          -p             Set the packet size in bytes inclusive headers (default 52 bytes)
           -I             Use ICMP instead of UDP datagrams
     Example:
           trace 8.8.8.8
