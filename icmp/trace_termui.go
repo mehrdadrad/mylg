@@ -378,6 +378,7 @@ func (w *Widgets) updateHeader(i *Trace, begin time.Time, done chan struct{}) {
 		unit            = "miles"
 		eRadius float64 = 3961
 		pSize   string  = fmt.Sprintf("%d", i.pSize)
+		proto   string  = "ICMP"
 	)
 
 	geo.CitySrc = "..."
@@ -393,6 +394,11 @@ func (w *Widgets) updateHeader(i *Trace, begin time.Time, done chan struct{}) {
 		unit = "km"
 		eRadius = 6373
 	}
+
+	if !i.icmp {
+		proto = "UDP"
+	}
+
 LOOP:
 	for {
 		select {
@@ -405,8 +411,9 @@ LOOP:
 			}
 			seconds := fmt.Sprintf("%.0fs", time.Since(begin).Seconds())
 			du, _ := time.ParseDuration(seconds)
-			s := fmt.Sprintf("%shops max, packet size: %s bytes, elapsed: %s %s (%s) -> %s (%s) %.0f %s ",
+			s := fmt.Sprintf("%shops max, %s, %s bytes packets, elapsed: %s %s (%s) -> %s (%s) %s %s ",
 				h[0],
+				proto,
 				pSize,
 				du.String(),
 				geo.CitySrc,
@@ -586,7 +593,11 @@ func termUICColor(m, color string) string {
 	return m
 }
 
-func distance(geo Geo, r float64) float64 {
+func distance(geo Geo, r float64) string {
+
+	if geo.CitySrc == "..." || geo.CityDst == "..." {
+		return "?"
+	}
 
 	geo.LonSrc = d2r(geo.LonSrc)
 	geo.LonDst = d2r(geo.LonDst)
@@ -599,7 +610,7 @@ func distance(geo Geo, r float64) float64 {
 	a := hsin(deltaLat) + math.Cos(geo.LatDst)*math.Cos(geo.LatSrc)*hsin(deltaLon)
 	c := 2 * r * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
 
-	return c
+	return fmt.Sprintf("%.0f", c)
 }
 func d2r(i float64) float64 {
 	return i * math.Pi / 180
