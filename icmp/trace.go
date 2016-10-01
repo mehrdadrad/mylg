@@ -73,7 +73,7 @@ func NewTrace(args string, cfg cli.Config) (*Trace, error) {
 		pSize:    cli.SetFlag(flag, "p", 52).(int),
 		uiTheme:  cli.SetFlag(flag, "t", cfg.Trace.Theme).(string),
 		wait:     cli.SetFlag(flag, "w", cfg.Trace.Wait).(string),
-		icmp:     cli.SetFlag(flag, "I", false).(bool),
+		icmp:     cli.SetFlag(flag, "u", true).(bool),
 		resolve:  cli.SetFlag(flag, "n", true).(bool),
 		ripe:     cli.SetFlag(flag, "nr", true).(bool),
 		realTime: cli.SetFlag(flag, "r", false).(bool),
@@ -680,7 +680,7 @@ func helpTrace() {
           -t             Set the real-time terminal theme (dark|light)
           -c             Set the number of pings sent
           -p             Set the packet size in bytes inclusive headers (default 52 bytes)
-          -I             Use ICMP instead of UDP datagrams
+          -u             Use UDP datagram instead of ICMP 
     Example:
           trace 8.8.8.8
           trace freebsd.org -r
