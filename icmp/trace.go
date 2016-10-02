@@ -64,7 +64,7 @@ func NewTrace(args string, cfg cli.Config) (*Trace, error) {
 		proto = syscall.IPPROTO_ICMPV6
 	}
 
-	return &Trace{
+	t := &Trace{
 		host:     target,
 		ips:      ips,
 		ip:       ip,
@@ -81,7 +81,12 @@ func NewTrace(args string, cfg cli.Config) (*Trace, error) {
 		count:    cli.SetFlag(flag, "c", -1).(int),
 		report:   cli.SetFlag(flag, "R", false).(bool),
 		km:       cli.SetFlag(flag, "km", false).(bool),
-	}, nil
+	}
+
+	// default report's count
+	t.setReportDCount(10)
+
+	return t, nil
 }
 
 func (h MHopResp) Len() int           { return len(h) }
@@ -594,6 +599,13 @@ func (i *Trace) addWhois(R []HopResp) {
 
 	for i := range R {
 		R[i].whois = ips[R[i].ip]
+	}
+}
+
+// setReportDCount set the report default count
+func (i *Trace) setReportDCount(c int) {
+	if i.report && i.count < 0 {
+		i.count = c
 	}
 }
 
