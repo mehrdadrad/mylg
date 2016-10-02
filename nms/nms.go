@@ -4,6 +4,7 @@ package nms
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"regexp"
 	"sort"
@@ -126,6 +127,7 @@ func (c *Client) snmpShowInterface(filter string) error {
 	}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(data[0][0])
+	table.SetAlignment(tablewriter.ALIGN_LEFT)
 
 	data[0] = data[0][1:] // remove title row
 	data[1] = data[1][1:] // remove title row
@@ -135,7 +137,7 @@ func (c *Client) snmpShowInterface(filter string) error {
 		table.Append(row)
 	}
 	table.Render()
-
+	println("* units per seconds")
 	return nil
 }
 
@@ -152,10 +154,11 @@ func (c *Client) snmpGetInterfaces(filter []int) ([][]string, error) {
 
 	cols = append(cols, []string{"Interface", "ifDescr"})
 	cols = append(cols, []string{"Status", "ifOperStatus"})
+	cols = append(cols, []string{"Description", "ifAlias"})
 	cols = append(cols, []string{"Traffic In", "ifHCInOctets"})
 	cols = append(cols, []string{"Traffic Out", "ifHCOutOctets"})
-	cols = append(cols, []string{"PPS In", "ifHCInUcastPkts"})
-	cols = append(cols, []string{"PPS Out", "ifHCOutUcastPkts"})
+	cols = append(cols, []string{"Packets In", "ifHCInUcastPkts"})
+	cols = append(cols, []string{"Packets Out", "ifHCOutUcastPkts"})
 	cols = append(cols, []string{"Discard In", "ifInDiscards"})
 	cols = append(cols, []string{"Discard Out", "ifOutDiscards"})
 	cols = append(cols, []string{"Error In", "ifInErrors"})
@@ -217,19 +220,33 @@ func (c *Client) snmpGetInterfaces(filter []int) ([][]string, error) {
 }
 
 func normalize(time0, time1 []string, t int) []string {
-	var f = []int{8, 8, 1, 1, 1, 1, 1, 1}
+	var f = []int{-1, -1, -1, 8, 8, 1, 1, 1, 1, 1, 1}
 
-	for _, i := range []int{2, 3, 4, 5} {
+	for _, i := range []int{3, 4, 5, 6, 7, 8, 9, 10} {
 		n, _ := strconv.Atoi(time0[i])
-		n = n * f[i-1]
+		n = n * f[i]
 		m, _ := strconv.Atoi(time1[i])
-		m = m * f[i-1]
-		time1[i] = fmt.Sprintf("%d", (m-n)/t)
+		m = m * f[i]
+		time1[i] = formatUnit(float64(m-n) / float64(t))
 	}
 	// interface status
 	time1[1] = ifStatus(time1[1])
 
 	return time1
+}
+
+func formatUnit(i float64) string {
+	if i > math.Pow(10, 12) {
+		return fmt.Sprintf("%.2f T", i/math.Pow(10, 12))
+	} else if i > math.Pow(10, 9) {
+		return fmt.Sprintf("%.2f G", i/math.Pow(10, 9))
+	} else if i > math.Pow(10, 6) {
+		return fmt.Sprintf("%.2f M", i/math.Pow(10, 6))
+	} else if i > math.Pow(10, 3) {
+		return fmt.Sprintf("%.2f K", i/math.Pow(10, 3))
+	}
+
+	return fmt.Sprintf("%.2f  ", i)
 }
 
 func ifStatus(s string) string {

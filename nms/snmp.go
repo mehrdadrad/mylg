@@ -16,6 +16,7 @@ var (
 	OID = map[string]string{
 		"sysDescr":             "1.3.6.1.2.1.1.1.0",
 		"ifDescr":              "1.3.6.1.2.1.2.2.1.2",
+		"ifAlias":              "1.3.6.1.2.1.31.1.1.1.18",
 		"ifOperStatus":         "1.3.6.1.2.1.2.2.1.8",
 		"ifHCInOctets":         "1.3.6.1.2.1.31.1.1.1.6",
 		"ifHCInUcastPkts":      "1.3.6.1.2.1.31.1.1.1.7",
