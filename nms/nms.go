@@ -213,7 +213,9 @@ func (c *Client) snmpGetInterfaces(filter []int) ([][]string, error) {
 
 	// convert map (data)  to slice (res)
 	for i := range idxs {
-		res = append(res, data[i])
+		if len(data[i]) > 0 {
+			res = append(res, data[i])
+		}
 	}
 
 	return res, nil
