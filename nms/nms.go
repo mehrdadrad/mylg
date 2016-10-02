@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -115,7 +116,7 @@ func (c *Client) snmpShowInterface(filter string) error {
 		data = append(data, sample)
 		once.Do(
 			func() {
-				fmt.Printf("%d interfaces (physical/logical) has been found\n", len(sample)-1)
+				fmt.Printf("%d interfaces has been found\n", len(sample)-1)
 				spin.Prefix = "please wait "
 				spin.Start()
 				time.Sleep(10 * time.Second)
@@ -140,15 +141,17 @@ func (c *Client) snmpShowInterface(filter string) error {
 
 func (c *Client) snmpGetInterfaces(filter []int) ([][]string, error) {
 	var (
-		data = make([][]string, 100)
+		data = make(map[int][]string, 1000)
 		oids []string
 		cols [][]string
 		res  [][]string
-		err  error
+		idxs []int
 		r    []*snmpgo.VarBind
+		err  error
 	)
 
 	cols = append(cols, []string{"Interface", "ifDescr"})
+	cols = append(cols, []string{"Status", "ifOperStatus"})
 	cols = append(cols, []string{"Traffic In", "ifHCInOctets"})
 	cols = append(cols, []string{"Traffic Out", "ifHCOutOctets"})
 	cols = append(cols, []string{"PPS In", "ifHCInUcastPkts"})
@@ -166,7 +169,7 @@ func (c *Client) snmpGetInterfaces(filter []int) ([][]string, error) {
 
 		r, err = c.SNMP.BulkWalk(oids...)
 		if err != nil {
-			return data, err
+			return [][]string{}, err
 		}
 	} else {
 		for _, c := range cols {
@@ -178,7 +181,7 @@ func (c *Client) snmpGetInterfaces(filter []int) ([][]string, error) {
 
 		r, err = c.SNMP.GetOIDs(oids...)
 		if err != nil {
-			return data, err
+			return [][]string{}, err
 		}
 	}
 
@@ -199,11 +202,15 @@ func (c *Client) snmpGetInterfaces(filter []int) ([][]string, error) {
 		}
 	}
 
-	// remove empty slices
-	for i := range data {
-		if len(data[i]) != 0 {
-			res = append(res, data[i])
-		}
+	// put snmp indexes to idxs & sort them
+	for k := range data {
+		idxs = append(idxs, k)
+	}
+	sort.Ints(idxs)
+
+	// convert map (data)  to slice (res)
+	for i := range idxs {
+		res = append(res, data[i])
 	}
 
 	return res, nil
@@ -212,14 +219,28 @@ func (c *Client) snmpGetInterfaces(filter []int) ([][]string, error) {
 func normalize(time0, time1 []string, t int) []string {
 	var f = []int{8, 8, 1, 1, 1, 1, 1, 1}
 
-	for _, i := range []int{1, 2, 3, 4} {
+	for _, i := range []int{2, 3, 4, 5} {
 		n, _ := strconv.Atoi(time0[i])
 		n = n * f[i-1]
 		m, _ := strconv.Atoi(time1[i])
 		m = m * f[i-1]
 		time1[i] = fmt.Sprintf("%d", (m-n)/t)
 	}
+	// interface status
+	time1[1] = ifStatus(time1[1])
+
 	return time1
+}
+
+func ifStatus(s string) string {
+	switch s {
+	case "1":
+		return "Up"
+	case "2":
+		return "Down"
+	default:
+		return "Unknown"
+	}
 }
 
 func trim(s string, n int) string {

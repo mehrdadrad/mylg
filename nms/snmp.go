@@ -16,6 +16,7 @@ var (
 	OID = map[string]string{
 		"sysDescr":             "1.3.6.1.2.1.1.1.0",
 		"ifDescr":              "1.3.6.1.2.1.2.2.1.2",
+		"ifOperStatus":         "1.3.6.1.2.1.2.2.1.8",
 		"ifHCInOctets":         "1.3.6.1.2.1.31.1.1.1.6",
 		"ifHCInUcastPkts":      "1.3.6.1.2.1.31.1.1.1.7",
 		"ifHCOutOctets":        "1.3.6.1.2.1.31.1.1.1.10",
@@ -124,17 +125,23 @@ func (c *SNMPClient) BulkWalk(oid ...string) ([]*snmpgo.VarBind, error) {
 		return r, err
 	}
 	defer snmp.Close()
-	pdu, err := snmp.GetBulkWalk(oids, 0, 10)
+	pdu, err := snmp.GetBulkWalk(oids, 0, 5)
 	if err != nil {
 		return r, err
 	}
 	r = pdu.VarBinds()
+
 	return r, nil
 }
 
 // GetOIDs retrieves values based on the oid(s)
 func (c *SNMPClient) GetOIDs(oid ...string) ([]*snmpgo.VarBind, error) {
-	var r []*snmpgo.VarBind
+	var (
+		r, pr []*snmpgo.VarBind
+		pOIDs snmpgo.Oids
+		LOOP  = true
+	)
+
 	snmp, err := snmpgo.NewSNMP(c.Args)
 	if err != nil {
 		return r, err
@@ -150,16 +157,27 @@ func (c *SNMPClient) GetOIDs(oid ...string) ([]*snmpgo.VarBind, error) {
 	}
 	defer snmp.Close()
 
-	pdu, err := snmp.GetRequest(oids)
-	if err != nil {
-		return r, err
-	}
-	if pdu.ErrorStatus() != snmpgo.NoError {
-		return r, fmt.Errorf("%d %d", pdu.ErrorStatus(), pdu.ErrorIndex())
-	}
+	for LOOP {
+		if len(oids) > 5 {
+			pOIDs = oids[:5]
+			oids = oids[5:]
+		} else {
+			pOIDs = oids
+			LOOP = false
+		}
 
-	r = pdu.VarBinds()
+		pdu, err := snmp.GetRequest(pOIDs)
+		if err != nil {
+			return r, err
+		}
+		if pdu.ErrorStatus() != snmpgo.NoError {
+			return r, fmt.Errorf("%d %d", pdu.ErrorStatus(), pdu.ErrorIndex())
+		}
 
+		pr = pdu.VarBinds()
+
+		r = append(r, pr...)
+	}
 	return r, nil
 }
 
