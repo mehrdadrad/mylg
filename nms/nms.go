@@ -212,7 +212,7 @@ func (c *Client) snmpGetInterfaces(filter []int) ([][]string, error) {
 	sort.Ints(idxs)
 
 	// convert map (data)  to slice (res)
-	for i := range idxs {
+	for _, i := range idxs {
 		if len(data[i]) > 0 {
 			res = append(res, data[i])
 		}
