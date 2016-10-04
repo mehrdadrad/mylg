@@ -64,12 +64,22 @@ func NewClient(args string, cfg cli.Config) (Client, error) {
 
 // ShowInterface prints out interface(s) information based on
 // specific portocol (SNMP/SSH/...) for now it supports only SNMP
-func (c *Client) ShowInterface(filter string) error {
+func (c *Client) ShowInterface(args string) error {
 	if c.SNMP == nil {
 		return fmt.Errorf("snmp not connected, try connect help")
 	}
-	if err := c.snmpShowInterface(filter); err != nil {
-		return err
+
+	filter, flag := cli.Flag(args)
+	realtime := cli.SetFlag(flag, "nr", true).(bool)
+
+	if realtime {
+		if err := c.snmpShowInterfaceTermUI(filter, flag); err != nil {
+			return err
+		}
+	} else {
+		if err := c.snmpShowInterface(filter); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -221,8 +231,14 @@ func (c *Client) snmpGetInterfaces(filter []int) ([][]string, error) {
 	return res, nil
 }
 
-func normalize(time0, time1 []string, t int) []string {
+func normalize(t0, t1 []string, t int) []string {
 	var f = []int{-1, -1, -1, 8, 8, 1, 1, 1, 1, 1, 1}
+
+	time0 := make([]string, len(t0))
+	time1 := make([]string, len(t1))
+
+	copy(time0, t0)
+	copy(time1, t1)
 
 	for _, i := range []int{3, 4, 5, 6, 7, 8, 9, 10} {
 		n, _ := strconv.Atoi(time0[i])
