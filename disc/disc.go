@@ -36,7 +36,6 @@ type ARP struct {
 // disc holds all discovery information
 type disc struct {
 	Table []ARP
-	IPs   []string
 	OUI   map[string]string
 	IsBSD bool
 	SKey  string
@@ -59,9 +58,9 @@ func New(args string) *disc {
 	}
 }
 
-// WalkIP tries to salk through subnet as generator
+// WalkIP tries to walk through subnet as generator
 func WalkIP(cidr string) chan string {
-	c := make(chan string, 1)
+	c := make(chan string, 2048)
 	go func() {
 		defer close(c)
 		ip, ipnet, err := net.ParseCIDR(cidr)
@@ -70,7 +69,11 @@ func WalkIP(cidr string) chan string {
 			return
 		}
 		for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); nextIP(ip) {
-			c <- ip.String()
+			select {
+			case c <- ip.String():
+			default:
+				break
+			}
 		}
 	}()
 	return c
@@ -100,8 +103,8 @@ func (a *disc) PingLan() {
 			} else {
 				isV4 = true
 			}
+
 			if isV4 {
-				a.IPs = append(a.IPs, addr.String())
 				for ipStr := range WalkIP(addr.String()) {
 					ip := net.ParseIP(ipStr).To4()
 					addr := syscall.SockaddrInet4{
@@ -111,8 +114,8 @@ func (a *disc) PingLan() {
 					syscall.Sendto(fd, []byte{}, 0, &addr)
 				}
 			} else {
-				//IPv6 doesn't support for the time being
-				// ToDo
+				// IPv6 doesn't support for the time being
+				// TODO: find IPv6 neighbors
 			}
 		}
 	}
@@ -157,6 +160,11 @@ func (a *disc) GetLinuxARPTable() error {
 	for s.Scan() {
 		fields := strings.Fields(s.Text())
 		hosts, _ := net.LookupAddr(fields[0])
+
+		// incompleted arp request
+		if fields[2] == "0x0" {
+			continue
+		}
 
 		if len(hosts) == 0 {
 			host = "NA"
