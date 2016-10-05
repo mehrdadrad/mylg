@@ -3,13 +3,21 @@ package nms
 import (
 	"fmt"
 	"strings"
+	"time"
+
+	"github.com/briandowns/spinner"
 
 	ui "github.com/gizak/termui"
+)
+
+const (
+	maxRowTermUI = 45
 )
 
 // Widgets represents termui widgets
 type Widgets struct {
 	header   *ui.Par
+	footer   *ui.Par
 	menu     *ui.Par
 	ifName   *ui.List
 	ifStatus *ui.List
@@ -27,6 +35,7 @@ type Widgets struct {
 func initWidgets() *Widgets {
 	return &Widgets{
 		header:   ui.NewPar(""),
+		footer:   ui.NewPar(""),
 		menu:     ui.NewPar(""),
 		ifName:   ui.NewList(),
 		ifStatus: ui.NewList(),
@@ -42,7 +51,7 @@ func initWidgets() *Widgets {
 	}
 }
 
-func (w *Widgets) updateHeader(c *Client) {
+func (w *Widgets) updateFrame(c *Client) {
 	var (
 		h = fmt.Sprintf("──[ myLG ]── Quick NMS SNMP - %s ",
 			c.SNMP.Host,
@@ -50,7 +59,7 @@ func (w *Widgets) updateHeader(c *Client) {
 		m = "Press [q] to quit"
 	)
 
-	h = h + strings.Repeat(" ", ui.TermWidth()-len(h))
+	h = h + strings.Repeat(" ", ui.TermWidth()-len(h)+2)
 
 	w.header.Width = ui.TermWidth()
 	w.header.Height = 1
@@ -59,6 +68,14 @@ func (w *Widgets) updateHeader(c *Client) {
 	w.header.TextBgColor = ui.ColorCyan
 	w.header.TextFgColor = ui.ColorBlack
 	w.header.Border = false
+
+	w.footer.Width = ui.TermWidth()
+	w.footer.Height = 1
+	w.footer.Y = 1
+	w.footer.Text = strings.Repeat("─", ui.TermWidth()-6)
+	w.footer.TextBgColor = ui.ColorDefault
+	w.footer.TextFgColor = ui.ColorCyan
+	w.footer.Border = false
 
 	w.menu.Width = ui.TermWidth()
 	w.menu.Height = 1
@@ -72,10 +89,34 @@ func (w *Widgets) updateHeader(c *Client) {
 
 func (c *Client) snmpShowInterfaceTermUI(filter string, flag map[string]interface{}) error {
 	var (
+		spin   = spinner.New(spinner.CharSets[26], 220*time.Millisecond)
 		s1, s2 [][]string
 		idxs   []int
 		err    error
 	)
+
+	spin.Prefix = "initializing "
+	spin.Start()
+
+	if len(strings.TrimSpace(filter)) > 1 {
+		idxs = c.snmpGetIdx(filter)
+	}
+
+	s1, err = c.snmpGetInterfaces(idxs)
+	if err != nil {
+		spin.Stop()
+		return err
+	}
+	if len(s1)-1 < 1 {
+		spin.Stop()
+		return fmt.Errorf("could not find any interface")
+	}
+
+	spin.Stop()
+
+	if len(s1) > maxRowTermUI {
+		return fmt.Errorf("result can not fit on the screen please try filter")
+	}
 
 	ui.DefaultEvtStream = ui.NewEvtStream()
 	if err := ui.Init(); err != nil {
@@ -99,23 +140,13 @@ func (c *Client) snmpShowInterfaceTermUI(filter string, flag map[string]interfac
 	}
 
 	for _, l := range wList {
-		l.Items = make([]string, 65)
+		l.Items = make([]string, maxRowTermUI+5)
 		l.X = 0
 		l.Y = 0
-		l.Height = 40
+		l.Height = len(s1)
 		l.Border = false
-	}
-
-	if len(strings.TrimSpace(filter)) > 1 {
-		idxs = c.snmpGetIdx(filter)
-	}
-
-	s1, err = c.snmpGetInterfaces(idxs)
-	if err != nil {
-		return err
-	}
-	if len(s1)-1 < 1 {
-		return fmt.Errorf("could not find any interface")
+		l.PaddingRight = 0
+		l.PaddingLeft = 0
 	}
 
 	for i, v := range s1[0] {
@@ -125,12 +156,13 @@ func (c *Client) snmpShowInterfaceTermUI(filter string, flag map[string]interfac
 	for i, v := range s1[1:] {
 		w.ifName.Items[i+1] = v[0]
 		w.ifStatus.Items[i+1] = ifStatus(v[1])
+		w.ifDescr.Items[i+1] = v[2]
 		for _, l := range wList[3:] {
 			l.Items[i+1] = "-"
 		}
 	}
 
-	w.updateHeader(c)
+	w.updateFrame(c)
 
 	screen := []*ui.Row{
 		ui.NewRow(
@@ -151,6 +183,9 @@ func (c *Client) snmpShowInterfaceTermUI(filter string, flag map[string]interfac
 			ui.NewCol(1, 0, w.ifDOut),
 			ui.NewCol(1, 0, w.ifEIn),
 			ui.NewCol(1, 0, w.ifEOut),
+		),
+		ui.NewRow(
+			ui.NewCol(12, 0, w.footer),
 		),
 	}
 
@@ -181,6 +216,7 @@ func (c *Client) snmpShowInterfaceTermUI(filter string, flag map[string]interfac
 	})
 
 	ui.Handle("/sys/wnd/resize", func(e ui.Event) {
+		w.updateFrame(c)
 		ui.Body.Width = ui.TermWidth()
 		ui.Body.Align()
 		ui.Render(ui.Body)

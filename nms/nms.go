@@ -70,7 +70,7 @@ func (c *Client) ShowInterface(args string) error {
 	}
 
 	filter, flag := cli.Flag(args)
-	realtime := cli.SetFlag(flag, "nr", true).(bool)
+	realtime := cli.SetFlag(flag, "r", false).(bool)
 
 	if realtime {
 		if err := c.snmpShowInterfaceTermUI(filter, flag); err != nil {
