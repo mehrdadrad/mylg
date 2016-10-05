@@ -412,9 +412,10 @@ func discovery() {
 		d.LoadOUI()
 		wg.Done()
 	}()
+
 	d.PingLan()
-	//s := 10 - int(time.Since(ts).Seconds())
 	time.Sleep(5 * time.Second)
+
 	if err := d.GetARPTable(); err != nil {
 		println(err.Error())
 		return
