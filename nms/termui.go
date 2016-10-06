@@ -51,19 +51,22 @@ func initWidgets() *Widgets {
 	}
 }
 
-func (w *Widgets) updateFrame(c *Client) {
+func (w *Widgets) updateFrame(c *Client, err string) {
 	var (
-		h = fmt.Sprintf("──[ myLG ]── Quick NMS SNMP - %s ",
+		h = fmt.Sprintf("──[ myLG ]── Quick NMS SNMP - %s [%s](fg-red,fg-bold)",
 			c.SNMP.Host,
+			err,
 		)
 		m = "Press [q] to quit"
 	)
 
-	h = h + strings.Repeat(" ", ui.TermWidth()-len(h)+2)
+	if c := ui.TermWidth() - len(h) + 2 + 18; c > 0 {
+		h = h + strings.Repeat(" ", c)
+	}
 
 	w.header.Width = ui.TermWidth()
 	w.header.Height = 1
-	w.header.Y = 1
+	w.header.Y = 0
 	w.header.Text = h
 	w.header.TextBgColor = ui.ColorCyan
 	w.header.TextFgColor = ui.ColorBlack
@@ -71,7 +74,6 @@ func (w *Widgets) updateFrame(c *Client) {
 
 	w.footer.Width = ui.TermWidth()
 	w.footer.Height = 1
-	w.footer.Y = 1
 	w.footer.Text = strings.Repeat("─", ui.TermWidth()-6)
 	w.footer.TextBgColor = ui.ColorDefault
 	w.footer.TextFgColor = ui.ColorCyan
@@ -90,7 +92,9 @@ func (w *Widgets) updateFrame(c *Client) {
 func (c *Client) snmpShowInterfaceTermUI(filter string, flag map[string]interface{}) error {
 	var (
 		spin   = spinner.New(spinner.CharSets[26], 220*time.Millisecond)
+		span   = []int{1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1}
 		s1, s2 [][]string
+		rows   []*ui.Row
 		idxs   []int
 		err    error
 	)
@@ -139,20 +143,22 @@ func (c *Client) snmpShowInterfaceTermUI(filter string, flag map[string]interfac
 		w.ifEOut,
 	}
 
-	for _, l := range wList {
+	for i, l := range wList {
 		l.Items = make([]string, maxRowTermUI+5)
 		l.X = 0
 		l.Y = 0
 		l.Height = len(s1)
 		l.Border = false
-		l.PaddingRight = 0
-		l.PaddingLeft = 0
+		l.PaddingLeft = 1
+
+		rows = append(rows, ui.NewCol(span[i], 0, l))
 	}
 
 	for i, v := range s1[0] {
 		wList[i].Items[0] = fmt.Sprintf("[%s](fg-magenta,fg-bold)", v)
 	}
 
+	// initialize cells
 	for i, v := range s1[1:] {
 		w.ifName.Items[i+1] = v[0]
 		w.ifStatus.Items[i+1] = ifStatus(v[1])
@@ -162,7 +168,7 @@ func (c *Client) snmpShowInterfaceTermUI(filter string, flag map[string]interfac
 		}
 	}
 
-	w.updateFrame(c)
+	w.updateFrame(c, "")
 
 	screen := []*ui.Row{
 		ui.NewRow(
@@ -171,19 +177,7 @@ func (c *Client) snmpShowInterfaceTermUI(filter string, flag map[string]interfac
 		ui.NewRow(
 			ui.NewCol(12, 0, w.menu),
 		),
-		ui.NewRow(
-			ui.NewCol(1, 0, w.ifName),
-			ui.NewCol(1, 0, w.ifStatus),
-			ui.NewCol(2, 0, w.ifDescr),
-			ui.NewCol(1, 0, w.ifTIn),
-			ui.NewCol(1, 0, w.ifTOut),
-			ui.NewCol(1, 0, w.ifPIn),
-			ui.NewCol(1, 0, w.ifPOut),
-			ui.NewCol(1, 0, w.ifDIn),
-			ui.NewCol(1, 0, w.ifDOut),
-			ui.NewCol(1, 0, w.ifEIn),
-			ui.NewCol(1, 0, w.ifEOut),
-		),
+		ui.NewRow(rows...),
 		ui.NewRow(
 			ui.NewCol(12, 0, w.footer),
 		),
@@ -197,7 +191,8 @@ func (c *Client) snmpShowInterfaceTermUI(filter string, flag map[string]interfac
 
 		s2, err = c.snmpGetInterfaces(idxs)
 		if err != nil {
-			ui.StopLoop()
+			w.updateFrame(c, "error: "+err.Error())
+			return
 		}
 
 		for i := range s2[1:] {
@@ -208,6 +203,7 @@ func (c *Client) snmpShowInterfaceTermUI(filter string, flag map[string]interfac
 		}
 
 		copy(s1, s2)
+		w.updateFrame(c, "")
 		ui.Render(ui.Body)
 	})
 
@@ -216,7 +212,7 @@ func (c *Client) snmpShowInterfaceTermUI(filter string, flag map[string]interfac
 	})
 
 	ui.Handle("/sys/wnd/resize", func(e ui.Event) {
-		w.updateFrame(c)
+		w.updateFrame(c, "")
 		ui.Body.Width = ui.TermWidth()
 		ui.Body.Align()
 		ui.Render(ui.Body)
