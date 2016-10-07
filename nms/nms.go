@@ -70,6 +70,11 @@ func (c *Client) ShowInterface(args string) error {
 	}
 
 	filter, flag := cli.Flag(args)
+	if _, ok := flag["help"]; ok {
+		helpShowIF()
+		return fmt.Errorf("")
+	}
+
 	realtime := cli.SetFlag(flag, "r", false).(bool)
 
 	if realtime {
@@ -321,4 +326,17 @@ func help(cfg cli.Config) {
 		cfg.Snmp.Securitylevel,
 		cfg.Snmp.Authproto,
 		cfg.Snmp.Privacyproto)
+}
+
+func helpShowIF() {
+	fmt.Printf(`
+        Usage:
+        show interface [interface-regex] [options]
+
+        Interface-Regex:
+              Supports regex to filter interfaces
+
+        Options:
+              -r          Show in real-time mode
+	`)
 }

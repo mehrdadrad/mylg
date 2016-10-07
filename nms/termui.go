@@ -85,8 +85,6 @@ func (w *Widgets) updateFrame(c *Client, err string) {
 	w.menu.Text = m
 	w.menu.TextFgColor = ui.ColorDefault
 	w.menu.Border = false
-
-	ui.Render(ui.Body)
 }
 
 func (c *Client) snmpShowInterfaceTermUI(filter string, flag map[string]interface{}) error {
@@ -192,7 +190,10 @@ func (c *Client) snmpShowInterfaceTermUI(filter string, flag map[string]interfac
 		s2, err = c.snmpGetInterfaces(idxs)
 		if err != nil {
 			w.updateFrame(c, "error: "+err.Error())
+			ui.Render(ui.Body)
 			return
+		} else if strings.Contains(w.header.Text, "error") {
+			w.updateFrame(c, "")
 		}
 
 		for i := range s2[1:] {
@@ -203,7 +204,6 @@ func (c *Client) snmpShowInterfaceTermUI(filter string, flag map[string]interfac
 		}
 
 		copy(s1, s2)
-		w.updateFrame(c, "")
 		ui.Render(ui.Body)
 	})
 
@@ -224,4 +224,12 @@ func (c *Client) snmpShowInterfaceTermUI(filter string, flag map[string]interfac
 
 	ui.Loop()
 	return nil
+}
+
+func resetCounters(s [][]string) {
+	for i := range s[1:] {
+		for j := range s[i][3:] {
+			s[i+1][j+3] = "0.0"
+		}
+	}
 }
