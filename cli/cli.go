@@ -26,13 +26,16 @@ const usage = `Usage:
 	ping                        ping ip address or domain name
 	trace                       trace ip address or domain name (real-time w/ -r option)
 	dig                         name server looking up
+	nms                         quick NMS - monitor device/server ports real-time
 	whois                       resolve AS number/IP/CIDR to holder (provides by ripe ncc)
-	hping                       Ping through HTTP/HTTPS w/ GET/HEAD methods
+	hping                       Ping through HTTP/HTTPS w/ GET/POST/HEAD methods
 	scan                        scan tcp ports (you can provide range >scan host minport maxport)
 	dump                        prints out a description of the contents of packets on a network interface
 	disc                        discover all the devices on a LAN
 	peering                     peering information (provides by peeringdb.com)
 	web                         web dashboard - opens dashboard at your default browser
+
+	Please visit http://mylg.io/doc for more information
 	`
 
 // Readline structure
@@ -345,7 +348,7 @@ func Flag(args string) (string, map[string]interface{}) {
 	// none-boolean flags
 	for _, rgx := range []string{
 		`(?i)\s{1}-([a-z]+)[=|\s](-[0-9]+)`, // negative number
-		`(?i)\s{1}-([a-z|0-9]+)[=|\s]([0-9|a-z|'"{}:\/_@!#$%^&*)(\+]+)`} {
+		`(?i)\s{1}-([a-z|0-9]+)[=|\s]([0-9|a-z|'"{}:\.\/_@!#$%^&*)(\+]+)`} {
 		re = regexp.MustCompile(rgx)
 		f = re.FindAllStringSubmatch(args, -1)
 		for _, kv := range f {
@@ -389,11 +392,15 @@ func SetFlag(flag map[string]interface{}, option string, v interface{}) interfac
 	if sValue, ok := flag[option]; ok {
 		switch v.(type) {
 		case int:
-			return sValue.(int)
+			if v, ok := sValue.(int); ok {
+				return v
+			}
 		case string:
 			switch sValue.(type) {
 			case string:
-				return sValue.(string)
+				if v, ok := sValue.(string); ok {
+					return v
+				}
 			case int:
 				str := strconv.FormatInt(int64(sValue.(int)), 10)
 				return str
