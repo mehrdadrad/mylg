@@ -3,7 +3,9 @@
 package ping
 
 import (
+	"crypto/tls"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -19,15 +21,22 @@ import (
 
 // Ping represents HTTP ping request
 type Ping struct {
-	url     string
-	host    string
-	timeout time.Duration
-	count   int
-	method  string
-	buf     string
-	rAddr   net.Addr
-	nsTime  time.Duration
-	conn    net.Conn
+	url           string
+	host          string
+	interval      time.Duration
+	timeout       time.Duration
+	count         int
+	method        string
+	uAgent        string
+	proxy         *url.URL
+	buf           string
+	rAddr         net.Addr
+	nsTime        time.Duration
+	conn          net.Conn
+	quiet         bool
+	dCompress     bool
+	kAlive        bool
+	TLSSkipVerify bool
 }
 
 // Result holds Ping result
@@ -69,15 +78,38 @@ func NewPing(args string, cfg cli.Config) (*Ping, error) {
 
 	// set count
 	p.count = cli.SetFlag(flag, "c", cfg.Hping.Count).(int)
+	// set interval
+	interval := cli.SetFlag(flag, "i", "0s").(string)
+	p.interval, err = time.ParseDuration(interval)
+	if err != nil {
+		return p, fmt.Errorf("Failed to parse config.hping.interval: %s. Correct syntax is <number>s/ms", err)
+	}
 	// set timeout
 	timeout := cli.SetFlag(flag, "t", cfg.Hping.Timeout).(string)
 	p.timeout, err = time.ParseDuration(timeout)
 	if err != nil {
 		return p, fmt.Errorf("Failed to parse config.hping.timeout: %s. Correct syntax is <number>s/ms", err)
 	}
+	// set user agent
+	p.uAgent = cli.SetFlag(flag, "u", "myLG (http://mylg.io)").(string)
 	// set method
 	p.method = cli.SetFlag(flag, "m", cfg.Hping.Method).(string)
 	p.method = strings.ToUpper(p.method)
+	// disable compression
+	p.dCompress = cli.SetFlag(flag, "dc", false).(bool)
+	// keep alive
+	p.kAlive = cli.SetFlag(flag, "k", false).(bool)
+	//  TLS skip verify
+	p.TLSSkipVerify = cli.SetFlag(flag, "nc", false).(bool)
+	// make quiet
+	p.quiet = cli.SetFlag(flag, "q", false).(bool)
+	// set proxy
+	proxy := cli.SetFlag(flag, "p", "").(string)
+	if pURL, err := url.Parse(proxy); err == nil {
+		p.proxy = pURL
+	} else {
+		return p, fmt.Errorf("Failed to parse proxy url: %v", err)
+	}
 	// set buff (post)
 	buf := cli.SetFlag(flag, "d", "mylg").(string)
 	p.buf = buf
@@ -116,23 +148,32 @@ func (p *Ping) Run() {
 LOOP:
 	for i := 0; i < p.count; i++ {
 		if r, err := p.Ping(); err == nil {
-			if p.method != "HEAD" {
-				fmt.Printf(pStrPrefix+pStrSuffix, i, r.Proto, r.StatusCode, r.Size, r.TotalTime*1000)
+			if !p.quiet {
+				if p.method != "HEAD" {
+					fmt.Printf(pStrPrefix+pStrSuffix, i, r.Proto, r.StatusCode, r.Size, r.TotalTime*1000)
+				} else {
+					fmt.Printf(pStrPrefix+pStrSuffixHead, i, r.Proto, r.StatusCode, r.TotalTime*1000)
+				}
 			} else {
-				fmt.Printf(pStrPrefix+pStrSuffixHead, i, r.Proto, r.StatusCode, r.TotalTime*1000)
+				fmt.Printf(".")
 			}
 			c[r.StatusCode]++
 			s = append(s, r.TotalTime*1000)
 		} else {
 			c[-1]++
-			errmsg := strings.Split(err.Error(), ": ")
-			fmt.Printf(pStrPrefix+"%s\n", i, errmsg[len(errmsg)-1])
+			if !p.quiet {
+				errmsg := strings.Split(err.Error(), ": ")
+				fmt.Printf(pStrPrefix+"%s\n", i, errmsg[len(errmsg)-1])
+			} else {
+				fmt.Printf("!")
+			}
 		}
 		select {
 		case <-sigCh:
 			break LOOP
 		default:
 		}
+		time.Sleep(p.interval)
 	}
 	// print statistics
 	printStats(c, s, p.host)
@@ -177,8 +218,8 @@ func printStats(c map[int]float64, s []float64, host string) {
 		if k < 0 {
 			continue
 		}
-		progress := fmt.Sprintf("%10s", strings.Repeat("\u2588", int(v*100/(r["sum"])/5)))
-		fmt.Printf("HTTP Code [%d] responses : [%s] %.2f%% \n", k, progress, v*100/(r["sum"]))
+		progress := fmt.Sprintf("%-20s", strings.Repeat("\u2588", int(v*100/(totalReq)/5)))
+		fmt.Printf("HTTP Code [%d] responses : [%s] %.2f%% \n", k, progress, v*100/(totalReq))
 	}
 }
 
@@ -192,7 +233,23 @@ func (p *Ping) Ping() (Result, error) {
 		err   error
 	)
 
-	client := &http.Client{Timeout: p.timeout}
+	tr := &http.Transport{
+		DisableKeepAlives:  !p.kAlive,
+		DisableCompression: p.dCompress,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: p.TLSSkipVerify,
+		},
+	}
+
+	if p.proxy.String() != "" {
+		tr.Proxy = http.ProxyURL(p.proxy)
+	}
+
+	client := &http.Client{
+		Timeout:   p.timeout,
+		Transport: tr,
+	}
+
 	sTime = time.Now()
 
 	if p.method == "POST" {
@@ -207,23 +264,25 @@ func (p *Ping) Ping() (Result, error) {
 		return r, err
 	}
 
-	req.Header.Add("User-Agent", "myLG (http://mylg.io)")
+	req.Header.Add("User-Agent", p.uAgent)
 
 	resp, err = client.Do(req)
 
 	if err != nil {
 		return r, err
 	}
+	defer resp.Body.Close()
 
 	r.TotalTime = time.Since(sTime).Seconds()
 
 	if p.method == "GET" {
-		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return r, err
 		}
 		r.Size = len(body)
+	} else {
+		io.Copy(ioutil.Discard, resp.Body)
 	}
 
 	r.StatusCode = resp.StatusCode
@@ -238,11 +297,18 @@ func help(cfg cli.Config) {
           hping url [options]
 
     options:
-          -c count       Send 'count' requests (default: %d)
-          -t timeout     Specifies a time limit for requests in ms/s (default is %s)
-          -m method      HTTP methods: GET/POST/HEAD (default: %s)
-          -d data        Sending the given data (text/json) (default: "%s")
-	`,
+          -c   count        Send 'count' requests (default: %d)
+          -t   timeout      Set a time limit for requests in ms/s (default is %s)
+          -i   interval     Set a wait time between sending each request in ms/s
+          -m   method       HTTP methods: GET/POST/HEAD (default: %s)
+          -d   data         Sending the given data (text/json) (default: "%s")
+          -p   proxy server Set proxy http://url:port
+          -u   user agenet  Set user agent
+          -q                Quiet reqular output
+          -k                Enable keep alive
+          -dc               Disable compression
+          -nc               Don’t check the server certificate
+		  `,
 		cfg.Hping.Count,
 		cfg.Hping.Timeout,
 		cfg.Hping.Method,
