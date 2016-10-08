@@ -21,7 +21,7 @@ func TestNewPing(t *testing.T) {
 }
 
 func TestPing(t *testing.T) {
-	var url = "mylg.io"
+	var url = "google.com"
 	gock.New(url).
 		Reply(200)
 
