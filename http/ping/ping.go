@@ -4,11 +4,13 @@ package ping
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"os"
 	"os/signal"
@@ -18,6 +20,8 @@ import (
 
 	"github.com/mehrdadrad/mylg/cli"
 )
+
+var stdout *os.File
 
 // Ping represents HTTP ping request
 type Ping struct {
@@ -37,6 +41,8 @@ type Ping struct {
 	dCompress     bool
 	kAlive        bool
 	TLSSkipVerify bool
+	tracerEnabled bool
+	fmtJSON       bool
 }
 
 // Result holds Ping result
@@ -70,39 +76,35 @@ func NewPing(args string, cfg cli.Config) (*Ping, error) {
 	}
 
 	p := &Ping{
-		url:    URL,
-		host:   u.Host,
-		rAddr:  ipAddr,
-		nsTime: time.Since(sTime),
+		url:           URL,
+		host:          u.Host,
+		rAddr:         ipAddr,
+		count:         cli.SetFlag(flag, "c", cfg.Hping.Count).(int),
+		tracerEnabled: cli.SetFlag(flag, "trace", false).(bool),
+		fmtJSON:       cli.SetFlag(flag, "json", false).(bool),
+		uAgent:        cli.SetFlag(flag, "u", "myLG (http://mylg.io)").(string),
+		dCompress:     cli.SetFlag(flag, "dc", false).(bool),
+		kAlive:        cli.SetFlag(flag, "k", false).(bool),
+		TLSSkipVerify: cli.SetFlag(flag, "nc", false).(bool),
+		quiet:         cli.SetFlag(flag, "q", false).(bool),
+		nsTime:        time.Since(sTime),
 	}
 
-	// set count
-	p.count = cli.SetFlag(flag, "c", cfg.Hping.Count).(int)
 	// set interval
 	interval := cli.SetFlag(flag, "i", "0s").(string)
 	p.interval, err = time.ParseDuration(interval)
 	if err != nil {
-		return p, fmt.Errorf("Failed to parse config.hping.interval: %s. Correct syntax is <number>s/ms", err)
+		return p, fmt.Errorf("Failed to parse interval: %s. Correct syntax is <number>s/ms", err)
 	}
 	// set timeout
 	timeout := cli.SetFlag(flag, "t", cfg.Hping.Timeout).(string)
 	p.timeout, err = time.ParseDuration(timeout)
 	if err != nil {
-		return p, fmt.Errorf("Failed to parse config.hping.timeout: %s. Correct syntax is <number>s/ms", err)
+		return p, fmt.Errorf("Failed to parse timeout: %s. Correct syntax is <number>s/ms", err)
 	}
-	// set user agent
-	p.uAgent = cli.SetFlag(flag, "u", "myLG (http://mylg.io)").(string)
 	// set method
 	p.method = cli.SetFlag(flag, "m", cfg.Hping.Method).(string)
 	p.method = strings.ToUpper(p.method)
-	// disable compression
-	p.dCompress = cli.SetFlag(flag, "dc", false).(bool)
-	// keep alive
-	p.kAlive = cli.SetFlag(flag, "k", false).(bool)
-	//  TLS skip verify
-	p.TLSSkipVerify = cli.SetFlag(flag, "nc", false).(bool)
-	// make quiet
-	p.quiet = cli.SetFlag(flag, "q", false).(bool)
 	// set proxy
 	proxy := cli.SetFlag(flag, "p", "").(string)
 	if pURL, err := url.Parse(proxy); err == nil {
@@ -113,6 +115,11 @@ func NewPing(args string, cfg cli.Config) (*Ping, error) {
 	// set buff (post)
 	buf := cli.SetFlag(flag, "d", "mylg").(string)
 	p.buf = buf
+
+	if p.fmtJSON {
+		muteStdout()
+	}
+
 	return p, nil
 }
 
@@ -143,22 +150,22 @@ func (p *Ping) Run() {
 	pStrPrefix := "HTTP Response seq=%d, "
 	pStrSuffix := "proto=%s, status=%d, size=%d Bytes, time=%.3f ms\n"
 	pStrSuffixHead := "proto=%s, status=%d, time=%.3f ms\n"
-	fmt.Printf("HPING %s (%s), Method: %s, DNSLookup: %.4f ms\n", p.host, p.rAddr, p.method, p.nsTime.Seconds()*1000)
+	fmt.Printf("HPING %s (%s), Method: %s, DNSLookup: %.4f ms\n", p.host, p.rAddr, p.method, p.nsTime.Seconds()*1e3)
 
 LOOP:
 	for i := 0; i < p.count; i++ {
 		if r, err := p.Ping(); err == nil {
 			if !p.quiet {
 				if p.method != "HEAD" {
-					fmt.Printf(pStrPrefix+pStrSuffix, i, r.Proto, r.StatusCode, r.Size, r.TotalTime*1000)
+					fmt.Printf(pStrPrefix+pStrSuffix, i, r.Proto, r.StatusCode, r.Size, r.TotalTime*1e3)
 				} else {
-					fmt.Printf(pStrPrefix+pStrSuffixHead, i, r.Proto, r.StatusCode, r.TotalTime*1000)
+					fmt.Printf(pStrPrefix+pStrSuffixHead, i, r.Proto, r.StatusCode, r.TotalTime*1e3)
 				}
 			} else {
 				fmt.Printf(".")
 			}
 			c[r.StatusCode]++
-			s = append(s, r.TotalTime*1000)
+			s = append(s, r.TotalTime*1e3)
 		} else {
 			c[-1]++
 			if !p.quiet {
@@ -175,43 +182,25 @@ LOOP:
 		}
 		time.Sleep(p.interval)
 	}
+
 	// print statistics
-	printStats(c, s, p.host)
+	if p.fmtJSON {
+		unMuteStdout()
+		p.printStatsJSON(c, s)
+	} else {
+		p.printStats(c, s)
+	}
 }
 
 // printStats prints out the footer
-func printStats(c map[int]float64, s []float64, host string) {
-	var r = make(map[string]float64, 5)
+func (p *Ping) printStats(c map[int]float64, s []float64) {
 
-	// total replied requests
-	for k, v := range c {
-		if k < 0 {
-			continue
-		}
-		r["sum"] += v
-	}
-
-	for _, v := range s {
-		// maximum
-		if r["max"] < v {
-			r["max"] = v
-		}
-		// minimum
-		if r["min"] > v || r["min"] == 0 {
-			r["min"] = v
-		}
-		// average
-		if r["avg"] == 0 {
-			r["avg"] = v
-		} else {
-			r["avg"] = (r["avg"] + v) / 2
-		}
-	}
+	r := calcStats(c, s)
 
 	totalReq := r["sum"] + c[-1]
 	failPct := 100 - (100*r["sum"])/totalReq
 
-	fmt.Printf("\n--- %s HTTP ping statistics --- \n", host)
+	fmt.Printf("\n--- %s HTTP ping statistics --- \n", p.host)
 	fmt.Printf("%.0f requests transmitted, %.0f replies received, %.0f%% requests failed\n", totalReq, r["sum"], failPct)
 	fmt.Printf("HTTP Round-trip min/avg/max = %.2f/%.2f/%.2f ms\n", r["min"], r["avg"], r["max"])
 	for k, v := range c {
@@ -221,6 +210,54 @@ func printStats(c map[int]float64, s []float64, host string) {
 		progress := fmt.Sprintf("%-20s", strings.Repeat("\u2588", int(v*100/(totalReq)/5)))
 		fmt.Printf("HTTP Code [%d] responses : [%s] %.2f%% \n", k, progress, v*100/(totalReq))
 	}
+}
+
+// printStats prints out in json format
+func (p *Ping) printStatsJSON(c map[int]float64, s []float64) {
+	var statusCode = make(map[int]float64, 10)
+
+	r := calcStats(c, s)
+
+	totalReq := r["sum"] + c[-1]
+	failPct := 100 - (100*r["sum"])/totalReq
+
+	for k, v := range c {
+		if k < 0 {
+			continue
+		}
+		statusCode[k] = v * 100 / (totalReq)
+	}
+
+	trace := struct {
+		Host      string  `json:"host"`
+		DNSLookup float64 `json:"dnslookup"`
+		Count     int     `json:"count"`
+
+		Min float64 `json:"min"`
+		Avg float64 `json:"avg"`
+		Max float64 `json:"max"`
+
+		Failure     float64         `json:"failure"`
+		StatusCodes map[int]float64 `json:"statuscodes"`
+	}{
+		p.host,
+		p.nsTime.Seconds() * 1e3,
+		p.count,
+
+		r["min"],
+		r["avg"],
+		r["max"],
+
+		failPct,
+		statusCode,
+	}
+
+	b, err := json.Marshal(trace)
+	if err != nil {
+
+	}
+
+	fmt.Println(string(b))
 }
 
 // Ping tries to ping a web server through http
@@ -264,8 +301,12 @@ func (p *Ping) Ping() (Result, error) {
 		return r, err
 	}
 
+	// customized header
 	req.Header.Add("User-Agent", p.uAgent)
-
+	// context, tracert
+	if p.tracerEnabled && !p.quiet {
+		req = req.WithContext(httptrace.WithClientTrace(req.Context(), tracer()))
+	}
 	resp, err = client.Do(req)
 
 	if err != nil {
@@ -290,6 +331,66 @@ func (p *Ping) Ping() (Result, error) {
 	return r, nil
 }
 
+func tracer() *httptrace.ClientTrace {
+	var (
+		begin   = time.Now()
+		elapsed time.Duration
+	)
+
+	return &httptrace.ClientTrace{
+		ConnectDone: func(network, addr string, err error) {
+			elapsed = time.Since(begin)
+			begin = time.Now()
+			fmt.Printf("# connection completed to %s in %.3f ms\n", addr, elapsed.Seconds()*1e3)
+		},
+		GotFirstResponseByte: func() {
+			elapsed = time.Since(begin)
+			begin = time.Now()
+			fmt.Printf("# read first byte in %.3f ms\n", elapsed.Seconds()*1e3)
+		},
+	}
+}
+
+func calcStats(c map[int]float64, s []float64) map[string]float64 {
+	var r = make(map[string]float64, 5)
+
+	// total replied requests
+	for k, v := range c {
+		if k < 0 {
+			continue
+		}
+		r["sum"] += v
+	}
+
+	for _, v := range s {
+		// maximum
+		if r["max"] < v {
+			r["max"] = v
+		}
+		// minimum
+		if r["min"] > v || r["min"] == 0 {
+			r["min"] = v
+		}
+		// average
+		if r["avg"] == 0 {
+			r["avg"] = v
+		} else {
+			r["avg"] = (r["avg"] + v) / 2
+		}
+	}
+	return r
+}
+
+func muteStdout() {
+	stdout = os.Stdout
+	_, w, _ := os.Pipe()
+	os.Stdout = w
+}
+
+func unMuteStdout() {
+	os.Stdout = stdout
+}
+
 // help shows ping help
 func help(cfg cli.Config) {
 	fmt.Printf(`
@@ -303,11 +404,13 @@ func help(cfg cli.Config) {
           -m   method       HTTP methods: GET/POST/HEAD (default: %s)
           -d   data         Sending the given data (text/json) (default: "%s")
           -p   proxy server Set proxy http://url:port
-          -u   user agenet  Set user agent
+          -u   user agent   Set user agent
           -q                Quiet reqular output
           -k                Enable keep alive
           -dc               Disable compression
           -nc               Don’t check the server certificate
+          -trace            Provides the events within client requests
+          -json             Export statistics as json format
 		  `,
 		cfg.Hping.Count,
 		cfg.Hping.Timeout,
