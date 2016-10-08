@@ -344,7 +344,7 @@ apt-get install libpcap-dev
 brew install homebrew/dupes/libpcap
 ```
 
-Given that the Go Language compiler is installed, you can build and run:
+Given that the Go Language compiler (version 1.7 or greater is required) is installed, you can build and run it with:
 
 ```
 git clone https://github.com/mehrdadrad/mylg.git
