@@ -283,6 +283,10 @@ func (p *Ping) Ping() (Result, error) {
 	}
 
 	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// Don't follow redirects
+			return http.ErrUseLastResponse
+		},
 		Timeout:   p.timeout,
 		Transport: tr,
 	}
