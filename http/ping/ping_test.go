@@ -23,13 +23,13 @@ func TestNewPing(t *testing.T) {
 func TestPing(t *testing.T) {
 	var url = "google.com"
 	gock.New(url).
-		Reply(302)
+		Reply(301)
 
 	cfg, _ := cli.ReadDefaultConfig()
 	p, _ := ping.NewPing(url, cfg)
 	r, _ := p.Ping()
-	if r.StatusCode != 302 {
-		t.Error("PingGet expected to get 302 but didn't, I got:", r.StatusCode)
+	if r.StatusCode != 301 {
+		t.Error("PingGet expected to get 301 but didn't, I got:", r.StatusCode)
 	}
 	if r.TotalTime == 0 {
 		t.Error("PingGet expected to set totaltime but it didn't")
