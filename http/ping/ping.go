@@ -48,7 +48,6 @@ type Ping struct {
 // Result holds Ping result
 type Result struct {
 	StatusCode int
-	ConnTime   float64
 	TotalTime  float64
 	Size       int
 	Proto      string
