@@ -54,6 +54,51 @@ type Result struct {
 	Proto      string
 	Server     string
 	Status     string
+	Trace      Trace
+}
+
+// Trace holds trace results
+type Trace struct {
+	ConnectionTime  float64
+	TimeToFirstByte float64
+}
+
+// PrintPingResult prints result from each individual ping
+func (r Result) PrintPingResult(p *Ping, seq int, err error) {
+	pStrPrefix := "HTTP Response seq=%d, "
+	pStrSuffix := "proto=%s, status=%d, size=%d Bytes, time=%.3f ms"
+	pStrSuffixHead := "proto=%s, status=%d, time=%.3f ms"
+	pStrTrace := ", connection=%.3f ms, first byte read=%.3f ms\n"
+
+	if p.quiet {
+		if err != nil {
+			fmt.Printf("!")
+			return
+		}
+		fmt.Printf(".")
+		return
+	}
+
+	if err != nil {
+		errmsg := strings.Split(err.Error(), ": ")
+		fmt.Printf(pStrPrefix+"%s\n", seq, errmsg[len(errmsg)-1])
+		return
+	}
+
+	if p.method == "HEAD" {
+		if p.tracerEnabled {
+			fmt.Printf(pStrPrefix+pStrSuffixHead+pStrTrace, seq, r.Proto, r.StatusCode, r.TotalTime*1e3, r.Trace.ConnectionTime, r.Trace.TimeToFirstByte)
+			return
+		}
+		fmt.Printf(pStrPrefix+pStrSuffixHead+"\n", seq, r.Proto, r.StatusCode, r.TotalTime*1e3)
+		return
+	}
+	if p.tracerEnabled {
+		fmt.Printf(pStrPrefix+pStrSuffix+pStrTrace, seq, r.Proto, r.StatusCode, r.Size, r.TotalTime*1e3, r.Trace.ConnectionTime, r.Trace.TimeToFirstByte)
+		return
+	}
+	fmt.Printf(pStrPrefix+pStrSuffix+"\n", seq, r.Proto, r.StatusCode, r.Size, r.TotalTime*1e3)
+	return
 }
 
 // NewPing validate and constructs request object
@@ -147,33 +192,17 @@ func (p *Ping) Run() {
 	signal.Notify(sigCh, os.Interrupt)
 	defer signal.Stop(sigCh)
 
-	pStrPrefix := "HTTP Response seq=%d, "
-	pStrSuffix := "proto=%s, status=%d, size=%d Bytes, time=%.3f ms\n"
-	pStrSuffixHead := "proto=%s, status=%d, time=%.3f ms\n"
 	fmt.Printf("HPING %s (%s), Method: %s, DNSLookup: %.4f ms\n", p.host, p.rAddr, p.method, p.nsTime.Seconds()*1e3)
 
 LOOP:
 	for i := 0; i < p.count; i++ {
 		if r, err := p.Ping(); err == nil {
-			if !p.quiet {
-				if p.method != "HEAD" {
-					fmt.Printf(pStrPrefix+pStrSuffix, i, r.Proto, r.StatusCode, r.Size, r.TotalTime*1e3)
-				} else {
-					fmt.Printf(pStrPrefix+pStrSuffixHead, i, r.Proto, r.StatusCode, r.TotalTime*1e3)
-				}
-			} else {
-				fmt.Printf(".")
-			}
+			r.PrintPingResult(p, i, err)
 			c[r.StatusCode]++
 			s = append(s, r.TotalTime*1e3)
 		} else {
 			c[-1]++
-			if !p.quiet {
-				errmsg := strings.Split(err.Error(), ": ")
-				fmt.Printf(pStrPrefix+"%s\n", i, errmsg[len(errmsg)-1])
-			} else {
-				fmt.Printf("!")
-			}
+			r.PrintPingResult(p, i, err)
 		}
 		select {
 		case <-sigCh:
@@ -309,7 +338,7 @@ func (p *Ping) Ping() (Result, error) {
 	req.Header.Add("User-Agent", p.uAgent)
 	// context, tracert
 	if p.tracerEnabled && !p.quiet {
-		req = req.WithContext(httptrace.WithClientTrace(req.Context(), tracer()))
+		req = req.WithContext(httptrace.WithClientTrace(req.Context(), tracer(&r)))
 	}
 	resp, err = client.Do(req)
 
@@ -335,7 +364,7 @@ func (p *Ping) Ping() (Result, error) {
 	return r, nil
 }
 
-func tracer() *httptrace.ClientTrace {
+func tracer(r *Result) *httptrace.ClientTrace {
 	var (
 		begin   = time.Now()
 		elapsed time.Duration
@@ -345,12 +374,12 @@ func tracer() *httptrace.ClientTrace {
 		ConnectDone: func(network, addr string, err error) {
 			elapsed = time.Since(begin)
 			begin = time.Now()
-			fmt.Printf("# connection completed to %s in %.3f ms\n", addr, elapsed.Seconds()*1e3)
+			r.Trace.ConnectionTime = elapsed.Seconds() * 1e3
 		},
 		GotFirstResponseByte: func() {
 			elapsed = time.Since(begin)
 			begin = time.Now()
-			fmt.Printf("# read first byte in %.3f ms\n", elapsed.Seconds()*1e3)
+			r.Trace.TimeToFirstByte = elapsed.Seconds() * 1e3
 		},
 	}
 }
