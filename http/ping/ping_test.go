@@ -28,8 +28,8 @@ func TestPing(t *testing.T) {
 	cfg, _ := cli.ReadDefaultConfig()
 	p, _ := ping.NewPing(url, cfg)
 	r, _ := p.Ping()
-	if r.StatusCode != 200 {
-		t.Error("PingGet expected to get 200 but didn't")
+	if r.StatusCode != 302 {
+		t.Error("PingGet expected to get 302 but didn't")
 	}
 	if r.TotalTime == 0 {
 		t.Error("PingGet expected to set totaltime but it didn't")
