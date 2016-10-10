@@ -114,15 +114,22 @@ func NewPing(args string, cfg cli.Config) (*Ping, error) {
 	if err != nil {
 		return &Ping{}, fmt.Errorf("cannot parse url")
 	}
-	sTime := time.Now()
-	ipAddr, err := net.ResolveIPAddr("ip", u.Host)
+
+	host, _, err := net.SplitHostPort(u.Host)
 	if err != nil {
-		return &Ping{}, fmt.Errorf("cannot resolve %s: Unknown host", u.Host)
+		host = u.Host
+	}
+
+	sTime := time.Now()
+
+	ipAddr, err := net.ResolveIPAddr("ip", host)
+	if err != nil {
+		return &Ping{}, fmt.Errorf("cannot resolve %s: Unknown host", host)
 	}
 
 	p := &Ping{
 		url:           URL,
-		host:          u.Host,
+		host:          host,
 		rAddr:         ipAddr,
 		buf:           cli.SetFlag(flag, "d", "mylg").(string),
 		count:         cli.SetFlag(flag, "c", cfg.Hping.Count).(int),
