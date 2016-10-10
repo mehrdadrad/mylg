@@ -17,7 +17,7 @@ myLG is an open source software utility which combines the functions of the diff
 * Port scanning
 * Network LAN Discovery
 * Web dashboard
-* Configureable options
+* Configurable options
 * Direct access to commands from shell
 * Support vi and emacs mode, almost all basic features
 * CLI auto complete and history features
@@ -44,20 +44,19 @@ myLG is an open source software utility which combines the functions of the diff
            Free Network Diagnostic Tool
              www.facebook.com/mylg.io
                   http://mylg.io
-================== myLG v0.2.4 ==================
+================== myLG v0.2.5 ==================
 
-local> hping google.com -c 5
-HPING google.com (216.58.216.14), Method: HEAD, DNSLookup: 44.3652 ms
-HTTP Response seq=0, proto=HTTP/1.1, status=200, time=476.465 ms
-HTTP Response seq=1, proto=HTTP/1.1, status=200, time=279.403 ms
-HTTP Response seq=2, proto=HTTP/1.1, status=200, time=186.390 ms
-HTTP Response seq=3, proto=HTTP/1.1, status=200, time=279.451 ms
-HTTP Response seq=4, proto=HTTP/1.1, status=200, time=249.007 ms
+local> hping https://www.google.com -trace -c 4
+HPING www.google.com (216.58.194.196), Method: HEAD, DNSLookup: 17.2923 ms
+HTTP Response seq=0, proto=HTTP/1.1, status=200, time=183.097 ms, connection=34.789 ms, first byte read=148.167 ms
+HTTP Response seq=1, proto=HTTP/1.1, status=200, time=164.960 ms, connection=27.764 ms, first byte read=137.096 ms
+HTTP Response seq=2, proto=HTTP/1.1, status=200, time=153.559 ms, connection=27.881 ms, first byte read=125.526 ms
+HTTP Response seq=3, proto=HTTP/1.1, status=200, time=164.309 ms, connection=28.904 ms, first byte read=135.296 ms
 
---- google.com HTTP ping statistics --- 
-5 requests transmitted, 5 replies received, 0% timeout
-HTTP Round-trip min/avg/max = 186.39/264.91/476.46 ms
-HTTP Code [200] responses : [████████████████████] 100.00%
+--- www.google.com HTTP ping statistics --- 
+4 requests transmitted, 4 replies received, 0% requests failed
+HTTP Round-trip min/avg/max = 153.56/164.05/183.10 ms
+HTTP Code [200] responses : [████████████████████] 100.00% 
  
 local> whois 577
 BACOM - Bell Canada, CA
