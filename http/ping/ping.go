@@ -32,8 +32,9 @@ type Ping struct {
 	count         int
 	method        string
 	uAgent        string
-	proxy         *url.URL
 	buf           string
+	proxy         *url.URL
+	transport     *http.Transport
 	rAddr         net.Addr
 	nsTime        time.Duration
 	conn          net.Conn
@@ -123,6 +124,7 @@ func NewPing(args string, cfg cli.Config) (*Ping, error) {
 		url:           URL,
 		host:          u.Host,
 		rAddr:         ipAddr,
+		buf:           cli.SetFlag(flag, "d", "mylg").(string),
 		count:         cli.SetFlag(flag, "c", cfg.Hping.Count).(int),
 		tracerEnabled: cli.SetFlag(flag, "trace", false).(bool),
 		fmtJSON:       cli.SetFlag(flag, "json", false).(bool),
@@ -156,13 +158,13 @@ func NewPing(args string, cfg cli.Config) (*Ping, error) {
 	} else {
 		return p, fmt.Errorf("Failed to parse proxy url: %v", err)
 	}
-	// set buff (post)
-	buf := cli.SetFlag(flag, "d", "mylg").(string)
-	p.buf = buf
-
+	// set mute stdout once json requested
 	if p.fmtJSON {
 		muteStdout()
 	}
+
+	p.setTransport()
+	p.setProxy()
 
 	return p, nil
 }
@@ -288,6 +290,24 @@ func (p *Ping) printStatsJSON(c map[int]float64, s []float64) {
 	fmt.Println(string(b))
 }
 
+// setTransport set transport
+func (p *Ping) setTransport() {
+	p.transport = &http.Transport{
+		DisableKeepAlives:  !p.kAlive,
+		DisableCompression: p.dCompress,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: p.TLSSkipVerify,
+		},
+	}
+}
+
+// setProxy set proxy url
+func (p *Ping) setProxy() {
+	if p.proxy.String() != "" {
+		p.transport.Proxy = http.ProxyURL(p.proxy)
+	}
+}
+
 // Ping tries to ping a web server through http
 func (p *Ping) Ping() (Result, error) {
 	var (
@@ -298,25 +318,13 @@ func (p *Ping) Ping() (Result, error) {
 		err   error
 	)
 
-	tr := &http.Transport{
-		DisableKeepAlives:  !p.kAlive,
-		DisableCompression: p.dCompress,
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: p.TLSSkipVerify,
-		},
-	}
-
-	if p.proxy.String() != "" {
-		tr.Proxy = http.ProxyURL(p.proxy)
-	}
-
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			// Don't follow redirects
 			return http.ErrUseLastResponse
 		},
 		Timeout:   p.timeout,
-		Transport: tr,
+		Transport: p.transport,
 	}
 
 	sTime = time.Now()
