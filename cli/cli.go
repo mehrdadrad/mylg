@@ -83,7 +83,7 @@ func Init(version string) *Readline {
 	r.completer = completer
 	r.instance, err = readline.NewEx(&readline.Config{
 		Prompt:          "local> ",
-		HistoryFile:     "/tmp/myping",
+		HistoryFile:     "/tmp/.mylg.history",
 		InterruptPrompt: "^C",
 		EOFPrompt:       "exit",
 		AutoComplete:    completer,
