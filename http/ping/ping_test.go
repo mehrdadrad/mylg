@@ -1,11 +1,13 @@
 package ping_test
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/mehrdadrad/mylg/cli"
 	"github.com/mehrdadrad/mylg/http/ping"
-	"gopkg.in/h2non/gock.v0"
 )
 
 func TestNewPing(t *testing.T) {
@@ -21,16 +23,22 @@ func TestNewPing(t *testing.T) {
 }
 
 func TestPing(t *testing.T) {
-	var url = "google.com"
-	gock.New(url).
-		Reply(301)
+	testHandler := func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		fmt.Fprintln(w, "test")
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(testHandler))
+	defer ts.Close()
 
 	cfg, _ := cli.ReadDefaultConfig()
-	p, _ := ping.NewPing(url, cfg)
+	p, _ := ping.NewPing(ts.URL, cfg)
 	r, _ := p.Ping()
-	if r.StatusCode != 301 {
-		t.Error("PingGet expected to get 301 but didn't, I got:", r.StatusCode)
+
+	if r.StatusCode != 200 {
+		t.Error("PingGet expected to get 200 but didn't, I got:", r.StatusCode)
 	}
+
 	if r.TotalTime == 0 {
 		t.Error("PingGet expected to set totaltime but it didn't")
 	}
