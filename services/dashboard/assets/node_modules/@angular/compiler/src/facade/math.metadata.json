@@ -1,1 +1,0 @@
-{"__symbolic":"module","version":1,"metadata":{"Math":{"__symbolic":"select","expression":{"__symbolic":"reference","module":"./lang","name":"global"},"member":"Math"},"NaN":{"__symbolic":"error","message":"Expression form not supported","line":11,"character":40}}}
