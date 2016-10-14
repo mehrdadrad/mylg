@@ -1,0 +1,106 @@
+{
+  "name": "angular-in-memory-web-api",
+  "version": "0.1.7",
+  "description": "An in-memory web api for Angular demos and tests",
+  "main": "index.js",
+  "jsnext:main": "esm/index.js",
+  "scripts": {
+    "tsc": "tsc",
+    "tsc:w": "tsc -w",
+    "lint": "tslint ./src/*.ts -t verbose",
+    "lite": "lite-server",
+    "live": "live-server",
+    "start": "concurrently \"npm run tsc:w\" \"npm run lite\" ",
+    "test": "karma start karma.conf.js",
+    "build-and-test": "concurrently  \"npm run tsc\" \"npm run test\"",
+    "http-server": "tsc && http-server",
+    "typings": "typings"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/angular/in-memory-web-api.git"
+  },
+  "keywords": [],
+  "author": "",
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "https://github.com/angular/angular.io/blob/master/LICENSE"
+    }
+  ],
+  "bugs": {
+    "url": "https://github.com/angular/in-memory-web-api/issues"
+  },
+  "homepage": "https://github.com/angular/in-memory-web-api#readme",
+  "peerDependencies": {
+    "@angular/core": "^2.0.0",
+    "@angular/http": "^2.0.0",
+    "reflect-metadata": "~0.1.8",
+    "rxjs": "5.0.0-beta.12",
+    "zone.js": "^0.6.25"
+  },
+  "devDependencies": {
+    "@angular/common": "~2.1.0",
+    "@angular/compiler": "~2.1.0",
+    "@angular/compiler-cli": "~2.1.0",
+    "@angular/core": "~2.1.0",
+    "@angular/http": "~2.1.0",
+    "@angular/platform-browser": "~2.1.0",
+    "@angular/platform-server": "~2.1.0",
+    "reflect-metadata": "^0.1.3",
+    "rxjs": "5.0.0-beta.12",
+    "zone.js": "^0.6.25",
+    "angular-in-memory-web-api": "~0.1.7",
+    "concurrently": "^3.0.0",
+    "core-js": "^2.4.1",
+    "lite-server": "^2.2.2",
+    "tslint": "^3.15.1",
+    "typescript": "^2.0.3",
+    "typings": "^1.4.0",
+    "canonical-path": "0.0.2",
+    "http-server": "^0.9.0",
+    "lodash": "^4.16.2",
+    "jasmine-core": "~2.5.2",
+    "karma": "^1.3.0",
+    "karma-chrome-launcher": "^2.0.0",
+    "karma-cli": "^1.0.1",
+    "karma-htmlfile-reporter": "^0.3.4",
+    "karma-jasmine": "^1.0.2",
+    "karma-jasmine-html-reporter": "^0.2.2",
+    "rimraf": "^2.5.4",
+    "del": "^2.2.2",
+    "gulp": "^3.9.1",
+    "gulp-bump": "^2.4.0",
+    "gulp-load-plugins": "^1.3.0",
+    "gulp-task-listing": "^1.0.1",
+    "gulp-util": "^3.0.7",
+    "yargs": "^5.0.0"
+  },
+  "gitHead": "77c03871261f3c33799e3f039aadab81aead465a",
+  "_id": "angular-in-memory-web-api@0.1.7",
+  "_shasum": "3ca2cbf7665f260172d4b2851017b2c4bb87863e",
+  "_from": "angular-in-memory-web-api@>=0.1.5 <0.2.0",
+  "_npmVersion": "3.8.6",
+  "_nodeVersion": "5.11.1",
+  "_npmUser": {
+    "name": "wardbell",
+    "email": "wardbell@hotmail.com"
+  },
+  "dist": {
+    "shasum": "3ca2cbf7665f260172d4b2851017b2c4bb87863e",
+    "tarball": "https://registry.npmjs.org/angular-in-memory-web-api/-/angular-in-memory-web-api-0.1.7.tgz"
+  },
+  "maintainers": [
+    {
+      "name": "wardbell",
+      "email": "wardbell@hotmail.com"
+    }
+  ],
+  "_npmOperationalInternal": {
+    "host": "packages-12-west.internal.npmjs.com",
+    "tmp": "tmp/angular-in-memory-web-api-0.1.7.tgz_1476309072261_0.7492302069440484"
+  },
+  "directories": {},
+  "_resolved": "https://registry.npmjs.org/angular-in-memory-web-api/-/angular-in-memory-web-api-0.1.7.tgz",
+  "readme": "ERROR: No README data found!"
+}

@@ -1,43 +1,45 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <!-- css -->
-        <link rel="stylesheet" href="/css/c3.min.css">
-        <!-- js -->
-        <script src="/js/vendor/jquery-3.1.0.min.js"></script>
-        <script src="/js/vendor/d3.min.js"></script>
-        <script src="/js/vendor/c3.min.js"></script>
-        <script src="/js/ping.js"></script>
+  <head>
+    <base href="/">
+    <title>myLG web dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
-        <link rel="stylesheet" href="https://code.getmdl.io/1.1.3/material.indigo-blue.min.css">
-        <script defer src="https://code.getmdl.io/1.1.3/material.min.js"></script>
+    <link rel="stylesheet" href="/css/c3.min.css">
 
-        <title>myLG</title>
+    <script src="/js/vendor/jquery-3.1.0.min.js"></script>
+    <script src="/js/vendor/d3.min.js"></script>
+    <script src="/js/vendor/c3.min.js"></script>
+    <script src="/js/mylg.js"></script>
 
-        <style>
-            #chart svg {
-              height: 400px;
-            }
-            .c3-xgrid-line.red line {
-                    stroke: red;
-            }
+    <script src="node_modules/core-js/client/shim.min.js"></script>
+    <script src="node_modules/zone.js/dist/zone.js"></script>
+    <script src="node_modules/reflect-metadata/Reflect.js"></script>
+    <script src="node_modules/systemjs/dist/system.src.js"></script>
+    <!-- 2. Configure SystemJS -->
+    <script src="systemjs.config.js"></script>
+    <script>
+      System.import('app').catch(function(err){ console.error(err); });
+    </script>
 
-        </style>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="https://code.getmdl.io/1.2.1/material.green-teal.min.css" />
+    <script defer src="https://code.getmdl.io/1.2.1/material.min.js"></script>
 
-    </head>
+  </head>
 
-    <body>
-       <!-- Always shows a header, even in smaller screens. -->
+  <body>
+     <!-- Always shows a header, even in smaller screens. -->
     <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
       <header class="mdl-layout__header">
         <div class="mdl-layout__header-row">
           <!-- Title -->
-          <span class="mdl-layout-title">myLG</span>
+          <span class="mdl-layout-title mdl-color-text--white">myLG</span>
           <!-- Add spacer, to align navigation to the right -->
           <div class="mdl-layout-spacer"></div>
           <!-- Navigation. We hide it in small screens. -->
-          <nav class="mdl-navigation mdl-layout--large-screen-only">
+          <nav class="mdl-navigation mdl-layout--large-screen-only mdl-color-text--white">
             <!-- adding h.links -->
           </nav>
         </div>
@@ -45,33 +47,15 @@
       <div class="mdl-layout__drawer">
         <span class="mdl-layout-title">myLG</span>
         <nav class="mdl-navigation">
-          <a class="mdl-navigation__link" href="">Ping (local)</a>
+          <a class="mdl-navigation__link" href="/#/ping">Ping (local)</a>
         </nav>
       </div>
       <main class="mdl-layout__content" style="padding:20px;">
         <div class="page-content">
-            <!-- switch -->
-            <div style="width:80px;">
-            <label class="mdl-switch mdl-js-switch mdl-js-ripple-effect" for="pingswitch" >
-              <input type="checkbox" id="pingswitch" class="mdl-switch__input" checked>
-              <span class="mdl-switch__label">PING</span>
-            </label>
-            </div>
-
-              <!-- Textfield -->
-              <div class="mdl-textfield mdl-js-textfield">
-                <input class="mdl-textfield__input" type="text" id="pinghost">
-                <label class="mdl-textfield__label" for="pinghost">Enter host</label>
-              </div>
-              
-                <br><br>
-            <!-- chart and gauges -->
-            <div id="chart"></div> 
-            <div id="gauge" style="display: none;"></div> 
-            <!-- end of content -->
+            <mylg-app>Loading...</mylg-app>
         </div>
       </main>
     </div>
 
-    </body>
+  </body>
 </html>

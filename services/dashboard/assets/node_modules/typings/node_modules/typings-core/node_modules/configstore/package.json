@@ -1,0 +1,105 @@
+{
+  "name": "configstore",
+  "version": "2.1.0",
+  "description": "Easily load and save config without having to think about where and how",
+  "license": "BSD-2-Clause",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yeoman/configstore.git"
+  },
+  "author": {
+    "name": "Sindre Sorhus",
+    "email": "sindresorhus@gmail.com",
+    "url": "sindresorhus.com"
+  },
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "scripts": {
+    "test": "xo && ava"
+  },
+  "files": [
+    "index.js"
+  ],
+  "keywords": [
+    "config",
+    "store",
+    "storage",
+    "conf",
+    "configuration",
+    "settings",
+    "preferences",
+    "json",
+    "data",
+    "persist",
+    "persistent",
+    "save"
+  ],
+  "dependencies": {
+    "dot-prop": "^3.0.0",
+    "graceful-fs": "^4.1.2",
+    "mkdirp": "^0.5.0",
+    "object-assign": "^4.0.1",
+    "os-tmpdir": "^1.0.0",
+    "osenv": "^0.1.0",
+    "uuid": "^2.0.1",
+    "write-file-atomic": "^1.1.2",
+    "xdg-basedir": "^2.0.0"
+  },
+  "devDependencies": {
+    "ava": "*",
+    "path-exists": "^2.0.0",
+    "xo": "*"
+  },
+  "gitHead": "1a02879cc302b661d998af5a6390817660eef359",
+  "bugs": {
+    "url": "https://github.com/yeoman/configstore/issues"
+  },
+  "homepage": "https://github.com/yeoman/configstore#readme",
+  "_id": "configstore@2.1.0",
+  "_shasum": "737a3a7036e9886102aa6099e47bb33ab1aba1a1",
+  "_from": "configstore@>=2.0.0 <3.0.0",
+  "_npmVersion": "3.10.3",
+  "_nodeVersion": "6.3.1",
+  "_npmUser": {
+    "name": "sboudrias",
+    "email": "admin@simonboudrias.com"
+  },
+  "dist": {
+    "shasum": "737a3a7036e9886102aa6099e47bb33ab1aba1a1",
+    "tarball": "https://registry.npmjs.org/configstore/-/configstore-2.1.0.tgz"
+  },
+  "maintainers": [
+    {
+      "name": "sindresorhus",
+      "email": "sindresorhus@gmail.com"
+    },
+    {
+      "name": "addyosmani",
+      "email": "addyosmani@gmail.com"
+    },
+    {
+      "name": "passy",
+      "email": "phartig@rdrei.net"
+    },
+    {
+      "name": "sboudrias",
+      "email": "admin@simonboudrias.com"
+    },
+    {
+      "name": "eddiemonge",
+      "email": "eddie+npm@eddiemonge.com"
+    },
+    {
+      "name": "arthurvr",
+      "email": "contact@arthurverschaeve.be"
+    }
+  ],
+  "_npmOperationalInternal": {
+    "host": "packages-12-west.internal.npmjs.com",
+    "tmp": "tmp/configstore-2.1.0.tgz_1472703568293_0.01155238808132708"
+  },
+  "directories": {},
+  "_resolved": "https://registry.npmjs.org/configstore/-/configstore-2.1.0.tgz",
+  "readme": "ERROR: No README data found!"
+}

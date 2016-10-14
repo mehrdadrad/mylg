@@ -1,0 +1,67 @@
+{
+  "name": "throat",
+  "version": "3.0.0",
+  "description": "Throttle the parallelism of an asynchronous (promise returning) function / functions",
+  "keywords": [
+    "promise",
+    "aplus",
+    "then",
+    "throttle",
+    "concurrency",
+    "parallelism",
+    "limit"
+  ],
+  "dependencies": {},
+  "devDependencies": {
+    "coveralls": "^2.11.2",
+    "istanbul": "^0.3.5",
+    "promise": "^6.1.0",
+    "sauce-test": "^1.0.0",
+    "test-result": "^2.0.0",
+    "testit": "^2.0.5"
+  },
+  "scripts": {
+    "test": "node test/index.js && node test/browser.js",
+    "coverage": "istanbul cover test/index.js",
+    "coveralls": "npm run coverage && cat ./coverage/lcov.info | coveralls"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ForbesLindesay/throat.git"
+  },
+  "author": {
+    "name": "ForbesLindesay"
+  },
+  "license": "MIT",
+  "gitHead": "d77de8defd2d8049c06ccf314587890f9e620ac3",
+  "bugs": {
+    "url": "https://github.com/ForbesLindesay/throat/issues"
+  },
+  "homepage": "https://github.com/ForbesLindesay/throat#readme",
+  "_id": "throat@3.0.0",
+  "_shasum": "e7c64c867cbb3845f10877642f7b60055b8ec0d6",
+  "_from": "throat@>=3.0.0 <4.0.0",
+  "_npmVersion": "3.8.9",
+  "_nodeVersion": "6.2.0",
+  "_npmUser": {
+    "name": "forbeslindesay",
+    "email": "forbes@lindesay.co.uk"
+  },
+  "dist": {
+    "shasum": "e7c64c867cbb3845f10877642f7b60055b8ec0d6",
+    "tarball": "https://registry.npmjs.org/throat/-/throat-3.0.0.tgz"
+  },
+  "maintainers": [
+    {
+      "name": "forbeslindesay",
+      "email": "forbes@lindesay.co.uk"
+    }
+  ],
+  "_npmOperationalInternal": {
+    "host": "packages-16-east.internal.npmjs.com",
+    "tmp": "tmp/throat-3.0.0.tgz_1464777827074_0.20422574575059116"
+  },
+  "directories": {},
+  "_resolved": "https://registry.npmjs.org/throat/-/throat-3.0.0.tgz",
+  "readme": "ERROR: No README data found!"
+}

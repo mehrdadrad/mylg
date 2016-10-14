@@ -1,0 +1,84 @@
+{
+  "name": "widest-line",
+  "version": "1.0.0",
+  "description": "Get the visual width of the widest line in a string - the number of columns required to display it",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sindresorhus/widest-line.git"
+  },
+  "author": {
+    "name": "Sindre Sorhus",
+    "email": "sindresorhus@gmail.com",
+    "url": "sindresorhus.com"
+  },
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "scripts": {
+    "test": "xo && ava"
+  },
+  "files": [
+    "index.js"
+  ],
+  "keywords": [
+    "string",
+    "str",
+    "character",
+    "char",
+    "unicode",
+    "width",
+    "visual",
+    "column",
+    "columns",
+    "fullwidth",
+    "full-width",
+    "full",
+    "ansi",
+    "escape",
+    "codes",
+    "cli",
+    "command-line",
+    "terminal",
+    "console",
+    "cjk",
+    "chinese",
+    "japanese",
+    "korean",
+    "fixed-width"
+  ],
+  "dependencies": {
+    "string-width": "^1.0.1"
+  },
+  "devDependencies": {
+    "ava": "*",
+    "xo": "*"
+  },
+  "gitHead": "8193ed602f6c06939099e574b92828edb896bb8e",
+  "bugs": {
+    "url": "https://github.com/sindresorhus/widest-line/issues"
+  },
+  "homepage": "https://github.com/sindresorhus/widest-line",
+  "_id": "widest-line@1.0.0",
+  "_shasum": "0c09c85c2a94683d0d7eaf8ee097d564bf0e105c",
+  "_from": "widest-line@>=1.0.0 <2.0.0",
+  "_npmVersion": "2.14.7",
+  "_nodeVersion": "4.2.1",
+  "_npmUser": {
+    "name": "sindresorhus",
+    "email": "sindresorhus@gmail.com"
+  },
+  "dist": {
+    "shasum": "0c09c85c2a94683d0d7eaf8ee097d564bf0e105c",
+    "tarball": "https://registry.npmjs.org/widest-line/-/widest-line-1.0.0.tgz"
+  },
+  "maintainers": [
+    {
+      "name": "sindresorhus",
+      "email": "sindresorhus@gmail.com"
+    }
+  ],
+  "directories": {},
+  "_resolved": "https://registry.npmjs.org/widest-line/-/widest-line-1.0.0.tgz",
+  "readme": "ERROR: No README data found!"
+}

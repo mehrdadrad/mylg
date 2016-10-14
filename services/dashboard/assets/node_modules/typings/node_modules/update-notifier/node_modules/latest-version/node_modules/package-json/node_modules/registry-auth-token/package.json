@@ -1,0 +1,75 @@
+{
+  "name": "registry-auth-token",
+  "version": "3.0.1",
+  "description": "Get the auth token set for an npm registry (if any)",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha",
+    "posttest": "eslint .",
+    "coverage": "istanbul cover _mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/rexxars/registry-auth-token.git"
+  },
+  "keywords": [
+    "npm",
+    "conf",
+    "config",
+    "npmconf",
+    "registry",
+    "auth",
+    "token",
+    "authtoken"
+  ],
+  "author": {
+    "name": "Espen Hovlandsdal",
+    "email": "espen@hovlandsdal.com"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/rexxars/registry-auth-token/issues"
+  },
+  "homepage": "https://github.com/rexxars/registry-auth-token#readme",
+  "dependencies": {
+    "rc": "^1.1.6"
+  },
+  "devDependencies": {
+    "eslint": "^2.4.0",
+    "eslint-config-bengler": "^1.0.7",
+    "istanbul": "^0.4.2",
+    "mocha": "^2.4.5",
+    "require-uncached": "^1.0.2"
+  },
+  "gitHead": "9a20b880b63c25340e426d82d23663bf26bdfdfd",
+  "_id": "registry-auth-token@3.0.1",
+  "_shasum": "c3ee5ec585bce29f88bf41629a3944c71ed53e25",
+  "_from": "registry-auth-token@>=3.0.1 <4.0.0",
+  "_npmVersion": "3.9.5",
+  "_nodeVersion": "6.2.2",
+  "_npmUser": {
+    "name": "rexxars",
+    "email": "rexxars@gmail.com"
+  },
+  "dist": {
+    "shasum": "c3ee5ec585bce29f88bf41629a3944c71ed53e25",
+    "tarball": "https://registry.npmjs.org/registry-auth-token/-/registry-auth-token-3.0.1.tgz"
+  },
+  "maintainers": [
+    {
+      "name": "leipert",
+      "email": "git@leipert.io"
+    },
+    {
+      "name": "rexxars",
+      "email": "rexxars@gmail.com"
+    }
+  ],
+  "_npmOperationalInternal": {
+    "host": "packages-12-west.internal.npmjs.com",
+    "tmp": "tmp/registry-auth-token-3.0.1.tgz_1470562717176_0.6900515060406178"
+  },
+  "directories": {},
+  "_resolved": "https://registry.npmjs.org/registry-auth-token/-/registry-auth-token-3.0.1.tgz",
+  "readme": "ERROR: No README data found!"
+}

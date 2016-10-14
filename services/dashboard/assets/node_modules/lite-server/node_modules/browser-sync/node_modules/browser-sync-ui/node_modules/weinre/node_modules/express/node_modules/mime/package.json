@@ -1,0 +1,67 @@
+{
+  "author": {
+    "name": "Robert Kieffer",
+    "email": "robert@broofa.com",
+    "url": "http://github.com/broofa"
+  },
+  "contributors": [
+    {
+      "name": "Benjamin Thomas",
+      "email": "benjamin@benjaminthomas.org",
+      "url": "http://github.com/bentomas"
+    }
+  ],
+  "dependencies": {},
+  "description": "A comprehensive library for mime-type mapping",
+  "devDependencies": {
+    "async_testing": ""
+  },
+  "keywords": [
+    "util",
+    "mime"
+  ],
+  "main": "mime.js",
+  "name": "mime",
+  "repository": {
+    "url": "git://github.com/bentomas/node-mime.git",
+    "type": "git"
+  },
+  "version": "1.2.4",
+  "_npmJsonOpts": {
+    "file": "/home/kieffer/.npm/mime/1.2.4/package/package.json",
+    "wscript": false,
+    "contributors": false,
+    "serverjs": false
+  },
+  "_id": "mime@1.2.4",
+  "engines": {
+    "node": "*"
+  },
+  "_engineSupported": true,
+  "_npmVersion": "1.0.27",
+  "_nodeVersion": "v0.4.6",
+  "_defaultsLoaded": true,
+  "dist": {
+    "shasum": "11b5fdaf29c2509255176b80ad520294f5de92b7",
+    "tarball": "https://registry.npmjs.org/mime/-/mime-1.2.4.tgz"
+  },
+  "maintainers": [
+    {
+      "name": "broofa",
+      "email": "robert@broofa.com"
+    },
+    {
+      "name": "bentomas",
+      "email": "benjamin@benjaminthomas.org"
+    }
+  ],
+  "directories": {},
+  "_shasum": "11b5fdaf29c2509255176b80ad520294f5de92b7",
+  "_resolved": "https://registry.npmjs.org/mime/-/mime-1.2.4.tgz",
+  "_from": "mime@1.2.4",
+  "bugs": {
+    "url": "https://github.com/bentomas/node-mime/issues"
+  },
+  "readme": "ERROR: No README data found!",
+  "homepage": "https://github.com/bentomas/node-mime#readme"
+}

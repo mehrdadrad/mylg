@@ -1,0 +1,82 @@
+{
+  "name": "binary-extensions",
+  "version": "1.7.0",
+  "description": "List of binary file extensions",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sindresorhus/binary-extensions.git"
+  },
+  "author": {
+    "name": "Sindre Sorhus",
+    "email": "sindresorhus@gmail.com",
+    "url": "sindresorhus.com"
+  },
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "scripts": {
+    "test": "ava"
+  },
+  "main": "binary-extensions.json",
+  "files": [
+    "binary-extensions.json"
+  ],
+  "keywords": [
+    "bin",
+    "binary",
+    "ext",
+    "extensions",
+    "extension",
+    "file",
+    "json",
+    "list",
+    "array"
+  ],
+  "devDependencies": {
+    "ava": "*"
+  },
+  "gitHead": "6bab08ef2d6e6f1780eaba7607d347dae51768fa",
+  "bugs": {
+    "url": "https://github.com/sindresorhus/binary-extensions/issues"
+  },
+  "homepage": "https://github.com/sindresorhus/binary-extensions#readme",
+  "_id": "binary-extensions@1.7.0",
+  "_shasum": "6c1610db163abfb34edfe42fa423343a1e01185d",
+  "_from": "binary-extensions@>=1.0.0 <2.0.0",
+  "_npmVersion": "2.15.9",
+  "_nodeVersion": "4.5.0",
+  "_npmUser": {
+    "name": "sindresorhus",
+    "email": "sindresorhus@gmail.com"
+  },
+  "dist": {
+    "shasum": "6c1610db163abfb34edfe42fa423343a1e01185d",
+    "tarball": "https://registry.npmjs.org/binary-extensions/-/binary-extensions-1.7.0.tgz"
+  },
+  "maintainers": [
+    {
+      "name": "sindresorhus",
+      "email": "sindresorhus@gmail.com"
+    },
+    {
+      "name": "paulmillr",
+      "email": "paul@paulmillr.com"
+    },
+    {
+      "name": "es128",
+      "email": "elan.shanker+npm@gmail.com"
+    },
+    {
+      "name": "arthurvr",
+      "email": "contact@arthurverschaeve.be"
+    }
+  ],
+  "_npmOperationalInternal": {
+    "host": "packages-12-west.internal.npmjs.com",
+    "tmp": "tmp/binary-extensions-1.7.0.tgz_1475458290589_0.34751846990548074"
+  },
+  "directories": {},
+  "_resolved": "https://registry.npmjs.org/binary-extensions/-/binary-extensions-1.7.0.tgz",
+  "readme": "ERROR: No README data found!"
+}

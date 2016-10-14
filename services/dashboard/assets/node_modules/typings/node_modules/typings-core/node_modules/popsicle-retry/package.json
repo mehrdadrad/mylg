@@ -1,0 +1,83 @@
+{
+  "name": "popsicle-retry",
+  "version": "3.2.1",
+  "description": "Enable request retries for Popsicle",
+  "main": "dist/index.js",
+  "files": [
+    "dist/",
+    "typings.json",
+    "LICENSE"
+  ],
+  "scripts": {
+    "lint": "tslint \"src/**/*.ts\"",
+    "build": "rm -rf dist/ && tsc",
+    "test-spec": "blue-tape test/index.js | tap-spec",
+    "test-cov": "istanbul cover --print none blue-tape -- test/index.js | tap-spec",
+    "test": "npm run lint && npm run build && npm run test-cov",
+    "prepublish": "typings install && npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/blakeembrey/popsicle-retry.git"
+  },
+  "keywords": [
+    "popsicle",
+    "retry",
+    "fail",
+    "5xx",
+    "error",
+    "http"
+  ],
+  "author": {
+    "name": "Blake Embrey",
+    "email": "hello@blakeembrey.com",
+    "url": "http://blakeembrey.me"
+  },
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/blakeembrey/popsicle-retry/issues"
+  },
+  "homepage": "https://github.com/blakeembrey/popsicle-retry",
+  "devDependencies": {
+    "blue-tape": "^0.2.0",
+    "bluebird": "^3.2.2",
+    "express": "^4.13.4",
+    "istanbul": "^0.4.2",
+    "popsicle": "^6.1.0",
+    "tap-spec": "^4.1.1",
+    "tslint": "^3.1.1",
+    "typescript": "^1.7.3",
+    "typings": "^1.2.0"
+  },
+  "dependencies": {
+    "any-promise": "^1.1.0",
+    "xtend": "^4.0.1"
+  },
+  "gitHead": "145e5d2c2f9d09c0836d082da8c37ac0e1faabe5",
+  "_id": "popsicle-retry@3.2.1",
+  "_shasum": "e06e866533b42a7a123eb330cbe63a7cebcba10c",
+  "_from": "popsicle-retry@>=3.2.0 <4.0.0",
+  "_npmVersion": "3.9.3",
+  "_nodeVersion": "6.2.1",
+  "_npmUser": {
+    "name": "blakeembrey",
+    "email": "hello@blakeembrey.com"
+  },
+  "dist": {
+    "shasum": "e06e866533b42a7a123eb330cbe63a7cebcba10c",
+    "tarball": "https://registry.npmjs.org/popsicle-retry/-/popsicle-retry-3.2.1.tgz"
+  },
+  "maintainers": [
+    {
+      "name": "blakeembrey",
+      "email": "hello@blakeembrey.com"
+    }
+  ],
+  "_npmOperationalInternal": {
+    "host": "packages-12-west.internal.npmjs.com",
+    "tmp": "tmp/popsicle-retry-3.2.1.tgz_1466444479612_0.5119327732827514"
+  },
+  "directories": {},
+  "_resolved": "https://registry.npmjs.org/popsicle-retry/-/popsicle-retry-3.2.1.tgz",
+  "readme": "ERROR: No README data found!"
+}

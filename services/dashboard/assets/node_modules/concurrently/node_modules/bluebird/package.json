@@ -1,0 +1,93 @@
+{
+  "name": "bluebird",
+  "description": "Full featured Promises/A+ implementation with exceptionally good performance",
+  "version": "2.9.6",
+  "keywords": [
+    "promise",
+    "performance",
+    "promises",
+    "promises-a",
+    "promises-aplus",
+    "async",
+    "await",
+    "deferred",
+    "deferreds",
+    "future",
+    "flow control",
+    "dsl",
+    "fluent interface"
+  ],
+  "scripts": {
+    "lint": "node scripts/jshint.js",
+    "test": "node tools/test.js",
+    "istanbul": "istanbul",
+    "prepublish": "node tools/build.js --no-debug --main --zalgo --browser --minify"
+  },
+  "homepage": "https://github.com/petkaantonov/bluebird",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/petkaantonov/bluebird.git"
+  },
+  "bugs": {
+    "url": "http://github.com/petkaantonov/bluebird/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Petka Antonov",
+    "email": "petka_antonov@hotmail.com",
+    "url": "http://github.com/petkaantonov/"
+  },
+  "devDependencies": {
+    "acorn": "~0.6.0",
+    "bluebird": "^2.9.2",
+    "body-parser": "^1.10.2",
+    "browserify": "^8.1.1",
+    "cli-table": "~0.3.1",
+    "cross-spawn": "^0.2.3",
+    "glob": "^4.3.2",
+    "grunt-saucelabs": "~8.4.1",
+    "istanbul": "^0.3.5",
+    "jshint": "^2.6.0",
+    "jshint-stylish": "~0.2.0",
+    "mkdirp": "~0.5.0",
+    "mocha": "~2.1",
+    "open": "~0.0.5",
+    "optimist": "~0.6.1",
+    "rimraf": "~2.2.6",
+    "serve-static": "^1.7.1",
+    "sinon": "~1.7.3",
+    "uglify-js": "~2.4.16"
+  },
+  "main": "./js/main/bluebird.js",
+  "browser": "./js/browser/bluebird.js",
+  "files": [
+    "js/browser",
+    "js/main",
+    "js/zalgo",
+    "LICENSE",
+    "zalgo.js"
+  ],
+  "gitHead": "54b5bc50bb081d84ac3a1aa08ee9e57ebf2653b5",
+  "_id": "bluebird@2.9.6",
+  "_shasum": "1fc3a6b1685267dc121b5ec89b32ce069d81ab7d",
+  "_from": "bluebird@2.9.6",
+  "_npmVersion": "2.1.12",
+  "_nodeVersion": "0.10.34",
+  "_npmUser": {
+    "name": "esailija",
+    "email": "petka_antonov@hotmail.com"
+  },
+  "maintainers": [
+    {
+      "name": "esailija",
+      "email": "petka_antonov@hotmail.com"
+    }
+  ],
+  "dist": {
+    "shasum": "1fc3a6b1685267dc121b5ec89b32ce069d81ab7d",
+    "tarball": "https://registry.npmjs.org/bluebird/-/bluebird-2.9.6.tgz"
+  },
+  "directories": {},
+  "_resolved": "https://registry.npmjs.org/bluebird/-/bluebird-2.9.6.tgz",
+  "readme": "ERROR: No README data found!"
+}

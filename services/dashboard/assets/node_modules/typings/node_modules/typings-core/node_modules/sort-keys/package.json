@@ -1,0 +1,74 @@
+{
+  "name": "sort-keys",
+  "version": "1.1.2",
+  "description": "Sort the keys of an object",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sindresorhus/sort-keys.git"
+  },
+  "author": {
+    "name": "Sindre Sorhus",
+    "email": "sindresorhus@gmail.com",
+    "url": "sindresorhus.com"
+  },
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "scripts": {
+    "test": "xo && mocha"
+  },
+  "files": [
+    "index.js"
+  ],
+  "keywords": [
+    "sort",
+    "object",
+    "keys",
+    "obj",
+    "key",
+    "stable",
+    "deterministic",
+    "deep",
+    "recursive",
+    "recursively"
+  ],
+  "dependencies": {
+    "is-plain-obj": "^1.0.0"
+  },
+  "devDependencies": {
+    "mocha": "*",
+    "xo": "*"
+  },
+  "gitHead": "daad509046075f30586f295eefa36bab18384eae",
+  "bugs": {
+    "url": "https://github.com/sindresorhus/sort-keys/issues"
+  },
+  "homepage": "https://github.com/sindresorhus/sort-keys#readme",
+  "_id": "sort-keys@1.1.2",
+  "_shasum": "441b6d4d346798f1b4e49e8920adfba0e543f9ad",
+  "_from": "sort-keys@>=1.0.0 <2.0.0",
+  "_npmVersion": "2.15.0",
+  "_nodeVersion": "4.4.2",
+  "_npmUser": {
+    "name": "sindresorhus",
+    "email": "sindresorhus@gmail.com"
+  },
+  "dist": {
+    "shasum": "441b6d4d346798f1b4e49e8920adfba0e543f9ad",
+    "tarball": "https://registry.npmjs.org/sort-keys/-/sort-keys-1.1.2.tgz"
+  },
+  "maintainers": [
+    {
+      "name": "sindresorhus",
+      "email": "sindresorhus@gmail.com"
+    }
+  ],
+  "_npmOperationalInternal": {
+    "host": "packages-12-west.internal.npmjs.com",
+    "tmp": "tmp/sort-keys-1.1.2.tgz_1463546673008_0.6780793990474194"
+  },
+  "directories": {},
+  "_resolved": "https://registry.npmjs.org/sort-keys/-/sort-keys-1.1.2.tgz",
+  "readme": "ERROR: No README data found!"
+}

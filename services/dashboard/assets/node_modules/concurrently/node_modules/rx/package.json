@@ -1,0 +1,79 @@
+{
+  "name": "rx",
+  "title": "Reactive Extensions for JavaScript (RxJS)",
+  "description": "Library for composing asynchronous and event-based operations in JavaScript",
+  "version": "2.3.24",
+  "homepage": "https://github.com/Reactive-Extensions/RxJS",
+  "author": {
+    "name": "Cloud Programmability Team",
+    "url": "https://github.com/Reactive-Extensions/RxJS/blob/master/authors.txt"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Reactive-Extensions/RxJS.git"
+  },
+  "licenses": [
+    {
+      "type": "Apache License, Version 2.0",
+      "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+    }
+  ],
+  "bugs": {
+    "url": "https://github.com/Reactive-Extensions/RxJS/issues"
+  },
+  "jam": {
+    "main": "dist/rx.all.js"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "grunt-cli": "*",
+    "grunt": "*",
+    "grunt-contrib-jshint": "*",
+    "grunt-contrib-connect": "*",
+    "grunt-contrib-uglify": "*",
+    "grunt-contrib-concat": "*",
+    "grunt-contrib-qunit": "*",
+    "grunt-contrib-watch": "*",
+    "grunt-saucelabs": "*",
+    "grunt-jscs": "*",
+    "load-grunt-tasks": "*"
+  },
+  "keywords": [
+    "LINQ",
+    "FRP",
+    "Reactive",
+    "Events",
+    "Rx",
+    "RxJS"
+  ],
+  "main": "index.js",
+  "scripts": {
+    "test": "grunt"
+  },
+  "gitHead": "cc56a2a251afc5efd4a1a15cc49868ec2a47fbed",
+  "_id": "rx@2.3.24",
+  "_shasum": "14f950a4217d7e35daa71bbcbe58eff68ea4b2b7",
+  "_from": "rx@2.3.24",
+  "_npmVersion": "1.4.12",
+  "_npmUser": {
+    "name": "mattpodwysocki",
+    "email": "matthew.podwysocki@gmail.com"
+  },
+  "maintainers": [
+    {
+      "name": "vvilhonen",
+      "email": "vesa@vilhonen.com"
+    },
+    {
+      "name": "mattpodwysocki",
+      "email": "matthew.podwysocki@gmail.com"
+    }
+  ],
+  "dist": {
+    "shasum": "14f950a4217d7e35daa71bbcbe58eff68ea4b2b7",
+    "tarball": "https://registry.npmjs.org/rx/-/rx-2.3.24.tgz"
+  },
+  "directories": {},
+  "_resolved": "https://registry.npmjs.org/rx/-/rx-2.3.24.tgz",
+  "readme": "ERROR: No README data found!"
+}

@@ -1,0 +1,93 @@
+{
+  "name": "object.pick",
+  "description": "Returns a filtered copy of an object with only the specified keys, similar to `_.pick` from lodash / underscore.",
+  "version": "1.1.2",
+  "homepage": "https://github.com/jonschlinkert/object.pick",
+  "author": {
+    "name": "Jon Schlinkert",
+    "url": "https://github.com/jonschlinkert"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jonschlinkert/object.pick.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jonschlinkert/object.pick/issues"
+  },
+  "license": "MIT",
+  "files": [
+    "index.js"
+  ],
+  "main": "index.js",
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "dependencies": {
+    "isobject": "^2.0.0"
+  },
+  "devDependencies": {
+    "gulp-format-md": "^0.1.7",
+    "mocha": "^2.4.5",
+    "vinyl": "^1.1.1"
+  },
+  "keywords": [
+    "object",
+    "pick"
+  ],
+  "verb": {
+    "run": true,
+    "toc": false,
+    "layout": "default",
+    "tasks": [
+      "readme"
+    ],
+    "plugins": [
+      "gulp-format-md"
+    ],
+    "related": {
+      "list": [
+        "get-value",
+        "set-value",
+        "mixin-deep",
+        "extend-shallow"
+      ],
+      "highlight": "object.omit"
+    },
+    "reflinks": [
+      "verb"
+    ],
+    "lint": {
+      "reflinks": true
+    }
+  },
+  "gitHead": "e32be6263a9e6ffd9bc5364b9b423e75b8d7c8e0",
+  "_id": "object.pick@1.1.2",
+  "_shasum": "c24da6ce45f10c5aabe71797d16a839cd5969b1e",
+  "_from": "object.pick@>=1.1.1 <2.0.0",
+  "_npmVersion": "3.6.0",
+  "_nodeVersion": "5.5.0",
+  "_npmUser": {
+    "name": "jonschlinkert",
+    "email": "github@sellside.com"
+  },
+  "maintainers": [
+    {
+      "name": "jonschlinkert",
+      "email": "github@sellside.com"
+    }
+  ],
+  "dist": {
+    "shasum": "c24da6ce45f10c5aabe71797d16a839cd5969b1e",
+    "tarball": "https://registry.npmjs.org/object.pick/-/object.pick-1.1.2.tgz"
+  },
+  "_npmOperationalInternal": {
+    "host": "packages-13-west.internal.npmjs.com",
+    "tmp": "tmp/object.pick-1.1.2.tgz_1458549449575_0.7406595365609974"
+  },
+  "directories": {},
+  "_resolved": "https://registry.npmjs.org/object.pick/-/object.pick-1.1.2.tgz",
+  "readme": "ERROR: No README data found!"
+}

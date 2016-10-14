@@ -1,0 +1,79 @@
+{
+  "name": "dot-prop",
+  "version": "3.0.0",
+  "description": "Get, set, or delete a property from a nested object using a dot path",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sindresorhus/dot-prop.git"
+  },
+  "author": {
+    "name": "Sindre Sorhus",
+    "email": "sindresorhus@gmail.com",
+    "url": "sindresorhus.com"
+  },
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "scripts": {
+    "test": "xo && ava",
+    "bench": "matcha bench.js"
+  },
+  "files": [
+    "index.js"
+  ],
+  "keywords": [
+    "obj",
+    "object",
+    "prop",
+    "property",
+    "dot",
+    "path",
+    "get",
+    "set",
+    "delete",
+    "del",
+    "access",
+    "notation",
+    "dotty"
+  ],
+  "dependencies": {
+    "is-obj": "^1.0.0"
+  },
+  "devDependencies": {
+    "ava": "*",
+    "matcha": "^0.7.0",
+    "xo": "*"
+  },
+  "gitHead": "e50dd5becf66fda1e2307506eeb3162c0f9f3bb8",
+  "bugs": {
+    "url": "https://github.com/sindresorhus/dot-prop/issues"
+  },
+  "homepage": "https://github.com/sindresorhus/dot-prop#readme",
+  "_id": "dot-prop@3.0.0",
+  "_shasum": "1b708af094a49c9a0e7dbcad790aba539dac1177",
+  "_from": "dot-prop@>=3.0.0 <4.0.0",
+  "_npmVersion": "2.15.0",
+  "_nodeVersion": "4.4.2",
+  "_npmUser": {
+    "name": "sindresorhus",
+    "email": "sindresorhus@gmail.com"
+  },
+  "dist": {
+    "shasum": "1b708af094a49c9a0e7dbcad790aba539dac1177",
+    "tarball": "https://registry.npmjs.org/dot-prop/-/dot-prop-3.0.0.tgz"
+  },
+  "maintainers": [
+    {
+      "name": "sindresorhus",
+      "email": "sindresorhus@gmail.com"
+    }
+  ],
+  "_npmOperationalInternal": {
+    "host": "packages-16-east.internal.npmjs.com",
+    "tmp": "tmp/dot-prop-3.0.0.tgz_1463682431324_0.5166875969152898"
+  },
+  "directories": {},
+  "_resolved": "https://registry.npmjs.org/dot-prop/-/dot-prop-3.0.0.tgz",
+  "readme": "ERROR: No README data found!"
+}

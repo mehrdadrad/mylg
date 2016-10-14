@@ -1,0 +1,27 @@
+<style>
+    #chart {
+        max-width: 90%;
+	    min-height: 350px;
+    }
+    .c3-xgrid-line.red line {
+   		stroke: red;
+    }
+</style>
+
+<!-- Switch -->
+<div style="width:80px;">
+    <label class="mdl-switch mdl-js-switch mdl-js-ripple-effect" for="pingswitch" >
+	    <input type="checkbox" id="pingswitch" class="mdl-switch__input" (click)="onDisabledCheck()" checked>
+    	<span class="mdl-switch__label"></span>
+    </label>
+</div>
+
+<!-- Textfield -->
+<div class="mdl-textfield mdl-js-textfield" (keyup.enter)="onKey($event)" >
+    <input class="mdl-textfield__input" type="text" id="pinghost">
+    <input type="hidden" id="host" value="{{host}}">
+    <label class="mdl-textfield__label" for="pinghost">Enter host {{clickMessage}}</label>
+</div>
+<br><br>
+<!-- chart and gauges -->
+<div id="chart"></div>

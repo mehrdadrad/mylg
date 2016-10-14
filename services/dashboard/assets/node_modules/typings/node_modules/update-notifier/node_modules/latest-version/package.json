@@ -1,0 +1,73 @@
+{
+  "name": "latest-version",
+  "version": "2.0.0",
+  "description": "Get the latest version of a npm package",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sindresorhus/latest-version.git"
+  },
+  "author": {
+    "name": "Sindre Sorhus",
+    "email": "sindresorhus@gmail.com",
+    "url": "sindresorhus.com"
+  },
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "scripts": {
+    "test": "xo && ava"
+  },
+  "files": [
+    "index.js"
+  ],
+  "keywords": [
+    "latest",
+    "version",
+    "npm",
+    "pkg",
+    "package",
+    "package.json",
+    "current",
+    "module"
+  ],
+  "dependencies": {
+    "package-json": "^2.0.0"
+  },
+  "devDependencies": {
+    "ava": "*",
+    "xo": "*"
+  },
+  "xo": {
+    "ignores": [
+      "test.js"
+    ]
+  },
+  "gitHead": "851d3f43a06dcf6837f102a6f1cebd64d988ad68",
+  "bugs": {
+    "url": "https://github.com/sindresorhus/latest-version/issues"
+  },
+  "homepage": "https://github.com/sindresorhus/latest-version",
+  "_id": "latest-version@2.0.0",
+  "_shasum": "56f8d6139620847b8017f8f1f4d78e211324168b",
+  "_from": "latest-version@>=2.0.0 <3.0.0",
+  "_npmVersion": "2.14.4",
+  "_nodeVersion": "4.1.1",
+  "_npmUser": {
+    "name": "sindresorhus",
+    "email": "sindresorhus@gmail.com"
+  },
+  "dist": {
+    "shasum": "56f8d6139620847b8017f8f1f4d78e211324168b",
+    "tarball": "https://registry.npmjs.org/latest-version/-/latest-version-2.0.0.tgz"
+  },
+  "maintainers": [
+    {
+      "name": "sindresorhus",
+      "email": "sindresorhus@gmail.com"
+    }
+  ],
+  "directories": {},
+  "_resolved": "https://registry.npmjs.org/latest-version/-/latest-version-2.0.0.tgz",
+  "readme": "ERROR: No README data found!"
+}

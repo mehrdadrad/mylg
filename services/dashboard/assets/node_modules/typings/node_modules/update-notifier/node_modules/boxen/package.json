@@ -1,0 +1,82 @@
+{
+  "name": "boxen",
+  "version": "0.6.0",
+  "description": "Create boxes in the terminal",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sindresorhus/boxen.git"
+  },
+  "author": {
+    "name": "Sindre Sorhus",
+    "email": "sindresorhus@gmail.com",
+    "url": "sindresorhus.com"
+  },
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "scripts": {
+    "test": "xo && ava"
+  },
+  "files": [
+    "index.js"
+  ],
+  "keywords": [
+    "cli",
+    "box",
+    "boxes",
+    "terminal",
+    "term",
+    "console",
+    "ascii",
+    "unicode",
+    "border",
+    "text"
+  ],
+  "dependencies": {
+    "ansi-align": "^1.1.0",
+    "camelcase": "^2.1.0",
+    "chalk": "^1.1.1",
+    "cli-boxes": "^1.0.0",
+    "filled-array": "^1.0.0",
+    "object-assign": "^4.0.1",
+    "repeating": "^2.0.0",
+    "string-width": "^1.0.1",
+    "widest-line": "^1.0.0"
+  },
+  "devDependencies": {
+    "ava": "*",
+    "xo": "*"
+  },
+  "gitHead": "b40d45a6290811acdc2a740580f60d00e88c12eb",
+  "bugs": {
+    "url": "https://github.com/sindresorhus/boxen/issues"
+  },
+  "homepage": "https://github.com/sindresorhus/boxen#readme",
+  "_id": "boxen@0.6.0",
+  "_shasum": "8364d4248ac34ff0ef1b2f2bf49a6c60ce0d81b6",
+  "_from": "boxen@>=0.6.0 <0.7.0",
+  "_npmVersion": "2.15.0",
+  "_nodeVersion": "4.4.2",
+  "_npmUser": {
+    "name": "sindresorhus",
+    "email": "sindresorhus@gmail.com"
+  },
+  "dist": {
+    "shasum": "8364d4248ac34ff0ef1b2f2bf49a6c60ce0d81b6",
+    "tarball": "https://registry.npmjs.org/boxen/-/boxen-0.6.0.tgz"
+  },
+  "maintainers": [
+    {
+      "name": "sindresorhus",
+      "email": "sindresorhus@gmail.com"
+    }
+  ],
+  "_npmOperationalInternal": {
+    "host": "packages-16-east.internal.npmjs.com",
+    "tmp": "tmp/boxen-0.6.0.tgz_1465297824027_0.5156188388355076"
+  },
+  "directories": {},
+  "_resolved": "https://registry.npmjs.org/boxen/-/boxen-0.6.0.tgz",
+  "readme": "ERROR: No README data found!"
+}

@@ -1,0 +1,73 @@
+{
+  "name": "reflect-metadata",
+  "version": "0.1.8",
+  "description": "Polyfill for Metadata Reflection API",
+  "main": "Reflect.js",
+  "typings": "typings.d.ts",
+  "typescript": {
+    "definition": "Reflect.d.ts"
+  },
+  "scripts": {
+    "prepublish": "npm run test",
+    "build": "tsc",
+    "build-test": "tsc --project ./test/",
+    "test": "npm run build & npm run build-test & node ./temp/test/run.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rbuckton/ReflectDecorators.git"
+  },
+  "keywords": [
+    "decorator",
+    "metadata",
+    "javascript",
+    "reflect"
+  ],
+  "author": {
+    "name": "Ron Buckton",
+    "email": "ron.buckton@microsoft.com",
+    "url": "http://github.com/rbuckton"
+  },
+  "licenses": [
+    {
+      "license": "Apache-2.0",
+      "url": "http://github.com/rbuckton/ReflectDecorators/raw/master/LICENSE"
+    }
+  ],
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/rbuckton/ReflectDecorators/issues"
+  },
+  "homepage": "http://rbuckton.github.io/ReflectDecorators",
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^1.7.5"
+  },
+  "gitHead": "d737a908100aa8ca7f083f815f06875cb80a217e",
+  "_id": "reflect-metadata@0.1.8",
+  "_shasum": "72426d570b60776e3688968bd5ab9537a15cecf6",
+  "_from": "reflect-metadata@>=0.1.8 <0.2.0",
+  "_npmVersion": "3.4.0",
+  "_nodeVersion": "6.0.0",
+  "_npmUser": {
+    "name": "rbuckton",
+    "email": "rbuckton@chronicles.org"
+  },
+  "dist": {
+    "shasum": "72426d570b60776e3688968bd5ab9537a15cecf6",
+    "tarball": "https://registry.npmjs.org/reflect-metadata/-/reflect-metadata-0.1.8.tgz"
+  },
+  "maintainers": [
+    {
+      "name": "rbuckton",
+      "email": "rbuckton@chronicles.org"
+    }
+  ],
+  "_npmOperationalInternal": {
+    "host": "packages-16-east.internal.npmjs.com",
+    "tmp": "tmp/reflect-metadata-0.1.8.tgz_1470784336772_0.628053993685171"
+  },
+  "directories": {},
+  "_resolved": "https://registry.npmjs.org/reflect-metadata/-/reflect-metadata-0.1.8.tgz",
+  "readme": "ERROR: No README data found!"
+}

@@ -1,0 +1,50 @@
+{
+  "name": "@angular/compiler",
+  "version": "2.0.2",
+  "description": "Angular - the compiler library",
+  "main": "bundles/compiler.umd.js",
+  "module": "index.js",
+  "typings": "index.d.ts",
+  "author": {
+    "name": "angular"
+  },
+  "license": "MIT",
+  "peerDependencies": {
+    "@angular/core": "2.0.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/angular/angular.git"
+  },
+  "bugs": {
+    "url": "https://github.com/angular/angular/issues"
+  },
+  "homepage": "https://github.com/angular/angular#readme",
+  "_id": "@angular/compiler@2.0.2",
+  "scripts": {},
+  "_shasum": "4ca4e53956cd6a36b223ce12682ba0bc289326bb",
+  "_from": "@angular/compiler@>=2.0.2 <2.1.0",
+  "_resolved": "https://registry.npmjs.org/@angular/compiler/-/compiler-2.0.2.tgz",
+  "_npmVersion": "3.9.2",
+  "_nodeVersion": "5.4.1",
+  "_npmUser": {
+    "name": "angular",
+    "email": "angular-core+npm@google.com"
+  },
+  "dist": {
+    "shasum": "4ca4e53956cd6a36b223ce12682ba0bc289326bb",
+    "tarball": "https://registry.npmjs.org/@angular/compiler/-/compiler-2.0.2.tgz"
+  },
+  "maintainers": [
+    {
+      "name": "angular",
+      "email": "angular-core+npm@google.com"
+    }
+  ],
+  "_npmOperationalInternal": {
+    "host": "packages-16-east.internal.npmjs.com",
+    "tmp": "tmp/compiler-2.0.2.tgz_1475759780254_0.7693459615111351"
+  },
+  "directories": {},
+  "readme": "ERROR: No README data found!"
+}

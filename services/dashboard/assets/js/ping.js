@@ -3,11 +3,9 @@ $(function() {
     host = "",
     stop = true,
     counter = 0,
+    loopId,
     chart = c3.generate({
     bindto: '#chart',
-    size: {
-        width: 800
-    },
     data: {
         x: 'x',
         xFormat: '%M:%S',
@@ -15,8 +13,8 @@ $(function() {
         ],
       type: 'spline',
     },
-point: {
-        r: 1 
+    point: {
+        r: 1
     },
     legend: {
         show: true
@@ -28,7 +26,7 @@ point: {
         y: {
             show: true
         }
-    },    
+    },
     axis : {
         x : {
             label: {
@@ -40,15 +38,15 @@ point: {
                 count: 10,
                 format: function (e, d) {
                    var format = d3.time.format("%H:%M:%S");
-                   return format(e) 
+                   return format(e)
                 }
             }
       },
       y: {
           label: 'RTT [ms]',
           tick: {
-              format: d3.format('.2f') 
-          }    
+              format: d3.format('.2f')
+          }
       }
   },
   zoom: {
@@ -59,32 +57,25 @@ point: {
     length:0
   }
 });
-var gauge = c3.generate({
-    bindto: '#gauge',
-    data: {
-         columns: [
-             ['packet loss', 0]
-         ],
-         type: 'gauge' 
-    },
-    size: {
-        height: 80
-    }
-})
 function update() {
     var len = 0,
+        host = $('#host').val();
         gap = [];
     if (host == "" || !stop) {
         return
     }
+    if (host == undefined) {
+        clearInterval(loopId);
+        return
+    }
     if (counter == 0) {
         gap['x'] = ['x']
-        gap['host'] = [host]    
+        gap['host'] = [host]
         var t = new Date();
         for (var i=1;i<=10;i++) {
             t.setSeconds(t.getSeconds() - i);
             gap['host'].push(null);
-            gap['x'].push(new Date (t));  
+            gap['x'].push(new Date (t));
         }
         chart.flow({
                 columns: [
@@ -112,33 +103,7 @@ function update() {
             if (data.rtt == 0) {
               chart.xgrids.add({value: d, text: 'timeout', class: 'red'});
             }
-            gauge.flow({
-                columns:[['packet loss', data.pl]] 
-            });
-    },"json"); 
+    },"json");
 }
-
-$('#pinghost').bind("enterKey",function(e){
-    e.preventDefault();
-    host = $('#pinghost').val();
-});
-$('#pinghost').keyup(function(e){
-    e.preventDefault();
-    if(e.keyCode == 13)
-    {
-          $(this).trigger("enterKey");
-    }
-});
-
-$('#pingswitch').change(function () {
-    var check = $(this).prop('checked');
-    if (check) {
-        stop = true
-    } else {
-        stop = false
-    }
-});
- 
-setInterval(update, 1001);
-
+loopId = setInterval(update, 1001);
 });
