@@ -428,6 +428,17 @@ func (i *Trace) MRun() (chan HopResp, error) {
 	return c, nil
 }
 
+// Marshal encodes hop response
+func (h *HopResp) Marshal() string {
+	return fmt.Sprintf(`{ "Id": %d, "Hop": "%s", "IP" : "%s", "Elapsed": %.3f, "Holder": "%s", "ASN": %.0f }`,
+		h.num,
+		h.hop,
+		h.ip,
+		h.elapsed,
+		h.whois.holder,
+		h.whois.asn)
+}
+
 // routerChange detects if the router changed
 // to another one
 func routerChange(router, b string) bool {
