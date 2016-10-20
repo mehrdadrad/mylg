@@ -1,0 +1,34 @@
+<!-- Switch -->
+<div style="width:80px;">
+    <label class="mdl-switch mdl-js-switch mdl-js-ripple-effect" for="traceswitch" >
+	    <input type="checkbox" id="traceswitch" class="mdl-switch__input" (click)="onClickCheck()" checked>
+    	<span class="mdl-switch__label"></span>
+    </label>
+</div>
+
+<!-- Textfield -->
+<div class="mdl-textfield mdl-js-textfield" (keyup.enter)="onKey($event)">
+    <input #dest class="mdl-textfield__input" type="text" id="tracehost" (blur)="onBlur()" (focus)="onFocus()">
+    <!--<input type="hidden" id="host" value="{{host}}">-->
+    <label class="mdl-textfield__label" for="tracehost">Enter host</label>
+</div>
+
+<!-- submit button -->
+<button class="mdl-button mdl-js-button mdl-button--fab mdl-button--mini-fab"
+        *ngIf="hideSubmitBtn"
+        (click)="onKey($event,dest.value)">
+    <i class="material-icons">public</i>
+</button>
+
+<!-- chip to shows error -->
+<span class="mdl-chip  mdl-chip--contact" *ngIf="traceErrorMsg!=''">
+    <span class="mdl-chip__contact mdl-color--red mdl-color-text--white"> </span>
+    <span class="mdl-chip__text">{{traceErrorMsg}}</span>
+</span>
+<br><br>
+
+
+<ag-grid-ng2
+    #traceGrid style="width: 100%; height: 350px;" class="ag-fresh"
+    [gridOptions]="gridOptions">
+</ag-grid-ng2>
