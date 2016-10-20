@@ -85,7 +85,7 @@ function update() {
         });
 
     }
-    $.post( "/api/ping",{host: host},function( data ) {
+    $.get( "/api/ping",{host: host},function( data ) {
         counter++;
         if (counter > 120) {
             len = 1;
