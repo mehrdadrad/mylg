@@ -9,18 +9,18 @@ var disabledPing = false,
 })
 
 export class PingComponent {
-	ngOnInit(){
-		jQuery.getScript('/js/ping.js');
-		this.checked = 'checked'
-	}
+    ngOnInit(){
+        jQuery.getScript('/js/ping.js');
+        this.checked = 'checked'
+    }
 
-	ngAfterViewInit() {
-		componentHandler.upgradeDom();
-	}
+    ngAfterViewInit() {
+        componentHandler.upgradeDom();
+    }
 
-	ngOnDestroy() {
-		this.host = ""
-	}
+    ngOnDestroy() {
+        this.host = ""
+    }
 
     onFocus() {
         this.hideSubmitBtn = true
@@ -33,17 +33,18 @@ export class PingComponent {
     }
 
 	onKey(event: any, dest: string) {
-	    host = dest || event.target.value;
-		this.host = host
+        host = dest || event.target.value;
+        this.host = host
         this.hideSubmitBtn = false
-	}
-	onDisabledCheck() {
-		if (disabledPing) {
-			this.host = host
-			disabledPing = false
-		} else {
-			this.host = ""
-			disabledPing = true
-		}
-	}
+    }
+
+    onDisabledCheck() {
+        if (disabledPing) {
+            this.host = host
+            disabledPing = false
+        } else {
+            this.host = ""
+            disabledPing = true
+        }
+    }
 }
