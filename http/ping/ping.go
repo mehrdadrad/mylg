@@ -33,7 +33,6 @@ type Ping struct {
 	method        string
 	uAgent        string
 	buf           string
-	proxy         *url.URL
 	transport     *http.Transport
 	rAddr         net.Addr
 	nsTime        time.Duration
@@ -157,20 +156,12 @@ func NewPing(args string, cfg cli.Config) (*Ping, error) {
 	// set method
 	p.method = cli.SetFlag(flag, "m", cfg.Hping.Method).(string)
 	p.method = strings.ToUpper(p.method)
-	// set proxy
-	proxy := cli.SetFlag(flag, "p", "").(string)
-	if pURL, err := url.Parse(proxy); err == nil {
-		p.proxy = pURL
-	} else {
-		return p, fmt.Errorf("Failed to parse proxy url: %v", err)
-	}
 	// set mute stdout once json requested
 	if p.fmtJSON {
 		muteStdout()
 	}
 
 	p.setTransport()
-	p.setProxy()
 
 	return p, nil
 }
@@ -304,13 +295,7 @@ func (p *Ping) setTransport() {
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: p.TLSSkipVerify,
 		},
-	}
-}
-
-// setProxy set proxy url
-func (p *Ping) setProxy() {
-	if p.proxy.String() != "" {
-		p.transport.Proxy = http.ProxyURL(p.proxy)
+		Proxy: http.ProxyFromEnvironment,
 	}
 }
 
@@ -449,7 +434,6 @@ func help(cfg cli.Config) {
           -i   interval     Set a wait time between sending each request in ms/s
           -m   method       HTTP methods: GET/POST/HEAD (default: %s)
           -d   data         Sending the given data (text/json) (default: "%s")
-          -p   proxy server Set proxy http://url:port
           -u   user agent   Set user agent
           -q                Quiet reqular output
           -k                Enable keep alive
@@ -457,6 +441,10 @@ func help(cfg cli.Config) {
           -nc               Don’t check the server certificate
           -trace            Provides the events within client requests
           -json             Export statistics as json format
+
+    Proxy:
+        hping parses environment variables HTTP(S)_PROXY to determine which/if any
+        proxies should be used.
 		  `,
 		cfg.Hping.Count,
 		cfg.Hping.Timeout,
