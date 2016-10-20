@@ -37,7 +37,6 @@ type Ping struct {
 	transport     *http.Transport
 	rAddr         net.Addr
 	nsTime        time.Duration
-	conn          net.Conn
 	quiet         bool
 	dCompress     bool
 	kAlive        bool
