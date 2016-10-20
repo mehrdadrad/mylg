@@ -18,10 +18,19 @@
 
 <!-- Textfield -->
 <div class="mdl-textfield mdl-js-textfield" (keyup.enter)="onKey($event)" >
-    <input class="mdl-textfield__input" type="text" id="pinghost">
+    <input #dest class="mdl-textfield__input" type="text" id="pinghost" (blur)="onBlur()" (focus)="onFocus()">
     <input type="hidden" id="host" value="{{host}}">
     <label class="mdl-textfield__label" for="pinghost">Enter host {{clickMessage}}</label>
 </div>
+
+<!-- submit button -->
+<button class="mdl-button mdl-js-button mdl-button--fab mdl-button--mini-fab" 
+        *ngIf="hideSubmitBtn" 
+        (click)="onKey($event,dest.value)">
+    <i class="material-icons">public</i>
+</button>
+
+
 <br><br>
 <!-- chart and gauges -->
 <div id="chart"></div>

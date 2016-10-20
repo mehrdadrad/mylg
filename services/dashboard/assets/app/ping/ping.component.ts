@@ -5,7 +5,7 @@ var disabledPing = false,
 
 @Component({
     selector: 'ping',
-    templateUrl: './app/ping/ping.html'
+    templateUrl: './app/ping/ping.component.html'
 })
 
 export class PingComponent {
@@ -13,15 +13,29 @@ export class PingComponent {
 		jQuery.getScript('/js/ping.js');
 		this.checked = 'checked'
 	}
+
 	ngAfterViewInit() {
 		componentHandler.upgradeDom();
 	}
+
 	ngOnDestroy() {
 		this.host = ""
 	}
-	onKey(event: any) {
-	    host = event.target.value;
+
+    onFocus() {
+        this.hideSubmitBtn = true
+    }
+
+    onBlur() {
+        setTimeout(() => {
+            this.hideSubmitBtn = false
+        }, 600)
+    }
+
+	onKey(event: any, dest: string) {
+	    host = dest || event.target.value;
 		this.host = host
+        this.hideSubmitBtn = false
 	}
 	onDisabledCheck() {
 		if (disabledPing) {
