@@ -6,7 +6,7 @@ import { HttpModule, JsonpModule } from '@angular/http';
 import { PingComponent } from './ping/ping.component';
 import { TraceComponent } from './trace/trace.component';
 import { HomeComponent } from './home/home.component';
-import { AgGridModule } from '../node_modules/ag-grid-ng2/main';
+import { AgGridModule } from '../js/vendor/ag-grid-ng2/main';
 
 import { AppComponent } from './app.component';
 
