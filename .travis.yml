@@ -8,6 +8,5 @@ before_install:
   - go get golang.org/x/tools/cmd/cover
   - go get github.com/mattn/goveralls
 
-script:  
-  - test -z "$(gofmt -s -l . | tee /dev/stderr)"
+script:
   - go test -v ./...
