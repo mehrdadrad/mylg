@@ -31,7 +31,9 @@
     "reflect-metadata": "^0.1.8",
     "rxjs": "5.0.0-beta.12",
     "systemjs": "0.19.39",
-    "zone.js": "^0.6.25"
+    "zone.js": "^0.6.25",
+    "ag-grid": "6.2.x",
+    "ag-grid-ng2": "6.2.x"
   },
   "devDependencies": {
     "concurrently": "^3.0.0",
