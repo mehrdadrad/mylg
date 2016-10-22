@@ -9,4 +9,5 @@ before_install:
   - go get github.com/mattn/goveralls
 
 script:
+  - test -z "$(gofmt -s -l . | tee /dev/stderr)"
   - go test -v ./...
