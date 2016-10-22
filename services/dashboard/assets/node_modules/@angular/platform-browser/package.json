@@ -1,0 +1,51 @@
+{
+  "name": "@angular/platform-browser",
+  "version": "2.0.2",
+  "description": "Angular - library for using Angular in a web browser",
+  "main": "bundles/platform-browser.umd.js",
+  "module": "index.js",
+  "typings": "index.d.ts",
+  "author": {
+    "name": "angular"
+  },
+  "license": "MIT",
+  "peerDependencies": {
+    "@angular/core": "2.0.2",
+    "@angular/common": "2.0.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/angular/angular.git"
+  },
+  "bugs": {
+    "url": "https://github.com/angular/angular/issues"
+  },
+  "homepage": "https://github.com/angular/angular#readme",
+  "_id": "@angular/platform-browser@2.0.2",
+  "scripts": {},
+  "_shasum": "25b754bfc426ee5a761b0b47fc677cd7d8ae41d2",
+  "_from": "@angular/platform-browser@>=2.0.2 <2.1.0",
+  "_resolved": "https://registry.npmjs.org/@angular/platform-browser/-/platform-browser-2.0.2.tgz",
+  "_npmVersion": "3.9.2",
+  "_nodeVersion": "5.4.1",
+  "_npmUser": {
+    "name": "angular",
+    "email": "angular-core+npm@google.com"
+  },
+  "dist": {
+    "shasum": "25b754bfc426ee5a761b0b47fc677cd7d8ae41d2",
+    "tarball": "https://registry.npmjs.org/@angular/platform-browser/-/platform-browser-2.0.2.tgz"
+  },
+  "maintainers": [
+    {
+      "name": "angular",
+      "email": "angular-core+npm@google.com"
+    }
+  ],
+  "_npmOperationalInternal": {
+    "host": "packages-16-east.internal.npmjs.com",
+    "tmp": "tmp/platform-browser-2.0.2.tgz_1475759799655_0.4836408121045679"
+  },
+  "directories": {},
+  "readme": "ERROR: No README data found!"
+}

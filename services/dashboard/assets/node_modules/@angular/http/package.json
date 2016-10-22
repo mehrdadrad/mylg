@@ -1,0 +1,52 @@
+{
+  "name": "@angular/http",
+  "version": "2.0.2",
+  "description": "Angular - the http service",
+  "main": "bundles/http.umd.js",
+  "module": "index.js",
+  "typings": "index.d.ts",
+  "author": {
+    "name": "angular"
+  },
+  "license": "MIT",
+  "peerDependencies": {
+    "rxjs": "5.0.0-beta.12",
+    "@angular/core": "2.0.2",
+    "@angular/platform-browser": "2.0.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/angular/angular.git"
+  },
+  "bugs": {
+    "url": "https://github.com/angular/angular/issues"
+  },
+  "homepage": "https://github.com/angular/angular#readme",
+  "_id": "@angular/http@2.0.2",
+  "scripts": {},
+  "_shasum": "c74b03125162f470b84e52c3a496b8fcda7085eb",
+  "_from": "@angular/http@>=2.0.2 <2.1.0",
+  "_resolved": "https://registry.npmjs.org/@angular/http/-/http-2.0.2.tgz",
+  "_npmVersion": "3.9.2",
+  "_nodeVersion": "5.4.1",
+  "_npmUser": {
+    "name": "angular",
+    "email": "angular-core+npm@google.com"
+  },
+  "dist": {
+    "shasum": "c74b03125162f470b84e52c3a496b8fcda7085eb",
+    "tarball": "https://registry.npmjs.org/@angular/http/-/http-2.0.2.tgz"
+  },
+  "maintainers": [
+    {
+      "name": "angular",
+      "email": "angular-core+npm@google.com"
+    }
+  ],
+  "_npmOperationalInternal": {
+    "host": "packages-12-west.internal.npmjs.com",
+    "tmp": "tmp/http-2.0.2.tgz_1475759797782_0.276241697371006"
+  },
+  "directories": {},
+  "readme": "ERROR: No README data found!"
+}
