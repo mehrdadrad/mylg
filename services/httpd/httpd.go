@@ -4,7 +4,7 @@ package httpd
 import (
 	"fmt"
 	"github.com/gorilla/mux"
-	_ "github.com/rakyll/statik/fs"
+	"github.com/rakyll/statik/fs"
 	"net/http"
 
 	"github.com/mehrdadrad/mylg/cli"
@@ -59,7 +59,7 @@ func API(w http.ResponseWriter, r *http.Request, cfg cli.Config) {
 
 // Run starts web service
 func Run(cfg cli.Config) {
-	//statikFS, _ := fs.New()
+	statikFS, _ := fs.New()
 	router := mux.NewRouter().StrictSlash(true)
 	routes := []Route{
 		{
@@ -77,8 +77,7 @@ func Run(cfg cli.Config) {
 			Name(route.Name).
 			Handler(route.HandlerFunc)
 	}
-	//router.PathPrefix("/").Handler(http.FileServer(statikFS))
-	router.PathPrefix("/").Handler(http.FileServer(http.Dir("/Users/mehrdad/golang/src/github.com/mehrdadrad/myLG/services/dashboard/assets/")))
+	router.PathPrefix("/").Handler(http.FileServer(statikFS))
 	err := http.ListenAndServe(fmt.Sprintf("%s:%d", cfg.Web.Address, cfg.Web.Port), router)
 	if err != nil {
 		println(err.Error())
