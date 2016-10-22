@@ -5,6 +5,8 @@ import { CommonModule } from '@angular/common';
 import { GridOptions } from 'ag-grid/main';
 import { Observable, Subscription } from 'rxjs/Rx'
 
+declare var c3: any;
+
 @Component({
     selector: 'trace',
     templateUrl: './app/trace/trace.component.html',
@@ -14,14 +16,16 @@ import { Observable, Subscription } from 'rxjs/Rx'
 export class TraceComponent {
 	public traceId
     public rowData
+    public chartData
     public stats
     public lock
     public stop
+    public chart
+    public geoUpdated
 
     private gridOptions:GridOptions;
 
     subscription: Subscription;
-
 
     @HostListener('window:beforeunload', ['$event'])
     unloadHandler(event) {
@@ -33,6 +37,8 @@ export class TraceComponent {
 		this.checked = 'checked'
         this.lock = false
         this.stop = false
+		this.geoUpdated = false
+		this.chartData = []
 	}
 
 	ngAfterViewInit() {
@@ -49,7 +55,7 @@ export class TraceComponent {
     }
 
     onBlur() {
-        setTimeout(() => { 
+        setTimeout(() => {
             this.hideSubmitBtn = false
         }, 600)
     }
@@ -61,6 +67,7 @@ export class TraceComponent {
             this.subscription.unsubscribe()
             this.cleanUp()
         }
+        this.initChart()
         if (event.target.value) {
             event.target.blur()
         }
@@ -289,6 +296,18 @@ export class TraceComponent {
                         this.gridOptions.api.sizeColumnsToFit()
                         this.gridOptions.api.refreshView()
                     }
+
+					if (data.IP.length > 5) {
+						this.chartData.push([data.IP, this.rowData[idx].Elapsed])
+					}
+
+					if (data.Last) {
+						this.updateChart(this.chartData)
+						this.chartData = []
+						if (!this.geoUpdated) {
+							this.updateGeo(data.IP)
+						}
+					}
 				},
 				err => {
                     this.lock = false
@@ -301,6 +320,7 @@ export class TraceComponent {
 	}
 
     cleanUp() {
+		this.geoUpdated = false
         if (this.subscription) {
             this.subscription.unsubscribe()
         }
@@ -312,4 +332,105 @@ export class TraceComponent {
            this.traceId = undefined
         }
     }
+
+	updateGeo(host) {
+		let options = new RequestOptions({
+            search: new URLSearchParams('ip='+host)
+        });
+		this.http.get('api/geo', options)
+			.map((res:Response) => res.json())
+			.subscribe(
+				data => {
+					console.log(data)
+					this.geoFrom = data.CitySrc + ' '+ data.CountrySrc
+					this.geoTo = data.CityDst + ' '+ data.CountryDst
+					this.geoUpdated = true
+				},
+			)
+	}
+
+    initChart() {
+        this.chart = c3.generate({
+			bindto: '#chart',
+			data: {
+                x: 'x',
+                xFormat: '%M:%S',
+                columns: [],
+                type: 'spline',
+            },
+			axis : {
+					x : {
+						extent: function() {
+							var t = new Date();
+							t.setSeconds(t.getSeconds() - 20);
+							return [new Date(t), new Date()];
+						},
+						label: {
+							text: 'Time [days]'
+						},
+						type : 'timeseries',
+						tick: {
+							fit: true,
+							count: 10,
+							format: function (e, d) {
+							   var format = d3.time.format("%H:%M:%S");
+							   return format(e)
+							}
+						}
+				  },
+				  y: {
+					  label: 'RTT [ms]',
+					  tick: {
+						  format: d3.format('.2f')
+					  }
+				  }
+			},
+			zoom: {
+				enabled: true
+			},
+			subchart: {
+				show: true,
+			},
+			legend: {
+				show: true,
+			},
+			grid: {
+				x: {
+					show: true
+				},
+				y: {
+					show: true
+				}
+			},
+        })
+    }
+
+    updateChart(data) {
+		if (this.chart.data().length == 0) {
+			var gap = []
+			gap['x'] = ['x']
+			gap['host'] = [data[0][0]]
+			var t = new Date();
+			for (var i=1;i<=25;i++) {
+				t.setSeconds(t.getSeconds() - i);
+				gap['host'].push(null);
+				gap['x'].push(new Date (t));
+			}
+			this.chart.flow({
+					columns: [
+						gap['host'],
+						gap['x'],
+					],
+			});
+		}
+		var date = new Date()
+		var cols = [['x', date]]
+			for (var d of data) {
+				cols.push(d)
+			}
+            this.chart.flow({
+                    columns: cols,
+                    length:0,
+            });
+	}
 }

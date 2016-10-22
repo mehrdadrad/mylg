@@ -1,3 +1,12 @@
+<style>
+	.mdl-data-table td {
+		border: 0px solid !important;
+		padding-left: 10px !important;
+		padding-right: 10px !important;
+	}
+</style>
+
+
 <!-- Switch -->
 <div style="width:80px;">
     <label class="mdl-switch mdl-js-switch mdl-js-ripple-effect" for="traceswitch" >
@@ -9,7 +18,6 @@
 <!-- Textfield -->
 <div class="mdl-textfield mdl-js-textfield" (keyup.enter)="onKey($event)">
     <input #dest class="mdl-textfield__input" type="text" id="tracehost" (blur)="onBlur()" (focus)="onFocus()">
-    <!--<input type="hidden" id="host" value="{{host}}">-->
     <label class="mdl-textfield__label" for="tracehost">Enter host</label>
 </div>
 
@@ -17,7 +25,7 @@
 <button class="mdl-button mdl-js-button mdl-button--fab mdl-button--mini-fab"
         *ngIf="hideSubmitBtn"
         (click)="onKey($event,dest.value)">
-    <i class="material-icons">public</i>
+    <i class="material-icons">play_arrow</i>
 </button>
 
 <!-- chip to shows error -->
@@ -25,10 +33,27 @@
     <span class="mdl-chip__contact mdl-color--red mdl-color-text--white"> </span>
     <span class="mdl-chip__text">{{traceErrorMsg}}</span>
 </span>
+
+<table style="float:right;" class="mdl-data-table mdl-js-data-table mdl-shadow--2dp"
+  *ngIf="geoUpdated">
+  <tbody>
+    <tr>
+	  <td class="material-icons">public</td>
+      <td>{{geoFrom}}</td>
+      <td class="material-icons">navigate_next</td>
+      <td>{{geoTo}}</td>
+    </tr>
+  </tbody>
+</table>
+
+
 <br><br>
 
-
+<!-- grid -->
 <ag-grid-ng2
     #traceGrid style="width: 100%; height: 350px;" class="ag-fresh"
     [gridOptions]="gridOptions">
 </ag-grid-ng2>
+
+<!-- chart -->
+<div id="chart" style="padding-top:15px;"></div>
