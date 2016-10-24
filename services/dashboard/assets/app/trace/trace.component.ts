@@ -21,6 +21,8 @@ export class TraceComponent {
     public lock
     public stop
     public chart
+    public jChart
+    public jLast
     public geoUpdated
 
     private gridOptions:GridOptions;
@@ -67,7 +69,8 @@ export class TraceComponent {
             this.subscription.unsubscribe()
             this.cleanUp()
         }
-        this.initChart()
+        this.initRTTChart()
+        this.initJitterChart()
         if (event.target.value) {
             event.target.blur()
         }
@@ -284,9 +287,13 @@ export class TraceComponent {
                             this.rowData[idx].Best  = this.stats[idx].best
                             this.rowData[idx].Worst = this.stats[idx].worst
                         } else {
-                            this.rowData[idx].Best  = Math.min(this.rowData[idx].Elapsed, this.stats[idx].best)
-                            this.rowData[idx].Worst = Math.max(this.rowData[idx].Elapsed, this.stats[idx].worst)
-                            this.rowData[idx].Avg   = Math.round(((this.stats[idx].avg + this.rowData[idx].Elapsed) / 2) *1000) / 1000
+                            this.stats[idx].best  = Math.min(this.rowData[idx].Elapsed, this.stats[idx].best)
+                            this.stats[idx].worst = Math.max(this.rowData[idx].Elapsed, this.stats[idx].worst)
+                            this.stats[idx].avg   = Math.round(((this.stats[idx].avg + this.rowData[idx].Elapsed) / 2) *1000) / 1000
+
+                            this.rowData[idx].Avg   = this.stats[idx].avg
+                            this.rowData[idx].Best  = this.stats[idx].best
+                            this.rowData[idx].Worst = this.stats[idx].worst
                         }
                     }
                     this.rowData[idx].Loss = (this.stats[idx].loss*100)/this.stats[idx].sent
@@ -302,7 +309,8 @@ export class TraceComponent {
 					}
 
 					if (data.Last) {
-						this.updateChart(this.chartData)
+						this.updateRTTChart(this.chartData)
+						this.updateJitterChart(this.rowData[idx].Elapsed)
 						this.chartData = []
 						if (!this.geoUpdated) {
 							this.updateGeo(data.IP)
@@ -341,7 +349,6 @@ export class TraceComponent {
 			.map((res:Response) => res.json())
 			.subscribe(
 				data => {
-					console.log(data)
 					this.geoFrom = data.CitySrc + ' '+ data.CountrySrc
 					this.geoTo = data.CityDst + ' '+ data.CountryDst
 					this.geoUpdated = true
@@ -349,9 +356,9 @@ export class TraceComponent {
 			)
 	}
 
-    initChart() {
+    initRTTChart() {
         this.chart = c3.generate({
-			bindto: '#chart',
+			bindto: '#rChart',
 			data: {
                 x: 'x',
                 xFormat: '%M:%S',
@@ -405,7 +412,7 @@ export class TraceComponent {
         })
     }
 
-    updateChart(data) {
+    updateRTTChart(data) {
 		if (this.chart.data().length == 0) {
 			var gap = []
 			gap['x'] = ['x']
@@ -432,5 +439,80 @@ export class TraceComponent {
                     columns: cols,
                     length:0,
             });
+	}
+
+    initJitterChart() {
+        this.jChart = c3.generate({
+			bindto: '#jChart',
+			data: {
+                x: 'x',
+                xFormat: '%M:%S',
+                columns: [],
+                type: 'spline',
+            },
+            size: {
+                height: 120
+            },
+            axis: {
+            	x : {
+					type : 'timeseries',
+					tick: {
+						fit: true,
+						count: 10,
+						format: function (e, d) {
+						   var format = d3.time.format("%H:%M:%S");
+						   return format(e)
+						}
+					}
+			    },
+                y: {
+                    label: 'Jitter [ms]',
+                    tick: {
+                        count: 4,
+                        format: d3.format('.2f')
+                    },
+                    min: 0
+                }
+            },
+            point: {
+                show: false
+            },
+            legend: {
+                show: false
+            }
+        })
+    }
+
+    updateJitterChart(data) {
+		if (this.jChart.data().length == 0) {
+			var gap = []
+			gap['x'] = ['x']
+			gap['host'] = ['jitter']
+			var t = new Date();
+			for (var i=1;i<=25+1;i++) {
+				t.setSeconds(t.getSeconds() - i);
+				gap['host'].push(null);
+				gap['x'].push(new Date (t));
+			}
+			this.jChart.flow({
+					columns: [
+						gap['host'],
+						gap['x'],
+					],
+			});
+		}
+        if (!this.jLast) {
+            this.jLast = data
+            return
+        }
+		var date = new Date()
+        this.jChart.flow({
+            columns: [
+                ['jitter', Math.abs(this.jLast - data)],
+                ['x', date],
+            ],
+            length:0,
+        });
+        this.jLast = data
 	}
 }
