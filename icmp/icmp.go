@@ -104,7 +104,10 @@ type ICMPResp struct {
 	seq  int
 	src  net.IP
 	udp  struct{ dstPort int }
-	ip   struct{ dst net.IP }
+	ip   struct {
+		dst net.IP
+		id  int
+	}
 }
 
 // Whois represents prefix info from RIPE
@@ -140,11 +143,19 @@ func icmpV4RespParser(b []byte) ICMPResp {
 		resp.id = int(b[24])<<8 | int(b[25])
 		resp.seq = int(b[26])<<8 | int(b[27])
 	case IPv4ICMPTypeDestinationUnreachable:
-		resp.ip.dst = net.IPv4(b[44], b[45], b[46], b[47])
+		h, err := ipv4.ParseHeader(b[28:48])
+		if err == nil {
+			resp.ip.id = h.ID
+			resp.ip.dst = h.Dst
+		}
 	case IPv4ICMPTypeTimeExceeded:
+		h, err := ipv4.ParseHeader(b[28:48])
 		resp.id = int(b[52])<<8 | int(b[53])
 		resp.seq = int(b[54])<<8 | int(b[55])
-		resp.ip.dst = net.IPv4(b[44], b[45], b[46], b[47])
+		if err == nil {
+			resp.ip.id = h.ID
+			resp.ip.dst = h.Dst
+		}
 	}
 
 	return resp

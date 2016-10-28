@@ -5,6 +5,8 @@
 package icmp
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"math/rand"
 	"net"
@@ -15,6 +17,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"golang.org/x/net/ipv4"
 
 	"github.com/mehrdadrad/mylg/cli"
 	"github.com/mehrdadrad/mylg/ripe"
@@ -98,12 +102,13 @@ func (i *Trace) SetTTL(ttl int) {
 	i.ttl = ttl
 }
 
-// Send tries to send ICMP packet
+// Send tries to send ICMP/UDP IPv4/IPv6 packet
 func (i *Trace) Send(port int) (int, int, error) {
 	rand.Seed(time.Now().UTC().UnixNano())
 	var (
-		seq    = rand.Intn(0xff) //TODO: sequence
-		id     = os.Getpid() & 0xffff
+		seq = rand.Intn(0xff) //TODO: sequence
+		id  = rand.Intn(0xffff)
+		//id     = os.Getpid() & 0xffff
 		sotype int
 		proto  int
 		err    error
@@ -128,23 +133,8 @@ func (i *Trace) Send(port int) (int, int, error) {
 
 	// Set options
 	if IsIPv4(i.ip) {
-		var b [4]byte
-		copy(b[:], i.ip.To4())
-		addr := syscall.SockaddrInet4{
-			Port: port,
-			Addr: b,
-		}
-
-		m, err := icmpV4Message(id, seq, i.pSize)
-		if err != nil {
-			return id, seq, err
-		}
-
-		setIPv4TTL(fd, i.ttl)
-
-		if err := syscall.Sendto(fd, m, 0, &addr); err != nil {
-			return id, seq, err
-		}
+		err = i.Sendv4(id, seq, port)
+		return id, seq, err
 	} else {
 		var b [16]byte
 		copy(b[:], i.ip.To16())
@@ -166,6 +156,50 @@ func (i *Trace) Send(port int) (int, int, error) {
 		}
 	}
 	return id, seq, nil
+}
+
+// Send tries to send ICMP/UDP IPv4 packet
+func (i *Trace) Sendv4(id, seq, rport int) error {
+	var (
+		b     []byte
+		proto int
+		lport int
+	)
+
+	c, err := net.ListenPacket("ip4", "0.0.0.0")
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+
+	p, err := ipv4.NewRawConn(c)
+	if err != nil {
+		return err
+	}
+
+	if i.icmp {
+		proto = 1 // icmp v4
+		b, _ = icmpV4Message(os.Getpid()&0xffff, seq, i.pSize)
+	} else {
+		proto = 17 // udp
+		lport = 64000 + rand.Intn(3)*100
+		b = udpMessage(lport, rport, i.pSize, true)
+	}
+
+	h := &ipv4.Header{
+		Version:  ipv4.Version,
+		Len:      ipv4.HeaderLen,
+		TotalLen: ipv4.HeaderLen + len(b),
+		Protocol: proto,
+		ID:       id,
+		TTL:      i.ttl,
+		Dst:      i.ip.To4(),
+	}
+
+	if err := p.WriteTo(h, b, nil); err != nil {
+		return err
+	}
+	return nil
 }
 
 // SetReadDeadLine sets rx timeout
@@ -244,6 +278,7 @@ func (i *Trace) Recv(id, seq int) (ICMPResp, error) {
 		wID  bool
 		wSeq bool
 		wDst bool
+		wV4  bool
 	)
 
 	for {
@@ -264,15 +299,17 @@ func (i *Trace) Recv(id, seq int) (ICMPResp, error) {
 			wID = resp.typ == IPv4ICMPTypeEchoReply && id != resp.id
 			wSeq = seq != resp.seq
 			wDst = resp.ip.dst.String() != i.ip.String()
+			wV4 = (id != resp.ip.id && resp.ip.id != 0)
 		} else {
 			resp = icmpV6RespParser(b)
 			resp.src = net.IP(from.(*syscall.SockaddrInet6).Addr[:])
 			wID = resp.typ == IPv6ICMPTypeEchoReply && id != resp.id
 			wSeq = seq != resp.seq
 			wDst = resp.ip.dst.String() != i.ip.String()
+			wV4 = false
 		}
 
-		if (i.icmp && wSeq) || (!i.icmp && (wDst || wID)) {
+		if (i.icmp && wSeq) || (!i.icmp && (wDst || wID)) || wV4 {
 			du, _ := time.ParseDuration(i.wait)
 			if time.Since(ts) < du {
 				continue
@@ -689,6 +726,29 @@ func calcStatistics(s *Stats, elapsed float64) {
 	s.min = min(s.min, elapsed)
 	s.avg = avg(s.avg, elapsed)
 	s.max = max(s.max, elapsed)
+}
+
+func udpMessage(lport, rport, pSize int, isIPv4 bool) []byte {
+	var (
+		buf = new(bytes.Buffer)
+	)
+
+	if isIPv4 {
+		pSize = pSize - (20 + 8)
+	} else {
+		pSize = pSize - (40 + 8)
+	}
+
+	binary.Write(buf, binary.BigEndian, uint16(lport))
+	binary.Write(buf, binary.BigEndian, uint16(rport))
+	binary.Write(buf, binary.BigEndian, uint16(8+pSize))
+	binary.Write(buf, binary.BigEndian, uint16(0))
+
+	if pSize > 0 {
+		buf.Write(make([]byte, pSize))
+	}
+
+	return buf.Bytes()
 }
 
 func helpTrace() {
