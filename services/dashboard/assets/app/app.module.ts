@@ -16,7 +16,7 @@ import { AppComponent } from './app.component';
 			{ path: 'ping',  component: PingComponent  },
 			{ path: 'trace', component: TraceComponent },
 			{ path: 'home',  component: HomeComponent  },
-			{ path: '', pathMatch: 'full', redirectTo:'/ping' },
+			{ path: '', pathMatch: 'full', redirectTo:'/trace' },
 		],{ useHash: true }),
 		BrowserModule,
         AgGridModule.withNg2ComponentSupport(),
