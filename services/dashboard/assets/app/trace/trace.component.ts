@@ -35,6 +35,7 @@ export class TraceComponent {
     }
 
 	ngOnInit(){
+        jQuery.getScript('/js/trace.js');
         this.traceErrorMsg = ""
 		this.checked = 'checked'
         this.lock = false
@@ -46,6 +47,8 @@ export class TraceComponent {
 	ngAfterViewInit() {
 		componentHandler.upgradeDom();
         this.gridOptions.api.sizeColumnsToFit()
+        this.initRTTChart()
+        this.initJitterChart()
 	}
 
     ngOnDestroy() {
@@ -126,12 +129,23 @@ export class TraceComponent {
             {
                 headerName: "Holder",
                 field: "Holder",
-                width: 200
+                width: 140,
+                cellRenderer: function (params) {
+                    if (!params.value) {
+                        return ""
+                    }
+                    var r = params.value.split(" - ")
+                    if (r.length > 0) {
+                        return r[0]
+                    } else {
+                        return params.value
+                    }
+                }
             },
             {
                 headerName: "ASN",
                 field: "ASN",
-                width: 100,
+                width: 70,
                 cellRenderer: function (params) {
                     if (params.value && params.value != 0) {
                         return params.value
