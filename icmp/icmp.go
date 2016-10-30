@@ -5,9 +5,11 @@
 package icmp
 
 import (
+	"fmt"
 	"math/rand"
 	"net"
 	"os"
+	"strings"
 	"syscall"
 	"time"
 
@@ -41,8 +43,8 @@ const (
 
 // Trace represents trace properties
 type Trace struct {
-	src      string
 	host     string
+	src      net.IP
 	ip       net.IP
 	ips      []net.IP
 	ttl      int
@@ -51,6 +53,7 @@ type Trace struct {
 	proto    int
 	wait     string
 	icmp     bool
+	tcp      bool
 	resolve  bool
 	ripe     bool
 	realTime bool
@@ -266,4 +269,23 @@ func absInt(i int) int {
 		return i * -1
 	}
 	return i
+}
+
+func getLocalAddr(rAddr string) (net.IP, error) {
+	var ip []string
+	conn, err := net.Dial("udp", rAddr+":80")
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().String()
+	ip = strings.Split(localAddr, ":")
+
+	if len(ip) < 1 {
+		return nil, fmt.Errorf("local ip addr not found")
+	}
+
+	lAddr := net.ParseIP(ip[0])
+	return lAddr, nil
 }
