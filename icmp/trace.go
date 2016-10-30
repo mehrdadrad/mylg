@@ -30,9 +30,9 @@ type MHopResp []HopResp
 // NewTrace creates new trace object
 func NewTrace(args string, cfg cli.Config) (*Trace, error) {
 	var (
-		family int
-		proto  int
-		ip     net.IP
+		family    int
+		proto     int
+		ip, lAddr net.IP
 	)
 	target, flag := cli.Flag(args)
 	forceIPv4 := cli.SetFlag(flag, "4", false).(bool)
@@ -60,6 +60,10 @@ func NewTrace(args string, cfg cli.Config) (*Trace, error) {
 		return nil, fmt.Errorf("there is not A or AAAA record")
 	}
 
+	if lAddr, err = getLocalAddr(ip.String()); err != nil {
+		return nil, err
+	}
+
 	if IsIPv4(ip) {
 		family = syscall.AF_INET
 		proto = syscall.IPPROTO_ICMP
@@ -72,12 +76,14 @@ func NewTrace(args string, cfg cli.Config) (*Trace, error) {
 		host:     target,
 		ips:      ips,
 		ip:       ip,
+		src:      lAddr,
 		family:   family,
 		proto:    proto,
 		pSize:    cli.SetFlag(flag, "p", 52).(int),
-		uiTheme:  cli.SetFlag(flag, "t", cfg.Trace.Theme).(string),
+		uiTheme:  cli.SetFlag(flag, "T", cfg.Trace.Theme).(string),
 		wait:     cli.SetFlag(flag, "w", cfg.Trace.Wait).(string),
 		icmp:     cli.SetFlag(flag, "u", true).(bool),
+		tcp:      cli.SetFlag(flag, "t", false).(bool),
 		resolve:  cli.SetFlag(flag, "n", true).(bool),
 		ripe:     cli.SetFlag(flag, "nr", true).(bool),
 		realTime: cli.SetFlag(flag, "r", false).(bool),
@@ -762,7 +768,7 @@ func helpTrace() {
           -m MAX_TTL     Set the maximum number of hops
           -4             Forces the trace command to use IPv4 (target should be hostname)
           -6             Forces the trace command to use IPv6 (target should be hostname)
-          -t             Set the real-time terminal theme (dark|light)
+          -T             Set the real-time terminal theme (dark|light)
           -c             Set the number of pings sent
           -p             Set the packet size in bytes inclusive headers (default 52 bytes)
           -u             Use UDP datagram instead of ICMP 
