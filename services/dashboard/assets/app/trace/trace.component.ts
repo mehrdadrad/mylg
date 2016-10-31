@@ -20,6 +20,7 @@ export class TraceComponent {
     public stats
     public lock
     public stop
+    public proto
     public chart
     public jChart
     public jLast
@@ -40,6 +41,7 @@ export class TraceComponent {
 		this.checked = 'checked'
         this.lock = false
         this.stop = false
+        this.proto = "icmp"
 		this.geoUpdated = false
 		this.chartData = []
 	}
@@ -68,6 +70,7 @@ export class TraceComponent {
 
 	onKey(event: any, dest: string) {
 	    let args = dest || event.target.value;
+        args = args + this.options()
         if (this.subscription) {
             this.subscription.unsubscribe()
             this.cleanUp()
@@ -110,6 +113,23 @@ export class TraceComponent {
         } else {
             this.stop = true
         }
+    }
+
+    setProto(p) {
+        this.proto = p
+    }
+
+    options(){
+        let ops = [" "]
+        switch(this.proto) {
+            case "udp":
+                ops.push("-u")
+                break
+            case "tcp":
+                ops.push("-t")
+                break
+        }
+        return ops.join(" ")
     }
 
 	constructor(@Inject(Http) private http : Http) {

@@ -6,13 +6,28 @@
 	}
 </style>
 
-
-<!-- Switch -->
-<div style="width:80px;" title="enable/disable trace">
-    <label id="traceSw" class="mdl-switch mdl-js-switch mdl-js-ripple-effect" for="traceswitch" >
-	    <input type="checkbox" id="traceswitch" class="mdl-switch__input" (click)="onClickCheck()" checked>
-    	<span class="mdl-switch__label"></span>
-    </label>
+<div class="mdl-grid mdl-grid--no-spacing">
+    <div class="mdl-cell mdl-cell--1-col">
+        <!-- Switch -->
+        <label id="traceSw" class="mdl-switch mdl-js-switch mdl-js-ripple-effect" for="traceswitch" title="Enable/Disable trace">
+           <input type="checkbox" id="traceswitch" class="mdl-switch__input" (click)="onClickCheck()" checked>
+            <span class="mdl-switch__label"></span>
+        </label>
+   </div>
+    <div class="mdl-cell mdl-cell--4-col">
+        <label class="mdl-radio mdl-js-radio mdl-js-ripple-effect" for="option-icmp">
+              <input type="radio" id="option-icmp" class="mdl-radio__button" name="options" (click)="setProto('icmp')" checked>
+                <span class="mdl-radio__label">ICMP</span>
+        </label>
+        <label class="mdl-radio mdl-js-radio mdl-js-ripple-effect" for="option-udp">
+              <input type="radio" id="option-udp" class="mdl-radio__button" name="options" (click)="setProto('udp')">
+                <span class="mdl-radio__label">UDP</span>
+        </label>
+        <label class="mdl-radio mdl-js-radio mdl-js-ripple-effect" for="option-tcp">
+              <input type="radio" id="option-tcp" class="mdl-radio__button" name="options" (click)="setProto('tcp')">
+                <span class="mdl-radio__label">TCP</span>
+        </label>
+    </div>
 </div>
 
 <!-- Textfield -->
@@ -71,7 +86,6 @@
     <div class="mdl-dialog__content">
 		<strong>Trace Options</strong>
 		<ul>
-		  <li>-u Set UDP datagram instead of ICMP</li>
 		  <li>-c Set the number of pings sent</li>
 		  <li>-n Do not try to map IP addresses to host names</li>
 		</ul>
