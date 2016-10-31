@@ -1,5 +1,6 @@
 var dialog = document.querySelector('dialog');
 var showModalButton = document.querySelector('.show-modal');
+var notify = document.querySelector('#toast-notify');
 if (! dialog.showModal) {
   dialogPolyfill.registerDialog(dialog);
 }

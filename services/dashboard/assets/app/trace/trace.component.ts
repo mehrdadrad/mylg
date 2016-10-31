@@ -6,6 +6,7 @@ import { GridOptions } from 'ag-grid/main';
 import { Observable, Subscription } from 'rxjs/Rx'
 
 declare var c3: any;
+declare var notify: any;
 
 @Component({
     selector: 'trace',
@@ -109,14 +110,21 @@ export class TraceComponent {
 
     onClickCheck() {
         if (this.stop) {
+            this.showNotify("Trace has been enabled / started")
             this.stop = false
         } else {
+            this.showNotify("Trace has been disabled / stopped")
             this.stop = true
         }
     }
 
     setProto(p) {
         this.proto = p
+    }
+
+    showNotify(msg) {
+        var data = {message: msg};
+        notify.MaterialSnackbar.showSnackbar(data)
     }
 
     options(){
