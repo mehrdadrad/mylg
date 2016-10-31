@@ -24,6 +24,13 @@ import (
 	"github.com/mehrdadrad/mylg/ripe"
 )
 
+// TCPOption represents TCP option
+type TCPOption struct {
+	kind   uint8
+	length uint8
+	data   []byte
+}
+
 // MHopResp represents multi hop's responses
 type MHopResp []HopResp
 
@@ -72,6 +79,9 @@ func NewTrace(args string, cfg cli.Config) (*Trace, error) {
 		proto = syscall.IPPROTO_ICMPV6
 	}
 
+	UDP := cli.SetFlag(flag, "u", false).(bool)
+	TCP := cli.SetFlag(flag, "t", false).(bool)
+
 	t := &Trace{
 		host:     target,
 		ips:      ips,
@@ -79,11 +89,12 @@ func NewTrace(args string, cfg cli.Config) (*Trace, error) {
 		src:      lAddr,
 		family:   family,
 		proto:    proto,
+		icmp:     !UDP && !TCP,
+		udp:      UDP && !TCP,
+		tcp:      TCP && !UDP,
 		pSize:    cli.SetFlag(flag, "p", 52).(int),
 		uiTheme:  cli.SetFlag(flag, "T", cfg.Trace.Theme).(string),
 		wait:     cli.SetFlag(flag, "w", cfg.Trace.Wait).(string),
-		icmp:     cli.SetFlag(flag, "u", true).(bool),
-		tcp:      cli.SetFlag(flag, "t", false).(bool),
 		resolve:  cli.SetFlag(flag, "n", true).(bool),
 		ripe:     cli.SetFlag(flag, "nr", true).(bool),
 		realTime: cli.SetFlag(flag, "r", false).(bool),
@@ -183,13 +194,18 @@ func (i *Trace) Sendv4(id, seq, rport int) error {
 		return err
 	}
 
-	if i.icmp {
+	switch {
+	case i.icmp:
 		proto = 1 // icmp v4
 		b, _ = icmpV4Message(os.Getpid()&0xffff, seq, i.pSize)
-	} else {
+	case i.udp:
 		proto = 17 // udp
 		lport = 64000 + rand.Intn(3)*100
 		b = udpMessage(lport, rport, i.pSize, true)
+	case i.tcp:
+		proto = 6 // tcp
+		b = tcpMessage(0, 33434, 64, true)
+		setTCPCheckSum(i.src, i.ip, b)
 	}
 
 	h := &ipv4.Header{
@@ -755,6 +771,124 @@ func udpMessage(lport, rport, pSize int, isIPv4 bool) []byte {
 	}
 
 	return buf.Bytes()
+}
+
+func tcpMessage(lport, rport, pSize uint16, isIPv4 bool) []byte {
+	var (
+		buf        = new(bytes.Buffer)
+		tcpOptions []TCPOption
+		offset     = 8 + 3
+	)
+
+	binary.Write(buf, binary.BigEndian, lport)
+	binary.Write(buf, binary.BigEndian, rport)
+
+	binary.Write(buf, binary.BigEndian, rand.Uint32())
+	binary.Write(buf, binary.BigEndian, uint32(0))
+
+	mix := uint16(offset)<<12 |
+		uint16(0)<<9 | // 3 bits reserved
+		uint16(0)<<6 | // 3 bits ECN
+		uint16(2) //  6 bits control bits (000010, SYN bit set)
+	binary.Write(buf, binary.BigEndian, mix)
+
+	binary.Write(buf, binary.BigEndian, uint16(0xFFFF))
+	binary.Write(buf, binary.BigEndian, uint16(0x0000))
+	binary.Write(buf, binary.BigEndian, uint16(0))
+
+	// set MSS
+	tcpOptions = append(tcpOptions, TCPOption{
+		kind:   2,
+		length: 4,
+		data:   []byte{0x05, 0xb4},
+	})
+	// window scale
+	tcpOptions = append(tcpOptions, TCPOption{
+		kind:   3,
+		length: 3,
+		data:   []byte{0x05},
+	})
+	// Selective Acknowledgement permitted
+	tcpOptions = append(tcpOptions, TCPOption{
+		kind:   4,
+		length: 2,
+		data:   []byte{0x1},
+	})
+	// Timestamp
+	tb := new(bytes.Buffer)
+	now := time.Now().Unix()
+	binary.Write(tb, binary.BigEndian, uint64(now))
+
+	tcpOptions = append(tcpOptions, TCPOption{
+		kind:   8,
+		length: 10,
+		data:   tb.Bytes(),
+	})
+	// End of option list
+	tcpOptions = append(tcpOptions, TCPOption{
+		kind:   0,
+		length: 0,
+		data:   []byte{},
+	})
+
+	for _, option := range tcpOptions {
+		binary.Write(buf, binary.BigEndian, option.kind)
+		if option.length > 1 {
+			binary.Write(buf, binary.BigEndian, option.length)
+			binary.Write(buf, binary.BigEndian, option.data)
+		}
+	}
+
+	tcp := buf.Bytes()
+	pad := int(offset)*4 - len(tcp)
+
+	for i := 0; i < pad; i++ {
+		tcp = append(tcp, 0)
+	}
+
+	return tcp
+}
+
+func setTCPCheckSum(src, dst net.IP, tcpHeader []byte) {
+	var psdHeader = make([]byte, 0, 12)
+	var header = make([]byte, 0, 12+len(tcpHeader))
+	var pbuf = bytes.NewBuffer(psdHeader)
+	pbuf.Write([]byte(src))
+	pbuf.Write([]byte(dst))
+	var (
+		pd      uint8  = 0
+		prot    uint8  = 6
+		tcpSize uint16 = uint16(len(tcpHeader))
+	)
+	binary.Write(pbuf, binary.BigEndian, pd)
+	binary.Write(pbuf, binary.BigEndian, prot)
+	binary.Write(pbuf, binary.BigEndian, tcpSize)
+
+	header = append(header, pbuf.Bytes()...)
+	header = append(header, tcpHeader...)
+
+	var (
+		checksum uint16 = checkSum(header)
+		high     uint8  = uint8(checksum >> 8)
+		low      uint8  = uint8(checksum)
+	)
+	tcpHeader[17] = low
+	tcpHeader[16] = high
+}
+
+func checkSum(data []byte) uint16 {
+	var sum uint32 = 0
+	var length = len(data) & (^1)
+	for i := 0; i < length; i += 2 {
+		sum += (uint32(data[i]) << 8) + uint32(data[i+1])
+	}
+	if len(data)&1 != 0 {
+		sum += uint32(data[length])
+	}
+	for (sum >> 16) > 0 {
+		sum = (sum >> 16) + (sum & 0xffff)
+	}
+	return uint16(^sum)
 }
 
 func helpTrace() {

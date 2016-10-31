@@ -53,6 +53,7 @@ type Trace struct {
 	proto    int
 	wait     string
 	icmp     bool
+	udp      bool
 	tcp      bool
 	resolve  bool
 	ripe     bool
