@@ -30,7 +30,7 @@ import (
 )
 
 const (
-	version = "0.2.5"
+	version = "0.2.6"
 )
 
 // Provider represents looking glass
