@@ -183,17 +183,6 @@ func (i *Trace) Sendv4(id, seq, rport int) error {
 		lport int
 	)
 
-	c, err := net.ListenPacket("ip4", "0.0.0.0")
-	if err != nil {
-		return err
-	}
-	defer c.Close()
-
-	p, err := ipv4.NewRawConn(c)
-	if err != nil {
-		return err
-	}
-
 	switch {
 	case i.icmp:
 		proto = 1 // icmp v4
@@ -206,6 +195,17 @@ func (i *Trace) Sendv4(id, seq, rport int) error {
 		proto = 6 // tcp
 		b = tcpMessage(0, 33434, 64, true)
 		setTCPCheckSum(i.src, i.ip, b)
+	}
+
+	c, err := net.ListenPacket(fmt.Sprintf("ip4:%d", proto), "0.0.0.0")
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+
+	p, err := ipv4.NewRawConn(c)
+	if err != nil {
+		return err
 	}
 
 	h := &ipv4.Header{
