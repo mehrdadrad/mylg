@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base href="/">
+    <title>myLG web dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="/css/c3.min.css">
+
+    <script src="/js/vendor/jquery-3.1.0.min.js"></script>
+    <script src="/js/vendor/d3.min.js"></script>
+    <script src="/js/vendor/c3.min.js"></script>
+    <script src="/js/mylg.js"></script>
+
+    <script src="/node_modules/zone.js/dist/zone.min.js"></script>
+    <script src="/node_modules/reflect-metadata/Reflect.js"></script>
+    <script src="/node_modules/systemjs/dist/system.src.js"></script>
+    <!-- 2. Configure SystemJS -->
+    <script src="/systemjs.config.js"></script>
+    <script>
+      System.import('app').catch(function(err){ console.error(err); });
+    </script>
+
+     <link href="/js/vendor/ag-grid/dist/styles/ag-grid.css" rel="stylesheet" />
+     <link href="/js/vendor/ag-grid/dist/styles/theme-fresh.css" rel="stylesheet" />
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="https://code.getmdl.io/1.2.1/material.green-teal.min.css" />
+    <script defer src="https://code.getmdl.io/1.2.1/material.min.js"></script>
+
+  </head>
+
+  <body>
+     <!-- Always shows a header, even in smaller screens. -->
+    <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
+      <header class="mdl-layout__header">
+        <div class="mdl-layout__header-row">
+          <!-- Title -->
+          <span class="mdl-layout-title mdl-color-text--white">myLG</span>
+          <!-- Add spacer, to align navigation to the right -->
+          <div class="mdl-layout-spacer"></div>
+          <!-- Navigation. We hide it in small screens. -->
+          <nav class="mdl-navigation mdl-layout--large-screen-only mdl-color-text--white">
+            <!-- adding h.links -->
+          </nav>
+        </div>
+      </header>
+      <div class="mdl-layout__drawer">
+        <span class="mdl-layout-title">myLG</span>
+        <nav class="mdl-navigation">
+          <a class="mdl-navigation__link" href="/#/ping">Ping</a>
+          <a class="mdl-navigation__link" href="/#/trace">Trace</a>
+        </nav>
+      </div>
+      <main class="mdl-layout__content" style="padding:20px;">
+        <div class="page-content">
+            <mylg-app>Loading...</mylg-app>
+        </div>
+      </main>
+    </div>
+
+  </body>
+</html>

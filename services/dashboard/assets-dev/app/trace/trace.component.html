@@ -1,0 +1,98 @@
+<style>
+	.mdl-data-table td {
+		border: 0px solid !important;
+		padding-left: 10px !important;
+		padding-right: 10px !important;
+	}
+</style>
+
+<div class="mdl-grid mdl-grid--no-spacing">
+    <div class="mdl-cell mdl-cell--1-col">
+        <!-- Switch -->
+        <label id="traceSw" class="mdl-switch mdl-js-switch mdl-js-ripple-effect" for="traceswitch" title="Enable/Disable trace">
+           <input type="checkbox" id="traceswitch" class="mdl-switch__input" (click)="onClickCheck()" checked>
+            <span class="mdl-switch__label"></span>
+        </label>
+   </div>
+    <div class="mdl-cell mdl-cell--4-col">
+        <label class="mdl-radio mdl-js-radio mdl-js-ripple-effect" for="option-icmp">
+              <input type="radio" id="option-icmp" class="mdl-radio__button" name="options" (click)="setProto('icmp')" checked>
+                <span class="mdl-radio__label">ICMP</span>
+        </label>
+        <label class="mdl-radio mdl-js-radio mdl-js-ripple-effect" for="option-udp">
+              <input type="radio" id="option-udp" class="mdl-radio__button" name="options" (click)="setProto('udp')">
+                <span class="mdl-radio__label">UDP</span>
+        </label>
+    </div>
+</div>
+
+<!-- Textfield -->
+<div class="mdl-textfield mdl-js-textfield" (keyup.enter)="onKey($event)">
+    <input #dest class="mdl-textfield__input" type="text" id="tracehost" (blur)="onBlur()" (focus)="onFocus()">
+    <label class="mdl-textfield__label" for="tracehost">Enter host</label>
+</div>
+
+<!-- submit button -->
+<button class="mdl-button mdl-js-button mdl-button--icon mdl-button--colored"
+        *ngIf="hideSubmitBtn"
+        (click)="onKey($event,dest.value)">
+    <i class="material-icons">play_arrow</i>
+</button>
+
+<!-- chip to shows error -->
+<span class="mdl-chip  mdl-chip--contact" *ngIf="traceErrorMsg!=''">
+    <span class="mdl-chip__contact mdl-color--red mdl-color-text--white"> </span>
+    <span class="mdl-chip__text">{{traceErrorMsg}}</span>
+</span>
+
+<button class="mdl-button mdl-js-button mdl-button--icon mdl-button--colored show-modal">
+      <i class="material-icons">help_outline</i>
+</button>
+
+<table style="float:right;" class="mdl-data-table mdl-js-data-table mdl-shadow--2dp"
+  *ngIf="geoUpdated">
+  <tbody>
+    <tr>
+	  <td class="material-icons">public</td>
+      <td>{{geoFrom}}</td>
+      <td class="material-icons">navigate_next</td>
+      <td>{{geoTo}}</td>
+    </tr>
+  </tbody>
+</table>
+
+
+<br><br>
+
+<!-- grid -->
+<ag-grid-ng2 
+    #traceGrid style="width: 100%; height: 350px;" class="ag-fresh"
+    rowSelection="single"
+    enableColResize
+    [gridOptions]="gridOptions">
+</ag-grid-ng2>
+
+<!-- jitter chart -->
+<div id="jChart" style="padding-top:15px;"></div>
+<!-- rtt chart -->
+<div id="rChart" style="padding-top:15px;"></div>
+
+<!-- help dialog -->
+<dialog class="mdl-dialog" style="width:400px;">
+    <div class="mdl-dialog__content">
+		<strong>Trace Options</strong>
+		<ul>
+		  <li>-c Set the number of pings sent</li>
+		  <li>-n Do not try to map IP addresses to host names</li>
+		</ul>
+    </div>
+    <div class="mdl-dialog__actions mdl-dialog__actions--full-width">
+      <button type="button" class="mdl-button close">Close</button>
+    </div>
+ </dialog>
+
+<!-- snackbar -->
+<div id="toast-notify" class="mdl-js-snackbar mdl-snackbar">
+    <div class="mdl-snackbar__text"></div>
+    <button class="mdl-snackbar__action" type="button"></button>
+</div>

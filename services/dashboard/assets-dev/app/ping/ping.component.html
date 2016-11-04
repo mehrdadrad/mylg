@@ -1,0 +1,36 @@
+<style>
+    #chart {
+        max-width: 90%;
+	    min-height: 350px;
+    }
+    .c3-xgrid-line.red line {
+   		stroke: red;
+    }
+</style>
+
+<!-- Switch -->
+<div style="width:80px;">
+    <label class="mdl-switch mdl-js-switch mdl-js-ripple-effect" for="pingswitch" >
+	    <input type="checkbox" id="pingswitch" class="mdl-switch__input" (click)="onDisabledCheck()" checked>
+    	<span class="mdl-switch__label"></span>
+    </label>
+</div>
+
+<!-- Textfield -->
+<div class="mdl-textfield mdl-js-textfield" (keyup.enter)="onKey($event)" >
+    <input #dest class="mdl-textfield__input" type="text" id="pinghost" (blur)="onBlur()" (focus)="onFocus()">
+    <input type="hidden" id="host" value="{{host}}">
+    <label class="mdl-textfield__label" for="pinghost">Enter host {{clickMessage}}</label>
+</div>
+
+<!-- submit button -->
+<button class="mdl-button mdl-js-button mdl-button--icon mdl-button--colored"
+        *ngIf="hideSubmitBtn" 
+        (click)="onKey($event,dest.value)">
+    <i class="material-icons">play_arrow</i>
+</button>
+
+
+<br><br>
+<!-- chart -->
+<div id="chart"></div>
