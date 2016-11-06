@@ -1,0 +1,92 @@
+{
+  "name": "ag-grid",
+  "version": "6.2.1",
+  "description": "Advanced Data Grid / Data Table supporting Javascript / React / AngularJS / Web Components",
+  "main": "./main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "typings": "./main.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ceolter/ag-grid.git"
+  },
+  "keywords": [
+    "web-components",
+    "grid",
+    "data",
+    "table",
+    "angular",
+    "angular-component",
+    "react",
+    "react-component",
+    "angularjs",
+    "reactjs"
+  ],
+  "author": {
+    "name": "Niall Crosby",
+    "email": "niall.crosby@ag-grid.com"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ceolter/ag-grid/issues"
+  },
+  "homepage": "http://www.ag-grid.com/",
+  "devDependencies": {
+    "gulp": "3.9.0",
+    "gulp-foreach": "0.1.0",
+    "gulp-rename": "1.2.2",
+    "gulp-stylus": "2.2.0",
+    "gulp-uglify": "1.5.1",
+    "gulp-typescript": "2.10.0",
+    "gulp-sourcemaps": "1.5.2",
+    "gulp-clean": "0.3.1",
+    "gulp-header": "1.7.0",
+    "gulp-tsd": "0.0.4",
+    "style-loader": "0.13.0",
+    "css-loader": "0.23.1",
+    "json-stable-stringify": "1.0.0",
+    "jasmine-core": "2.4.1",
+    "gulp-jasmine": "2.2.1",
+    "nib": "^1.1.0",
+    "stylus": "0.53.0",
+    "vinyl-buffer": "1.0.0",
+    "typescript": "1.7.5",
+    "merge2": "0.3.6",
+    "webpack-stream": "3.1.0",
+    "webpack": "1.12.12",
+    "gulp-replace": "0.5.4",
+    "gulp-if": "2.0.1"
+  },
+  "gitHead": "63888d16d953cdf11fafb6cad9ef4f4aa4336777",
+  "_id": "ag-grid@6.2.1",
+  "_shasum": "4231a9c0dc6085f1cbdd2919008202043e5d82b1",
+  "_from": "ag-grid@>=6.2.0 <6.3.0",
+  "_npmVersion": "3.10.6",
+  "_nodeVersion": "5.8.0",
+  "_npmUser": {
+    "name": "seanlandsman",
+    "email": "sean@thelandsmans.com"
+  },
+  "dist": {
+    "shasum": "4231a9c0dc6085f1cbdd2919008202043e5d82b1",
+    "tarball": "https://registry.npmjs.org/ag-grid/-/ag-grid-6.2.1.tgz"
+  },
+  "maintainers": [
+    {
+      "name": "ceolter",
+      "email": "niall.crosby@gmail.com"
+    },
+    {
+      "name": "seanlandsman",
+      "email": "sean@thelandsmans.com"
+    }
+  ],
+  "_npmOperationalInternal": {
+    "host": "packages-12-west.internal.npmjs.com",
+    "tmp": "tmp/ag-grid-6.2.1.tgz_1476351710533_0.014131815871223807"
+  },
+  "directories": {},
+  "_resolved": "https://registry.npmjs.org/ag-grid/-/ag-grid-6.2.1.tgz",
+  "readme": "ERROR: No README data found!"
+}
