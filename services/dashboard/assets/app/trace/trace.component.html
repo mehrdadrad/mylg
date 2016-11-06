@@ -45,7 +45,7 @@
     <span class="mdl-chip__text">{{traceErrorMsg}}</span>
 </span>
 
-<button class="mdl-button mdl-js-button mdl-button--icon mdl-button--colored show-modal">
+<button class="mdl-button mdl-js-button mdl-button--icon mdl-button--colored show-modal" (click)="helpRedirect()">
       <i class="material-icons">help_outline</i>
 </button>
 
@@ -76,20 +76,6 @@
 <div id="jChart" style="padding-top:15px;"></div>
 <!-- rtt chart -->
 <div id="rChart" style="padding-top:15px;"></div>
-
-<!-- help dialog -->
-<dialog class="mdl-dialog" style="width:400px;">
-    <div class="mdl-dialog__content">
-		<strong>Trace Options</strong>
-		<ul>
-		  <li>-c Set the number of pings sent</li>
-		  <li>-n Do not try to map IP addresses to host names</li>
-		</ul>
-    </div>
-    <div class="mdl-dialog__actions mdl-dialog__actions--full-width">
-      <button type="button" class="mdl-button close">Close</button>
-    </div>
- </dialog>
 
 <!-- snackbar -->
 <div id="toast-notify" class="mdl-js-snackbar mdl-snackbar">
