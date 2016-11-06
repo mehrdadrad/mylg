@@ -87,6 +87,7 @@ func NewTrace(args string, cfg cli.Config) (*Trace, error) {
 		ips:      ips,
 		ip:       ip,
 		src:      lAddr,
+		seq:      1,
 		family:   family,
 		proto:    proto,
 		icmp:     !UDP && !TCP,
@@ -123,13 +124,14 @@ func (i *Trace) SetTTL(ttl int) {
 func (i *Trace) Send(port int) (int, int, error) {
 	rand.Seed(time.Now().UTC().UnixNano())
 	var (
-		seq = rand.Intn(0xff) //TODO: sequence
-		id  = rand.Intn(0xffff)
-		//id     = os.Getpid() & 0xffff
+		seq    = i.seq
+		id     = 38840 + seq
 		sotype int
 		proto  int
 		err    error
 	)
+
+	i.seq++
 
 	if i.icmp && i.ip.To4 != nil {
 		sotype = syscall.SOCK_RAW

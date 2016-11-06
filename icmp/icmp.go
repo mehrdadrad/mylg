@@ -49,6 +49,7 @@ type Trace struct {
 	ips      []net.IP
 	ttl      int
 	fd       int
+	seq      int
 	family   int
 	proto    int
 	wait     string
@@ -225,9 +226,9 @@ func icmpPayload(pSize int, isIPv4 bool) []byte {
 	var gData int
 
 	if isIPv4 {
-		gData = absInt(pSize) - (20 + 8 + 8)
+		gData = absInt(pSize) - (20 + 8)
 	} else {
-		gData = absInt(pSize) - (40 + 8 + 8)
+		gData = absInt(pSize) - (40 + 8)
 	}
 
 	// in case small packet requested
