@@ -45,7 +45,6 @@ export class TraceComponent {
     }
 
 	ngOnInit(){
-        jQuery.getScript('/js/trace.js');
         this.traceErrorMsg = ""
 		this.checked = 'checked'
         this.lock = false
@@ -565,4 +564,8 @@ export class TraceComponent {
         });
         this.jLast = data
 	}
+
+    helpRedirect() {
+        window.open('http://mylg.io/doc/web', '_blank')
+    }
 }
