@@ -9,6 +9,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
+	"os/signal"
 	"regexp"
 	"sort"
 )
@@ -96,6 +98,10 @@ func (p *Telia) Ping() (string, error) {
 // Trace gets traceroute information from Telia
 func (p *Telia) Trace() chan string {
 	c := make(chan string)
+	sigCh := make(chan os.Signal, 1)
+
+	signal.Notify(sigCh, os.Interrupt)
+
 	resp, err := http.PostForm("http://looking-glass.telia.net/",
 		url.Values{"query": {"trace"}, "protocol": {p.IPv}, "addr": {p.Host}, "router": {p.Node}})
 	if err != nil {
@@ -104,14 +110,20 @@ func (p *Telia) Trace() chan string {
 	go func() {
 		defer resp.Body.Close()
 		scanner := bufio.NewScanner(resp.Body)
+	LOOP:
 		for scanner.Scan() {
 			l := scanner.Text()
 			m, _ := regexp.MatchString(`^(traceroute|\s*\d{1,2})`, l)
 			if m {
 				l = replaceASNTrace(l)
-				c <- l
+				select {
+				case <-sigCh:
+					break LOOP
+				case c <- l:
+				}
 			}
 		}
+		signal.Stop(sigCh)
 		close(c)
 	}()
 	return c
