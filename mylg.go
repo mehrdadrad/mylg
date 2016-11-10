@@ -309,10 +309,19 @@ func trace() {
 		}
 		trace.Print()
 	case strings.HasPrefix(prompt, "lg"):
+		spin.Prefix = "please wait "
+		spin.Start()
 		providers[cPName].Set(args, "ipv4")
 		for l := range providers[cPName].Trace() {
-			println(l)
+			if spin.Prefix != "" {
+				spin.Stop()
+				spin.Prefix = ""
+				fmt.Printf("\n%s\n", l)
+			} else {
+				fmt.Println(l)
+			}
 		}
+		spin.Stop()
 	}
 }
 
@@ -472,8 +481,12 @@ func show() {
 
 // setLG set lg prompt and completer
 func setLG() {
-	c.SetPrompt("lg")
+	cPName = "telia"
 	c.UpdateCompleter("connect", pNames)
+	c.SetPrompt("lg/" + cPName + "/" + providers[cPName].GetDefaultNode())
+	go func() {
+		c.UpdateCompleter("node", providers[cPName].GetNodes())
+	}()
 }
 
 // setNS set ns prompt and update completers
