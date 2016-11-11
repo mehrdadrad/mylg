@@ -333,7 +333,7 @@ func (i *Trace) Recv(id, seq int) (ICMPResp, error) {
 			wV4 = false
 		}
 
-		if (i.icmp && wSeq) || (!i.icmp && (wDst || wID)) || wV4 {
+		if (i.icmp && wSeq) || (!i.icmp && (wDst || wID || wV4)) {
 			du, _ := time.ParseDuration(i.wait)
 			if time.Since(ts) < du {
 				continue
