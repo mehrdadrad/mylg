@@ -44,7 +44,7 @@ myLG is an open source software utility which combines the functions of the diff
            Free Network Diagnostic Tool
              www.facebook.com/mylg.io
                   http://mylg.io
-================== myLG v0.2.5 ==================
+================== myLG v0.2.6 ==================
 
 local> hping https://www.google.com -trace -c 4
 HPING www.google.com (216.58.194.196), Method: HEAD, DNSLookup: 17.2923 ms
@@ -343,13 +343,12 @@ apt-get install libpcap-dev
 brew install homebrew/dupes/libpcap
 ```
 
-Given that the Go Language compiler (version 1.7 or greater is required) is installed, you can build and run it with:
+Given that the Go Language compiler (version 1.7 or greater is required) is installed, you can run it with:
 
 ```
-git clone https://github.com/mehrdadrad/mylg.git
-cd mylg
-go get
-go build mylg
+go get github.com/mehrdadrad/mylg
+cd $GOPATH/src/github.com/mehrdadrad/mylg/
+go run mylg
 ```
 
 ## License
