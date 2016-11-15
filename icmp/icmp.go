@@ -173,19 +173,19 @@ func icmpV6RespParser(b []byte) ICMPResp {
 	resp.code = int(b[1])
 
 	//getting time exceeded w/ less than 32 bytes
-	if len(b) < 44 {
+	if len(b) < 44 && resp.typ == IPv6ICMPTypeTimeExceeded {
 		return resp
 	}
 
 	switch resp.typ {
 	case IPv6ICMPTypeEchoReply:
-		resp.id = int(b[44])<<8 | int(b[25])
-		resp.seq = int(b[46])<<8 | int(b[27])
+		resp.id = int(b[4])<<8 | int(b[5])
+		resp.seq = int(b[6])<<8 | int(b[7])
 	case IPv6ICMPTypeDestinationUnreachable:
 		resp.ip.dst = bytesToIPv6(b[32:48])
 	case IPv6ICMPTypeTimeExceeded:
-		resp.id = int(b[32])<<8 | int(b[33])
-		resp.seq = int(b[34])<<8 | int(b[35])
+		resp.id = int(b[52])<<8 | int(b[53])
+		resp.seq = int(b[54])<<8 | int(b[55])
 		resp.ip.dst = bytesToIPv6(b[32:48])
 	}
 
@@ -275,7 +275,7 @@ func absInt(i int) int {
 
 func getLocalAddr(rAddr string) (net.IP, error) {
 	var ip []string
-	conn, err := net.Dial("udp", rAddr+":80")
+	conn, err := net.Dial("udp", net.JoinHostPort(rAddr, "80"))
 	if err != nil {
 		return nil, err
 	}

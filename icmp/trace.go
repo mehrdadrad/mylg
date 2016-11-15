@@ -133,10 +133,10 @@ func (i *Trace) Send(port int) (int, int, error) {
 
 	i.seq++
 
-	if i.icmp && i.ip.To4 != nil {
+	if i.icmp && i.ip.To4() != nil {
 		sotype = syscall.SOCK_RAW
 		proto = syscall.IPPROTO_ICMP
-	} else if i.icmp && i.ip.To16 != nil {
+	} else if i.icmp && i.ip.To16() != nil {
 		sotype = syscall.SOCK_RAW
 		proto = syscall.IPPROTO_ICMPV6
 	} else {
@@ -163,7 +163,7 @@ func (i *Trace) Send(port int) (int, int, error) {
 			Addr:   b,
 		}
 
-		m, err := icmpV6Message(id, seq, i.pSize)
+		m, err := icmpV6Message(os.Getpid()&0xffff, seq, i.pSize)
 		if err != nil {
 			return id, seq, err
 		}
