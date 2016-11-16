@@ -15,6 +15,10 @@ import (
 	"syscall"
 	"time"
 
+	"golang.org/x/net/icmp"
+	"golang.org/x/net/ipv4"
+	"golang.org/x/net/ipv6"
+
 	"github.com/olekukonko/tablewriter"
 
 	"github.com/mehrdadrad/mylg/cli"
@@ -81,15 +85,11 @@ func WalkIP(cidr string) chan string {
 
 // PingLan tries to send a tiny UDP packet to all LAN hosts
 func (a *disc) PingLan() {
-	var isV4 bool
-	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
-	if err != nil {
-		println(err.Error())
-		return
-	}
-	defer syscall.Close(fd)
-	// Set options
-	syscall.SetsockoptInt(fd, 0x0, syscall.IP_TTL, 1)
+	var (
+		isV4 bool
+		b    [16]byte
+	)
+
 	ifs, _ := net.Interfaces()
 	for _, i := range ifs {
 		addrs, _ := i.Addrs()
@@ -105,17 +105,54 @@ func (a *disc) PingLan() {
 			}
 
 			if isV4 {
+				fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_ICMP)
+				if err != nil {
+					println(err.Error())
+					return
+				}
+				syscall.SetsockoptInt(fd, 0x0, syscall.IP_TTL, 1)
 				for ipStr := range WalkIP(addr.String()) {
-					ip := net.ParseIP(ipStr).To4()
+					copy(b[:], net.ParseIP(ipStr).To4())
 					addr := syscall.SockaddrInet4{
 						Port: 33434,
-						Addr: [4]byte{ip[0], ip[1], ip[2], ip[3]},
+						Addr: [4]byte{b[0], b[1], b[2], b[3]},
 					}
-					syscall.Sendto(fd, []byte{}, 0, &addr)
+					m, _ := (&icmp.Message{
+						Type: ipv4.ICMPTypeEcho, Code: 0,
+						Body: &icmp.Echo{
+							ID: 2016, Seq: 1,
+							Data: make([]byte, 52-28),
+						},
+					}).Marshal(nil)
+					if err := syscall.Sendto(fd, m, 0, &addr); err != nil {
+						println(err.Error())
+					}
 				}
+				syscall.Close(fd)
 			} else {
-				// IPv6 doesn't support for the time being
-				// TODO: find IPv6 neighbors
+				fd, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_RAW, syscall.IPPROTO_ICMPV6)
+				if err != nil {
+					println(err.Error())
+					return
+				}
+				syscall.SetsockoptInt(fd, syscall.IPPROTO_IPV6, syscall.IPV6_UNICAST_HOPS, 1)
+				copy(b[:], net.ParseIP(fmt.Sprintf("ff02::1")).To16())
+				addr := syscall.SockaddrInet6{
+					Port:   33434,
+					ZoneId: uint32(i.Index),
+					Addr:   b,
+				}
+				m, _ := (&icmp.Message{
+					Type: ipv6.ICMPTypeEchoRequest, Code: 0,
+					Body: &icmp.Echo{
+						ID: 2016, Seq: 1,
+						Data: make([]byte, 52-48),
+					},
+				}).Marshal(nil)
+				if err := syscall.Sendto(fd, m, 0, &addr); err != nil {
+					println(err.Error())
+				}
+				syscall.Close(fd)
 			}
 		}
 	}
@@ -143,9 +180,19 @@ func StrTobyte16(s string) [16]byte {
 // GetARPTable gets ARP table
 func (a *disc) GetARPTable() error {
 	if a.IsBSD {
-		return a.GetMACOSARPTable()
+		err1 := a.GetMACOSIPv6Neighbor()
+		err2 := a.GetMACOSARPTable()
+		if err1 != nil {
+			return err1
+		}
+		if err2 != nil {
+			return err2
+		}
+	} else {
+		return a.GetLinuxARPTable()
 	}
-	return a.GetLinuxARPTable()
+
+	return nil
 }
 
 // GetLinuxARPTable gets Linux ARP table
@@ -173,6 +220,27 @@ func (a *disc) GetLinuxARPTable() error {
 		}
 
 		a.Table = append(a.Table, ARP{IP: fields[0], Host: host, MAC: fields[3], Interface: fields[5]})
+	}
+	return nil
+}
+
+// GetIPv6Neighbor gets existing NDP entries
+func (a *disc) GetMACOSIPv6Neighbor() error {
+	cmd := exec.Command("ndp", "-an")
+	outBytes, err := cmd.Output()
+	if err != nil {
+		return err
+	}
+	out := strings.TrimSpace(string(outBytes))
+	for _, l := range strings.Split(out, "\n") {
+		fields := strings.Fields(l)
+
+		if len(fields) < 1 || fields[0] == "Neighbor" || fields[3] == "permanent" || fields[3] == "expired" {
+			continue
+		}
+		ipV6Address := strings.Split(fields[0], "%")
+		//TODO: waiting for Go resolver to lookup ipv6 address to name, the current milestone is Go1.8
+		a.Table = append(a.Table, ARP{IP: ipV6Address[0], Host: "NA", MAC: fields[1], Interface: fields[2]})
 	}
 	return nil
 }
