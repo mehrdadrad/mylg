@@ -15,8 +15,8 @@ import (
 )
 
 const usage = `Usage:
-	The myLG tool developed to troubleshoot networking situations.
-	The vi/emacs mode,almost all basic features is supported. press tab to see what options are available.
+	The myLG tool, developed to troubleshoot networking situations.
+	The vi/emacs mode, almost all basic features are supported. Press tab to see what options are available.
 
 	connect <provider name>     connects to external looking glass, press tab to see the menu
 	node <city/country name>    connects to specific node at current looking glass, press tab to see the available nodes
@@ -25,14 +25,14 @@ const usage = `Usage:
 	ns                          change mode to name server looking up
 	ping                        ping ip address or domain name
 	trace                       trace ip address or domain name (real-time w/ -r option)
-	dig                         name server looking up
+	dig                         nameserver look up
 	nms                         quick NMS - monitor device/server ports real-time
 	whois                       resolve AS number/IP/CIDR to holder (provides by ripe ncc)
-	hping                       Ping through HTTP/HTTPS w/ GET/POST/HEAD methods
+	hping                       ping through HTTP/HTTPS w/ GET/POST/HEAD methods
 	scan                        scan tcp ports (you can provide range >scan host minport maxport)
 	dump                        prints out a description of the contents of packets on a network interface
 	disc                        discover all the devices on a LAN
-	peering                     peering information (provides by peeringdb.com)
+	peering                     peering information (provided by peeringdb.com)
 	web                         web dashboard - opens dashboard at your default browser
 
 	Please visit http://mylg.io/doc for more information
