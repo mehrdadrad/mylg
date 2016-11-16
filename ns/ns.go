@@ -169,19 +169,46 @@ func (d *Request) Dig() {
 
 // RunDig looks up name server
 func (d *Request) RunDig() {
+	var (
+		r   *dns.Msg
+		err error
+		rtt time.Duration
+	)
+
 	c := new(dns.Client)
 	m := new(dns.Msg)
 	m.SetQuestion(dns.Fqdn(d.Target), d.Type)
 	m.RecursionDesired = true
 	m.RecursionAvailable = true
+	c.Net = "udp"
 
-	println("Trying to query server:", d.Host, d.Country, d.City)
+	for i := 0; i < 3; i++ {
+		fmt.Printf("Trying to query server (%s): %s %s %s\n", c.Net, d.Host, d.Country, d.City)
+		r, rtt, err = c.Exchange(m, net.JoinHostPort(d.Host, "53"))
 
-	r, rtt, err := c.Exchange(m, net.JoinHostPort(d.Host, "53"))
+		// fall back to tcp
+		if err == dns.ErrTruncated && i == 0 {
+			c.Net = "tcp"
+		}
+		// last chance: udp + A records instead of any records
+		if err != nil && i == 1 {
+			c.Net = "udp"
+			d.Type = dns.TypeA
+			m.SetQuestion(dns.Fqdn(d.Target), d.Type)
+		}
+
+		if err != nil {
+			println(err.Error())
+			continue
+		} else {
+			break
+		}
+	}
+
 	if err != nil {
-		println(err.Error())
 		return
 	}
+
 	// Answer
 	println(r.MsgHdr.String())
 	for _, a := range r.Answer {
@@ -237,7 +264,7 @@ func (d *Request) RunDigTrace() {
 		if i != len(domain)-1 {
 			m.SetQuestion(q, dns.TypeNS)
 		} else {
-			m.SetQuestion(q, d.Type)
+			m.SetQuestion(q, dns.TypeA)
 		}
 
 		for _, host = range nss {
