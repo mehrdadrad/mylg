@@ -1,5 +1,5 @@
-// myLG is command line looking glass that written with Go language
-// it tries from its own icmp and external looking glasses tools
+// myLG is an open source software utility which combines the functions
+// of the different network probes in one network diagnostic tool.
 package main
 
 import (
