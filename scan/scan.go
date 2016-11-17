@@ -100,7 +100,7 @@ func host(ipAddr string, minPort, maxPort int) {
 
 	var ports []int
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Protocol", "Port", "Status", "Description"})
+	table.SetHeader([]string{"Protocol", "Port", "Status"})
 
 	for i := minPort; i <= maxPort; i++ {
 		wg.Add(1)
@@ -129,7 +129,7 @@ func host(ipAddr string, minPort, maxPort int) {
 
 	sort.Ints(ports)
 	for i := range ports {
-		table.Append([]string{"TCP", fmt.Sprintf("%d", ports[i]), "Open", ""})
+		table.Append([]string{"TCP", fmt.Sprintf("%d", ports[i]), "Open"})
 	}
 	table.Render()
 
