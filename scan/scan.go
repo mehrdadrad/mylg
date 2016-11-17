@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -97,8 +98,9 @@ func host(ipAddr string, minPort, maxPort int) {
 		counter int
 	)
 
+	var ports []int
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Protocol", "Port", "Status", "Description"})
+	table.SetHeader([]string{"Protocol", "Port", "Status"})
 
 	for i := minPort; i <= maxPort; i++ {
 		wg.Add(1)
@@ -118,12 +120,17 @@ func host(ipAddr string, minPort, maxPort int) {
 				break
 			}
 			counter++
-			table.Append([]string{"TCP", fmt.Sprintf("%d", i), "Open", ""})
+			ports = append(ports, i)
 			wg.Done()
 		}(i)
 	}
 
 	wg.Wait()
+
+	sort.Ints(ports)
+	for i := range ports {
+		table.Append([]string{"TCP", fmt.Sprintf("%d", ports[i]), "Open"})
+	}
 	table.Render()
 
 	if counter == 0 {
@@ -142,7 +149,7 @@ func help(cfg cli.Config) {
     options:
           -p port-range or port number      specified range or port number (default is %s)
     example:
-          scan 8.8.8.8 -p 53	
+          scan 8.8.8.8 -p 53
           scan www.google.com -p 1-500
 	`,
 		cfg.Scan.Port)
