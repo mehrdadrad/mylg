@@ -179,19 +179,44 @@ func StrTobyte16(s string) [16]byte {
 
 // GetARPTable gets ARP table
 func (a *disc) GetARPTable() error {
+	var err1, err2 error
+
 	if a.IsBSD {
-		err1 := a.GetMACOSIPv6Neighbor()
-		err2 := a.GetMACOSARPTable()
-		if err1 != nil {
-			return err1
-		}
-		if err2 != nil {
-			return err2
-		}
+		err1 = a.GetMACOSIPv6Neighbor()
+		err2 = a.GetMACOSARPTable()
 	} else {
-		return a.GetLinuxARPTable()
+		err1 = a.GetLinuxIPv6Neighbor()
+		err2 = a.GetLinuxARPTable()
 	}
 
+	if err1 != nil {
+		return err1
+	}
+	if err2 != nil {
+		return err2
+	}
+
+	return nil
+}
+
+// GetLinuxIPv6Neighbor gets Linux IPv6 neighbors
+func (a *disc) GetLinuxIPv6Neighbor() error {
+	cmd := exec.Command("ip", "-6", "neighbor", "show")
+	outBytes, err := cmd.Output()
+	if err != nil {
+		return err
+	}
+	out := strings.TrimSpace(string(outBytes))
+	for _, l := range strings.Split(out, "\n") {
+		fields := strings.Fields(l)
+
+		if len(fields) < 6 {
+			continue
+		}
+
+		//TODO: waiting for Go resolver to lookup ipv6 address to name, the current milestone is Go1.8
+		a.Table = append(a.Table, ARP{IP: fields[0], Host: "NA", MAC: fields[4], Interface: fields[2]})
+	}
 	return nil
 }
 
