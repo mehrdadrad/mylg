@@ -127,7 +127,7 @@ func NewPing(args string, cfg cli.Config) (*Ping, error) {
 
 	p := &Ping{
 		url:           URL,
-		host:          host,
+		host:          u.Host,
 		rAddr:         ipAddr,
 		buf:           cli.SetFlag(flag, "d", "mylg").(string),
 		count:         cli.SetFlag(flag, "c", cfg.Hping.Count).(int),
