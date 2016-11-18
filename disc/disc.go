@@ -86,7 +86,7 @@ func WalkIP(cidr string) chan string {
 // PingLan tries to send a tiny UDP packet to all LAN hosts
 func (a *disc) PingLan() {
 	var (
-		isV4 bool
+		isV6 bool
 		b    [16]byte
 	)
 
@@ -99,12 +99,8 @@ func (a *disc) PingLan() {
 		// ip network(s) that assigned to interface(s)
 		for _, addr := range addrs {
 			if strings.IndexAny(addr.String(), "::") != -1 {
-				isV4 = false
+				isV6 = true
 			} else {
-				isV4 = true
-			}
-
-			if isV4 {
 				fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_ICMP)
 				if err != nil {
 					println(err.Error())
@@ -125,35 +121,40 @@ func (a *disc) PingLan() {
 						},
 					}).Marshal(nil)
 					if err := syscall.Sendto(fd, m, 0, &addr); err != nil {
-						println(err.Error())
+						if b[3] != 0 && b[3] != 255 {
+							println(err.Error())
+						}
 					}
 				}
 				syscall.Close(fd)
-			} else {
-				fd, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_RAW, syscall.IPPROTO_ICMPV6)
-				if err != nil {
-					println(err.Error())
-					return
-				}
-				syscall.SetsockoptInt(fd, syscall.IPPROTO_IPV6, syscall.IPV6_UNICAST_HOPS, 1)
-				copy(b[:], net.ParseIP(fmt.Sprintf("ff02::1")).To16())
-				addr := syscall.SockaddrInet6{
-					Port:   33434,
-					ZoneId: uint32(i.Index),
-					Addr:   b,
-				}
-				m, _ := (&icmp.Message{
-					Type: ipv6.ICMPTypeEchoRequest, Code: 0,
-					Body: &icmp.Echo{
-						ID: 2016, Seq: 1,
-						Data: make([]byte, 52-48),
-					},
-				}).Marshal(nil)
-				if err := syscall.Sendto(fd, m, 0, &addr); err != nil {
-					println(err.Error())
-				}
-				syscall.Close(fd)
 			}
+		}
+		// sending a solicited-node multicast/icmp if there is IPv6 address
+		if isV6 {
+			fd, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_RAW, syscall.IPPROTO_ICMPV6)
+			if err != nil {
+				println(err.Error())
+				return
+			}
+			syscall.SetsockoptInt(fd, syscall.IPPROTO_IPV6, syscall.IPV6_UNICAST_HOPS, 1)
+			copy(b[:], net.ParseIP(fmt.Sprintf("ff02::1")).To16())
+			addr := syscall.SockaddrInet6{
+				Port:   33434,
+				ZoneId: uint32(i.Index),
+				Addr:   b,
+			}
+			m, _ := (&icmp.Message{
+				Type: ipv6.ICMPTypeEchoRequest, Code: 0,
+				Body: &icmp.Echo{
+					ID: 2016, Seq: 1,
+					Data: make([]byte, 52-48),
+				},
+			}).Marshal(nil)
+			if err := syscall.Sendto(fd, m, 0, &addr); err != nil {
+				println(err.Error())
+			}
+			isV6 = false
+			syscall.Close(fd)
 		}
 	}
 }
