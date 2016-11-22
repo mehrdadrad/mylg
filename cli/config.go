@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -60,15 +59,15 @@ type Config struct {
 
 // Ping represents ping command options
 type Ping struct {
-	Timeout  string `json:"timeout"`
-	Interval string `json:"interval"`
+	Timeout  string `json:"timeout" tag:"lower"`
+	Interval string `json:"interval" tag:"lower"`
 	Count    int    `json:"count"`
 }
 
 // HPing represents ping command options
 type HPing struct {
-	Timeout string `json:"timeout"`
-	Method  string `json:"method"`
+	Timeout string `json:"timeout" tag:"lower"`
+	Method  string `json:"method" tag:"upper"`
 	Data    string `json:"data"`
 	Count   int    `json:"count"`
 }
@@ -86,22 +85,22 @@ type Scan struct {
 
 // Trace represents trace command options
 type Trace struct {
-	Wait  string `json:"wait"`
-	Theme string `json:"theme"`
+	Wait  string `json:"wait" tag:"lower"`
+	Theme string `json:"theme" tag:"lower"`
 }
 
 // SNMP represents nms command options
 type SNMP struct {
 	Community     string `json:"community"`
-	Timeout       string `json:"timeout"`
-	Version       string `json:"version"`
+	Timeout       string `json:"timeout" tag:"lower"`
+	Version       string `json:"version" tag:"lower"`
 	Retries       int    `json:"retries"`
 	Port          int    `json:"port"`
 	Securitylevel string `json:"securitylevel"`
 	Authpass      string `json:"authpass"`
-	Authproto     string `json:"authproto"`
+	Authproto     string `json:"authproto" tag:"lower"`
 	Privacypass   string `json:"privacypass"`
-	Privacyproto  string `json:"privacyproto"`
+	Privacyproto  string `json:"privacyproto" tag:"lower"`
 }
 
 // WriteConfig write config to disk
@@ -120,7 +119,7 @@ func WriteConfig(cfg Config) error {
 	if err != nil {
 		return err
 	}
-	_, err = h.Write(bytes.ToLower(b))
+	_, err = h.Write(b)
 	if err != nil {
 		return err
 	}
@@ -294,14 +293,15 @@ func cfgFile() (string, error) {
 }
 
 //
-func optionType(v reflect.Value, opt string) string {
+func optionProp(v reflect.Value, opt string) (string, string) {
 	opt = strings.Title(opt)
 	for i := 0; i < v.NumField(); i++ {
 		if v.Type().Field(i).Name == opt {
-			return v.Type().Field(i).Type.Name()
+			field := v.Type().Field(i)
+			return field.Tag.Get("tag"), field.Type.Name()
 		}
 	}
-	return "nan"
+	return "", "nan"
 }
 
 // SetConfig handles update option's value
@@ -313,7 +313,7 @@ func SetConfig(args string, s *Config) error {
 		err     error
 	)
 
-	args = strings.ToLower(args)
+	//args = strings.ToLower(args)
 	f := strings.Fields(args)
 	if len(f) < 3 {
 		helpSet()
@@ -331,7 +331,10 @@ func SetConfig(args string, s *Config) error {
 		return fmt.Errorf("invalid command")
 	}
 
-	switch optionType(v, opt) {
+	tags, valType := optionProp(v, opt)
+	val = applyTag(val, tags)
+
+	switch valType {
 	case "string":
 		// string
 		err = SetValue(v.Addr(), opt, fmt.Sprintf("%v", val))
@@ -423,6 +426,18 @@ func ShowConfig(s *Config) {
 			fmt.Printf("set %-8s %-15s %v\n", cmd, subCmd, value)
 		}
 	}
+}
+
+func applyTag(val string, typ string) string {
+	switch {
+	case strings.Contains(typ, "lower"):
+		return strings.ToLower(val)
+	case strings.Contains(typ, "upper"):
+		return strings.ToUpper(val)
+	default:
+		return val
+	}
+
 }
 
 // helpSet shows set command
