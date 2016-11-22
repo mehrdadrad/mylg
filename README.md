@@ -28,7 +28,7 @@ myLG is an open source software utility which combines the functions of the diff
 ![IMAGE ALT TEXT HERE](http://mylg.io/img/packet_analyzer.png)
 ![IMAGE ALT TEXT HERE](http://mylg.io/img/mylg_traceroute_realtime_01.png)
 ![IMAGE ALT TEXT HERE](http://mylg.io/img/mylg_rt_trace2.gif)
-![IMAGE ALT TEXT HERE](http://mylg.io/img/mylg_rt_trace_web.png)
+![IMAGE ALT TEXT HERE](http://mylg.io/img/mylg_rt_trace_web_026.png)
 
 ### Usage
 
