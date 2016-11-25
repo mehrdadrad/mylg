@@ -18,6 +18,7 @@ var defaultConfig = `{
 	},
 	"hping" : {
 		"timeout"  : "2s",
+		"interval" : "0s",
 		"method"   : "HEAD",
 		"data"	   : "mylg",
 		"count"	   : 5
@@ -66,10 +67,11 @@ type Ping struct {
 
 // HPing represents ping command options
 type HPing struct {
-	Timeout string `json:"timeout" tag:"lower"`
-	Method  string `json:"method" tag:"upper"`
-	Data    string `json:"data"`
-	Count   int    `json:"count"`
+	Timeout  string `json:"timeout" tag:"lower"`
+	Interval string `json:"interval" tag:"interval"`
+	Method   string `json:"method" tag:"upper"`
+	Data     string `json:"data"`
+	Count    int    `json:"count"`
 }
 
 // Web represents web command options
