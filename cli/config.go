@@ -68,7 +68,7 @@ type Ping struct {
 // HPing represents ping command options
 type HPing struct {
 	Timeout  string `json:"timeout" tag:"lower"`
-	Interval string `json:"interval" tag:"interval"`
+	Interval string `json:"interval" tag:"lower"`
 	Method   string `json:"method" tag:"upper"`
 	Data     string `json:"data"`
 	Count    int    `json:"count"`
