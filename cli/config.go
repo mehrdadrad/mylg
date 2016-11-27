@@ -18,7 +18,7 @@ var defaultConfig = `{
 	},
 	"hping" : {
 		"timeout"  : "2s",
-		"interval" : "0s",
+		"interval" : "1s",
 		"method"   : "HEAD",
 		"data"	   : "mylg",
 		"count"	   : 5
