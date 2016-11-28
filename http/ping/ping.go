@@ -142,7 +142,7 @@ func NewPing(args string, cfg cli.Config) (*Ping, error) {
 	}
 
 	// set interval
-	interval := cli.SetFlag(flag, "i", "0s").(string)
+	interval := cli.SetFlag(flag, "i", cfg.Hping.Interval).(string)
 	p.interval, err = time.ParseDuration(interval)
 	if err != nil {
 		return p, fmt.Errorf("Failed to parse interval: %s. Correct syntax is <number>s/ms", err)
@@ -430,8 +430,8 @@ func help(cfg cli.Config) {
 
     options:
           -c   count        Send 'count' requests (default: %d)
-          -t   timeout      Set a time limit for requests in ms/s (default is %s)
-          -i   interval     Set a wait time between sending each request in ms/s
+          -t   timeout      Set a time limit for requests in ms/s (default: %s)
+          -i   interval     Set a wait time between sending each request in ms/s (default: %s)
           -m   method       HTTP methods: GET/POST/HEAD (default: %s)
           -d   data         Sending the given data (text/json) (default: "%s")
           -u   user agent   Set user agent
@@ -448,6 +448,7 @@ func help(cfg cli.Config) {
 		  `,
 		cfg.Hping.Count,
 		cfg.Hping.Timeout,
+		cfg.Hping.Interval,
 		cfg.Hping.Method,
 		cfg.Hping.Data)
 }
