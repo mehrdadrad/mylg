@@ -135,7 +135,11 @@ func (s *Scan) Run() {
 		err       error
 	)
 
-	fmt.Printf("Scan %s (%s)\n", s.target, s.raddr)
+	if s.minPort != s.maxPort {
+		fmt.Printf("Scan %s (%s) TCP ports %d-%d\n", s.target, s.raddr, s.minPort, s.maxPort)
+	} else {
+		fmt.Printf("Scan %s (%s) TCP port %d\n", s.target, s.raddr, s.minPort)
+	}
 
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"Protocol", "Port", "Status"})
@@ -155,11 +159,11 @@ func (s *Scan) Run() {
 	for _, p := range openPorts {
 		table.Append([]string{"TCP", fmt.Sprintf("%d", p), "Open"})
 	}
-	table.Render()
 
 	if len(openPorts) == 0 {
 		println("there isn't any opened port")
 	} else {
+		table.Render()
 		elapsed := fmt.Sprintf("%.3f seconds", time.Since(tStart).Seconds())
 		println("Scan done:", len(openPorts), "opened port(s) found in", elapsed)
 	}
@@ -287,7 +291,7 @@ func (s *Scan) pCapture(ctx context.Context) ([]int, error) {
 	}
 	defer handle.Close()
 
-	filter := "(tcp or udp) and src host " + s.raddr.String()
+	filter := "tcp and src host " + s.raddr.String()
 	if err := handle.SetBPFFilter(filter); err != nil {
 		return nil, err
 	}
@@ -312,7 +316,7 @@ LOOP:
 			}
 		}
 	}
-	//TODO: unique .....
+	openPorts = uniqSlice(openPorts)
 	sort.Ints(openPorts)
 	return openPorts, nil
 }
@@ -338,9 +342,9 @@ func (s *Scan) sendTCPSYN() error {
 		if _, err := conn.WriteTo(buf, &net.IPAddr{IP: s.raddr}); err != nil {
 			println(err.Error())
 		}
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(5 * time.Millisecond)
 	}
-	time.Sleep(2 * time.Second)
+	time.Sleep(1 * time.Second)
 	return nil
 }
 
@@ -375,6 +379,18 @@ func (s *Scan) tcpConnScan() []int {
 	wg.Wait()
 	sort.Ints(ports)
 	return ports
+}
+
+func uniqSlice(s []int) []int {
+	m := map[int]bool{}
+	r := []int{}
+	for _, v := range s {
+		if _, ok := m[v]; !ok {
+			m[v] = true
+			r = append(r, v)
+		}
+	}
+	return r
 }
 
 // help represents guide to user
