@@ -107,7 +107,6 @@ func (i *Trace) TermUI() (string, error) {
 			case r, ok := <-resp:
 				if !ok {
 					done <- struct{}{}
-					ui.StopLoop()
 					break LOOP
 				}
 

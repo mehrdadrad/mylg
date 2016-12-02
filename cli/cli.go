@@ -312,7 +312,7 @@ func checkUpdate(version string) {
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		println("error: check update has been failed (2)" + err.Error())
+		println("error: update check failed (2)" + err.Error())
 		return
 	}
 	err = json.Unmarshal(body, &appCtl)

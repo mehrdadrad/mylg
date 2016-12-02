@@ -907,7 +907,8 @@ func helpTrace() {
           -T             Set the real-time terminal theme (dark|light)
           -c             Set the number of pings sent
           -p             Set the packet size in bytes inclusive headers (default 52 bytes)
-          -u             Use UDP datagram instead of ICMP 
+          -u             Use UDP datagram instead of ICMP
+          -R             Prints results of real-time trace, when completed
     Example:
           trace 8.8.8.8
           trace freebsd.org -r
