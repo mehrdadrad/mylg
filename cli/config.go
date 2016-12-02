@@ -28,7 +28,7 @@ var defaultConfig = `{
 		"address"  : "127.0.0.1"
 	},
 	"scan" : {
-		"port"     : "1-500"
+		"port"     : "1-1024"
 	},
 	"trace" : {
 		"wait"  : "2s",
