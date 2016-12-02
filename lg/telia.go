@@ -80,7 +80,7 @@ func (p *Telia) Ping() (string, error) {
 		return "", err
 	}
 	if resp.StatusCode != 200 {
-		return "", errors.New("error: level3 looking glass is not available")
+		return "", errors.New("error: telia looking glass is not available")
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
