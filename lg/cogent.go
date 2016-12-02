@@ -87,7 +87,7 @@ func (p *Cogent) Ping() (string, error) {
 		return "", err
 	}
 	if resp.StatusCode != 200 {
-		return "", errors.New("error: level3 looking glass is not available")
+		return "", errors.New("error: cogent looking glass is not available")
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
