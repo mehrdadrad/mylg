@@ -330,7 +330,7 @@ func (s *Scan) sendTCPSYN() error {
 	if s.network != "ip6" {
 		conn, err = net.ListenPacket(s.network+":tcp", "0.0.0.0")
 	} else {
-		conn, err = net.ListenPacket(s.network+":tcp", "[::]")
+		conn, err = net.ListenPacket(s.network+":tcp", "::")
 	}
 	if err != nil {
 		return err
