@@ -3,6 +3,7 @@
 package ping
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -42,6 +43,8 @@ type Ping struct {
 	TLSSkipVerify bool
 	tracerEnabled bool
 	fmtJSON       bool
+	ipv4          bool
+	ipv6          bool
 }
 
 // Result holds Ping result
@@ -59,6 +62,17 @@ type Result struct {
 type Trace struct {
 	ConnectionTime  float64
 	TimeToFirstByte float64
+}
+
+func (p Ping) IPVersion(t string) string {
+	if p.ipv4 {
+		return fmt.Sprintf("%s4", t)
+	} else if p.ipv6 {
+		return fmt.Sprintf("%s6", t)
+	}
+
+	// Not specified, use happy eyeballs
+	return t
 }
 
 // PrintPingResult prints result from each individual ping
@@ -120,15 +134,9 @@ func NewPing(args string, cfg cli.Config) (*Ping, error) {
 
 	sTime := time.Now()
 
-	ipAddr, err := net.ResolveIPAddr("ip", host)
-	if err != nil {
-		return &Ping{}, fmt.Errorf("cannot resolve %s: Unknown host", host)
-	}
-
 	p := &Ping{
 		url:           URL,
 		host:          u.Host,
-		rAddr:         ipAddr,
 		buf:           cli.SetFlag(flag, "d", "mylg").(string),
 		count:         cli.SetFlag(flag, "c", cfg.Hping.Count).(int),
 		tracerEnabled: cli.SetFlag(flag, "trace", false).(bool),
@@ -138,8 +146,17 @@ func NewPing(args string, cfg cli.Config) (*Ping, error) {
 		kAlive:        cli.SetFlag(flag, "k", false).(bool),
 		TLSSkipVerify: cli.SetFlag(flag, "nc", false).(bool),
 		quiet:         cli.SetFlag(flag, "q", false).(bool),
+		ipv4:          cli.SetFlag(flag, "4", false).(bool),
+		ipv6:          cli.SetFlag(flag, "6", false).(bool),
 		nsTime:        time.Since(sTime),
 	}
+
+	ipAddr, err := net.ResolveIPAddr(p.IPVersion("ip"), host)
+	if err != nil {
+		return &Ping{}, fmt.Errorf("cannot resolve %s: Unknown host", host)
+	}
+
+	p.rAddr = ipAddr
 
 	// set interval
 	interval := cli.SetFlag(flag, "i", cfg.Hping.Interval).(string)
@@ -296,6 +313,9 @@ func (p *Ping) setTransport() {
 			InsecureSkipVerify: p.TLSSkipVerify,
 		},
 		Proxy: http.ProxyFromEnvironment,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return net.Dial(p.IPVersion("tcp"), addr)
+		},
 	}
 }
 
@@ -435,6 +455,8 @@ func help(cfg cli.Config) {
           -m   method       HTTP methods: GET/POST/HEAD (default: %s)
           -d   data         Sending the given data (text/json) (default: "%s")
           -u   user agent   Set user agent
+          -4                Force IPv4
+          -6                Force IPv6
           -q                Quiet reqular output
           -k                Enable keep alive
           -dc               Disable compression
