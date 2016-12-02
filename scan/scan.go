@@ -24,19 +24,19 @@ import (
 
 // Scan represents the scan parameters
 type Scan struct {
-	minPort int
-	maxPort int
-	target  string
-	lport   int
-	rport   int
-	laddr   net.IP
-	raddr   net.IP
-	ifName  string
-	network string
-	forceV4 bool
-	forceV6 bool
-	synScan bool
-	ip      gopacket.NetworkLayer
+	minPort  int
+	maxPort  int
+	target   string
+	lport    int
+	rport    int
+	laddr    net.IP
+	raddr    net.IP
+	ifName   string
+	network  string
+	forceV4  bool
+	forceV6  bool
+	connScan bool
+	ip       gopacket.NetworkLayer
 }
 
 // NewScan creats scan object
@@ -54,9 +54,9 @@ func NewScan(args string, cfg cli.Config) (Scan, error) {
 		return scan, fmt.Errorf("")
 	}
 
-	scan.forceV4 = cli.SetFlag(flag, "4", true).(bool)
+	scan.forceV4 = cli.SetFlag(flag, "4", false).(bool)
 	scan.forceV6 = cli.SetFlag(flag, "6", false).(bool)
-	scan.synScan = cli.SetFlag(flag, "s", false).(bool)
+	scan.connScan = cli.SetFlag(flag, "c", false).(bool)
 
 	pRange := cli.SetFlag(flag, "p", cfg.Scan.Port).(string)
 
@@ -145,7 +145,7 @@ func (s *Scan) Run() {
 	table.SetHeader([]string{"Protocol", "Port", "Status"})
 
 	tStart := time.Now()
-	if !s.synScan {
+	if s.connScan {
 		openPorts = s.tcpConnScan()
 	} else {
 		openPorts, err = s.tcpSYNScan()
@@ -262,7 +262,7 @@ func (s *Scan) tcpSYNScan() ([]int, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	if err = s.setLocalNet(); err != nil {
-		println(err.Error())
+		return []int{}, fmt.Errorf("source IP address not configured")
 	}
 	if err = s.setProto("tcp"); err != nil {
 		println(err.Error())
@@ -399,10 +399,14 @@ func help(cfg cli.Config) {
     usage:
           scan ip/host [option]
     options:
-          -p port-range or port number      specified range or port number (default is %s)
+          -p port-range or port number      Specified range or port number (default is %s)
+          -c                                TCP connect scan (default is TCP SYN scan)
+          -4                                Force IPv4
+          -6                                Force IPv6
     example:
           scan 8.8.8.8 -p 53
           scan www.google.com -p 1-500
+          scan freebsd.org -6
 	`,
 		cfg.Scan.Port)
 }
