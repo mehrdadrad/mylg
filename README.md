@@ -33,7 +33,7 @@ myLG is an open source software utility which combines the functions of the diff
 ### Usage
 
 ```
-================================================
+=================================================
                           _    ___
                 _ __ _  _| |  / __|
                | '  \ || | |_| (_ |
