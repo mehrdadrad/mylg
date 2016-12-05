@@ -163,6 +163,7 @@ func (s *Scan) Run() {
 	if len(openPorts) == 0 {
 		println("there isn't any opened port")
 	} else {
+		println("")
 		table.Render()
 		elapsed := fmt.Sprintf("%.3f seconds", time.Since(tStart).Seconds())
 		println("Scan done:", len(openPorts), "opened port(s) found in", elapsed)

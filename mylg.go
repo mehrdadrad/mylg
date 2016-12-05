@@ -383,7 +383,10 @@ func scanPorts() {
 	if err != nil {
 		println(err.Error())
 	} else {
+		spin.Prefix = "please wait "
+		spin.Start()
 		scan.Run()
+		spin.Stop()
 	}
 }
 
