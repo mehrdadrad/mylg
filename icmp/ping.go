@@ -109,6 +109,26 @@ func (p *Ping) Run() chan Response {
 	return r
 }
 
+func (p *Ping) MRun() chan Response {
+	var r = make(chan Response, 1000)
+	_, ipNet, _ := net.ParseCIDR(p.target)
+	if len(ipNet.IP) == 4 {
+		go func() {
+			for ip := range walkIPv4(p.target) {
+				pp := p
+				pp.isV4Avail = true
+				pp.addr = &net.IPAddr{IP: net.ParseIP(ip)}
+				pp.Ping(r)
+			}
+			close(r)
+		}()
+	} else {
+		println("IPv6 doesn't support")
+		close(r)
+	}
+	return r
+}
+
 // IsIPv4 returns true if ip version is v4
 func IsIPv4(ip net.IP) bool {
 	return len(ip.To4()) == net.IPv4len
@@ -249,12 +269,13 @@ func (p *Ping) Ping(out chan Response) {
 	var (
 		conn     *icmp.PacketConn
 		err      error
+		addr     string       = p.addr.String()
 		rcvdChan chan *packet = make(chan *packet, 1)
 	)
 
 	if p.isV4Avail {
 		if conn, err = p.listen("ip4:icmp"); err != nil {
-			out <- Response{Error: err}
+			out <- Response{Error: err, Addr: addr}
 			return
 		}
 		defer conn.Close()
@@ -262,7 +283,7 @@ func (p *Ping) Ping(out chan Response) {
 
 	if p.isV6Avail {
 		if conn, err = p.listen("ip6:ipv6-icmp"); err != nil {
-			out <- Response{Error: err}
+			out <- Response{Error: err, Addr: addr}
 			return
 		}
 		defer conn.Close()
@@ -273,22 +294,22 @@ func (p *Ping) Ping(out chan Response) {
 	rm := <-rcvdChan
 
 	if rm.err != nil {
-		out <- Response{Error: rm.err, Sequence: p.seq}
+		out <- Response{Error: rm.err, Sequence: p.seq, Addr: addr}
 		return
 	}
 	_, m, err := p.parseMessage(rm)
 	if err != nil {
-		out <- Response{Error: err, Sequence: p.seq}
+		out <- Response{Error: err, Sequence: p.seq, Addr: addr}
 		return
 	}
 
 	switch m.Body.(type) {
 	case *icmp.TimeExceeded:
-		out <- Response{Error: fmt.Errorf("time exceeded"), Sequence: p.seq}
+		out <- Response{Error: fmt.Errorf("time exceeded"), Sequence: p.seq, Addr: addr}
 	case *icmp.PacketTooBig:
-		out <- Response{Error: fmt.Errorf("packet too big"), Sequence: p.seq}
+		out <- Response{Error: fmt.Errorf("packet too big"), Sequence: p.seq, Addr: addr}
 	case *icmp.DstUnreach:
-		out <- Response{Error: fmt.Errorf("destination unreachable"), Sequence: p.seq}
+		out <- Response{Error: fmt.Errorf("destination unreachable"), Sequence: p.seq, Addr: addr}
 	case *icmp.Echo:
 		rtt := float64(time.Now().UnixNano()-getTimeStamp(rm.bytes)) / 1000000
 		out <- Response{
@@ -299,7 +320,7 @@ func (p *Ping) Ping(out chan Response) {
 			Error:    nil,
 		}
 	default:
-		out <- Response{Error: fmt.Errorf("ICMP error"), Sequence: p.seq}
+		out <- Response{Error: fmt.Errorf("ICMP error"), Sequence: p.seq, Addr: addr}
 	}
 }
 
@@ -415,6 +436,43 @@ func NormalizeDuration(d string) string {
 		return d + "s"
 	}
 	return d
+}
+
+func walkIPv4(cidr string) chan string {
+	c := make(chan string, 2048)
+	go func() {
+		defer close(c)
+		ip, ipnet, err := net.ParseCIDR(cidr)
+		if err != nil {
+			println(err.Error())
+			return
+		}
+		for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); nextIP(ip) {
+			select {
+			case c <- ip.String():
+			default:
+				break
+			}
+		}
+	}()
+	return c
+}
+
+func nextIP(ip net.IP) {
+	for j := len(ip) - 1; j >= 0; j-- {
+		ip[j]++
+		if ip[j] > 0 {
+			break
+		}
+	}
+}
+
+func HostRespPrint(resp Response) {
+	if resp.Error != nil {
+		fmt.Printf("%s is unreachable\n", resp.Addr)
+	} else {
+		fmt.Printf("%s is alive (%.4f ms)\n", resp.Addr, resp.RTT)
+	}
 }
 
 // help represents ping help

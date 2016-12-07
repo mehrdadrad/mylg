@@ -374,6 +374,11 @@ func pingLocal() {
 	if !p.IsCIDR() {
 		resp := p.Run()
 		p.PrintPretty(resp)
+	} else {
+		resp := p.MRun()
+		for r := range resp {
+			icmp.HostRespPrint(r)
+		}
 	}
 }
 
