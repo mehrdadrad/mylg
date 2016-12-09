@@ -172,9 +172,9 @@ func (p *Ping) SetIP(ips []net.IP) error {
 	return fmt.Errorf("there is not  A or AAAA record")
 }
 
-// DelIP removes ip adrress
-func (p *Ping) DelIP(ipAddr string) {
-	//todo
+// CIDRHeader prints ping CIDR header
+func (p *Ping) CIDRHeader() {
+	fmt.Printf("PING %s : %d data bytes\n", p.target, p.pSize-8)
 }
 
 // PacketSize set packet size
@@ -467,7 +467,8 @@ func nextIP(ip net.IP) {
 	}
 }
 
-func HostRespPrint(resp Response) {
+// CIDRRespPrint prints out CIDR host response status
+func CIDRRespPrint(resp Response) {
 	if resp.Error != nil {
 		fmt.Printf("%s is unreachable\n", resp.Addr)
 	} else {

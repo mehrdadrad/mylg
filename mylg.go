@@ -376,8 +376,9 @@ func pingLocal() {
 		p.PrintPretty(resp)
 	} else {
 		resp := p.MRun()
+		p.CIDRHeader()
 		for r := range resp {
-			icmp.HostRespPrint(r)
+			icmp.CIDRRespPrint(r)
 		}
 	}
 }
