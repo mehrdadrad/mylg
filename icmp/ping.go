@@ -193,22 +193,38 @@ func (p *Ping) listen(network string) (*icmp.PacketConn, error) {
 
 // recv reads icmp message
 func (p *Ping) recv(conn *icmp.PacketConn, rcvdChan chan<- *packet) {
-	var err error
+	var (
+		err  error
+		dest net.Addr
+		n    int
+	)
+
 	bytes := make([]byte, 1500)
 	conn.SetReadDeadline(time.Now().Add(p.timeout))
-	n, dest, err := conn.ReadFrom(bytes)
-	if err != nil {
-		if neterr, ok := err.(*net.OpError); ok {
-			if neterr.Timeout() {
-				err = errors.New("Request timeout")
+
+	for r := 0; r <= 2; r++ {
+		n, dest, err = conn.ReadFrom(bytes)
+		if err != nil {
+			if neterr, ok := err.(*net.OpError); ok {
+				if neterr.Timeout() {
+					err = errors.New("Request timeout")
+				}
 			}
 		}
+
+		bytes = bytes[:n]
+
+		if n > 0 {
+			respTyp := int(bytes[0])
+			respID := int(bytes[4])<<8 | int(bytes[5])
+			if respTyp == 0 && respID != p.id {
+				continue
+			}
+		}
+		break
 	}
 
-	bytes = bytes[:n]
-	select {
-	case rcvdChan <- &packet{bytes: bytes, addr: dest, err: err}:
-	}
+	rcvdChan <- &packet{bytes: bytes, addr: dest, err: err}
 }
 
 func (p *Ping) payload() []byte {
