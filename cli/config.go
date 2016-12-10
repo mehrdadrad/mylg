@@ -291,7 +291,7 @@ func cfgFile() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return user.HomeDir + "/.config/mylg.config", nil
+	return user.HomeDir + "/.mylg.config", nil
 }
 
 //
