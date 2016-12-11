@@ -216,9 +216,10 @@ func (p *Ping) recv(conn *icmp.PacketConn, rcvdChan chan<- *packet) {
 		bytes = bytes[:n]
 
 		if n > 0 {
-			respTyp := int(bytes[0])
 			respID := int(bytes[4])<<8 | int(bytes[5])
-			if respTyp == 0 && respID == p.id {
+			respSq := int(bytes[6])<<8 | int(bytes[7])
+			if respID == p.id && respSq == p.seq {
+				rcvdChan <- &packet{bytes: bytes, addr: dest, err: err}
 				break
 			} else if time.Since(ts) < p.timeout {
 				continue
@@ -229,10 +230,10 @@ func (p *Ping) recv(conn *icmp.PacketConn, rcvdChan chan<- *packet) {
 			continue
 		}
 
+		err = errors.New("Request timeout")
+		rcvdChan <- &packet{bytes: []byte{}, addr: dest, err: err}
 		break
 	}
-
-	rcvdChan <- &packet{bytes: bytes, addr: dest, err: err}
 }
 
 func (p *Ping) payload() []byte {
