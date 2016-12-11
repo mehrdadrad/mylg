@@ -42,6 +42,6 @@ func help() {
     Example:
           whois 8.8.8.8
           whois 8.0.0.0/8
-          whois 577		  
+          whois 577
 	`)
 }

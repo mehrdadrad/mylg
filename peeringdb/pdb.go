@@ -143,7 +143,7 @@ func cache(r, typ string, data interface{}) (interface{}, bool) {
 
 // printTable prints peeringdb data as table
 func printTable(net Net, ixLan [][]string) {
-	println("The data provided from www.peeringdb.com")
+	println("Data provided by www.peeringdb.com")
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"Name", "Traffic", "Type", "Web site", "Note"})
 	table.Append([]string{net.Name, net.Traffic, net.InfoType, net.WWW, net.Note})
@@ -203,7 +203,7 @@ func Search(key string) {
 		n := nets.(map[string]Net)
 		printTable(n[ASN], result)
 	} else {
-		println("there is not any information @ peeringdb")
+		println("no information @ peeringdb")
 	}
 }
 

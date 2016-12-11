@@ -7,7 +7,7 @@ myLG is an open source software utility which combines the functions of the diff
 
 ## Features
 * Popular looking glasses (ping/trace/bgp): Telia, Level3
-* More than 200 countries DNS Lookup information 
+* More than 200 countries DNS Lookup information
 * Local ping and real-time trace route
 * Packet analyzer - TCP/IP and other packets
 * Quick NMS (network management system)
@@ -33,13 +33,13 @@ myLG is an open source software utility which combines the functions of the diff
 ### Usage
 
 ```
-=================================================	
-                          _    ___ 
+=================================================
+                          _    ___
                 _ __ _  _| |  / __|
                | '  \ || | |_| (_ |
                |_|_|_\_, |____\___|
-                      |__/          
-	
+                      |__/
+
                  My Looking Glass
            Free Network Diagnostic Tool
              www.facebook.com/mylg.io
@@ -286,7 +286,7 @@ set hping    data       mylg
 set hping    count      5
 set web      port       8080
 set web      address    127.0.0.1
-set scan     port       1-500
+set scan     port       1-1024
 
 local> set hping count 10
 
@@ -355,7 +355,7 @@ go build mylg.go
 This project is licensed under MIT license. Please read the LICENSE file.
 
 
-## Contribute 
+## Contribute
 Welcomes any kind of contribution, please follow the next steps:
 
 - Fork the project on github.com.

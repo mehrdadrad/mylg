@@ -486,6 +486,6 @@ func help() {
           dump !udp
           dump -i eth0
           dump -w /tmp/mypcap
-          dump tcp -s verisign -x			
+          dump tcp -s verisign -x
   `)
 }

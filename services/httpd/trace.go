@@ -44,7 +44,7 @@ func initTrace(w http.ResponseWriter, r *http.Request, cfg *cli.Config) {
 }
 
 func getTrace(w http.ResponseWriter, r *http.Request) {
-	var errMsg = "trace channel is not exist"
+	var errMsg = "trace channel does not exist"
 
 	r.ParseForm()
 	id := r.FormValue("id")
@@ -68,7 +68,7 @@ func getTrace(w http.ResponseWriter, r *http.Request) {
 }
 
 func closeTrace(w http.ResponseWriter, r *http.Request) {
-	var errMsg = "trace channel is not exist"
+	var errMsg = "trace channel does not exist"
 
 	r.ParseForm()
 	id := r.FormValue("id")

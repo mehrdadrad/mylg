@@ -16,7 +16,7 @@ import (
 
 const usage = `Usage:
 	The myLG tool, developed to troubleshoot networking situations.
-	The vi/emacs mode, almost all basic features are supported. Press tab to see what options are available.
+	The vi/emacs mode, almost all basic features are supported. Press tab to see which options are available.
 
 	connect <provider name>     connects to external looking glass, press tab to see the menu
 	node <city/country name>    connects to specific node at current looking glass, press tab to see the available nodes
@@ -27,7 +27,7 @@ const usage = `Usage:
 	trace                       trace ip address or domain name (real-time w/ -r option)
 	dig                         nameserver look up
 	nms                         quick NMS - monitor device/server ports real-time
-	whois                       resolve AS number/IP/CIDR to holder (provides by ripe ncc)
+	whois                       resolve AS number/IP/CIDR to holder (provided by ripe ncc)
 	hping                       ping through HTTP/HTTPS w/ GET/POST/HEAD methods
 	scan                        scan tcp ports (you can provide range >scan host minport maxport)
 	dump                        prints out a description of the contents of packets on a network interface
