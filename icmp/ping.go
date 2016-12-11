@@ -196,13 +196,14 @@ func (p *Ping) recv(conn *icmp.PacketConn, rcvdChan chan<- *packet) {
 	var (
 		err  error
 		dest net.Addr
+		ts   = time.Now()
 		n    int
 	)
 
 	bytes := make([]byte, 1500)
 	conn.SetReadDeadline(time.Now().Add(p.timeout))
 
-	for r := 0; r <= 2; r++ {
+	for {
 		n, dest, err = conn.ReadFrom(bytes)
 		if err != nil {
 			if neterr, ok := err.(*net.OpError); ok {
@@ -217,10 +218,17 @@ func (p *Ping) recv(conn *icmp.PacketConn, rcvdChan chan<- *packet) {
 		if n > 0 {
 			respTyp := int(bytes[0])
 			respID := int(bytes[4])<<8 | int(bytes[5])
-			if respTyp == 0 && respID != p.id {
+			if respTyp == 0 && respID == p.id {
+				break
+			} else if time.Since(ts) < p.timeout {
 				continue
 			}
 		}
+
+		if time.Since(ts) < p.timeout {
+			continue
+		}
+
 		break
 	}
 
