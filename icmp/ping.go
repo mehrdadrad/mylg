@@ -110,15 +110,28 @@ func (p *Ping) Run() chan Response {
 }
 
 func (p *Ping) MRun() chan Response {
-	var r = make(chan Response, 1000)
+	var (
+		r     = make(chan Response, 1000)
+		sigCh = make(chan os.Signal, 1)
+	)
 	_, ipNet, _ := net.ParseCIDR(p.target)
 	if len(ipNet.IP) == 4 {
 		go func() {
+			// capture interrupt w/ s channel
+			signal.Notify(sigCh, os.Interrupt)
+			defer signal.Stop(sigCh)
+		LOOP:
 			for ip := range walkIPv4(p.target) {
 				pp := p
 				pp.isV4Avail = true
 				pp.addr = &net.IPAddr{IP: net.ParseIP(ip)}
 				pp.Ping(r)
+				select {
+				case <-sigCh:
+					break LOOP
+				default:
+					continue
+				}
 			}
 			close(r)
 		}()
@@ -354,7 +367,7 @@ func (p *Ping) PrintPretty(resp chan Response) {
 	var (
 		loop          = true
 		sigCh         = make(chan os.Signal, 1)
-		pFmt          = "%d bytes from %s icmp_seq=%d time=%f ms"
+		pFmt          = "%d bytes from %s icmp_seq=%d time=%.3f ms"
 		eFmt          = "%s icmp_seq=%d"
 		sFmt          = "%d packets transmitted,  %d packets received, %d%% packet loss\n"
 		msg           string
@@ -497,7 +510,7 @@ func CIDRRespPrint(resp Response) {
 	if resp.Error != nil {
 		fmt.Printf("%s is unreachable\n", resp.Addr)
 	} else {
-		fmt.Printf("%s is alive (%.4f ms)\n", resp.Addr, resp.RTT)
+		fmt.Printf("%s is alive (%.3f ms)\n", resp.Addr, resp.RTT)
 	}
 }
 
@@ -505,7 +518,7 @@ func CIDRRespPrint(resp Response) {
 func help(cfg cli.Config) {
 	fmt.Printf(`
     usage:
-          ping IP address / domain name [options]
+          ping IP address / domain name / CIDR [options]
     options:
           -c count       Send 'count' requests (default: %d)
           -t timeout     Specify a timeout in format "ms", "s", "m" (default: %s)
@@ -514,6 +527,7 @@ func help(cfg cli.Config) {
           -6             Forces the ping command to use IPv6 (target should be hostname)
     Example:
           ping 8.8.8.8
+          ping 31.13.74.0/24
           ping 8.8.8.8 -c 10
           ping google.com -6
           ping mylg.io -i 5s
