@@ -143,7 +143,7 @@ func (st *ST) bestServer() Server {
 		server  Server
 	)
 	latency = 1000
-	for i, _ := range []int{1, 2, 3, 4} {
+	for i := range []int{1, 2, 3, 4} {
 		base := st.servers[i].URL[:strings.LastIndex(st.servers[i].URL, "/")]
 		url := base + "/latency.txt"
 		sum = 0
