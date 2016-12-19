@@ -4,11 +4,13 @@ package speedtest
 import (
 	"encoding/xml"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math"
 	"net/http"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -25,6 +27,7 @@ type Client struct {
 }
 type Server struct {
 	Name     string  `xml:"name,attr"`
+	Id       string  `xml:"id,attr"`
 	Sponsor  string  `xml:"sponsor,attr"`
 	Country  string  `xml:"country,attr"`
 	URL      string  `xml:"url,attr"`
@@ -40,14 +43,14 @@ type Hosts struct {
 
 type Settings struct {
 	Download struct {
-		TestLength    int `xml:"testlength,attr"`
-		ThreadsPerURL int `xml:"threadsperurl,attr"`
+		TestLength    float64 `xml:"testlength,attr"`
+		ThreadsPerURL int     `xml:"threadsperurl,attr"`
 	} `xml:"download"`
 	Upload struct {
-		Ratio         int `xml:"ratio,attr"`
-		MaxChunkCount int `xml:"maxchunkcount,attr"`
-		Threads       int `xml:"threads,attr"`
-		TestLength    int `xml:"testlength,attr"`
+		Ratio         int     `xml:"ratio,attr"`
+		MaxChunkCount int     `xml:"maxchunkcount,attr"`
+		Threads       int     `xml:"threads,attr"`
+		TestLength    float64 `xml:"testlength,attr"`
 	} `xml:"upload"`
 	ServerCfg struct {
 		IgnoreIds string `xml:"ignoreids,attr"`
@@ -69,6 +72,10 @@ func Run() error {
 	if server.Distance == 0 {
 		return fmt.Errorf("could not find a server")
 	}
+
+	down := st.download(server)
+	fmt.Printf("%f\n", down)
+
 	return nil
 }
 
@@ -107,7 +114,8 @@ func (st *ST) getConfig() error {
 
 func (st *ST) getServers() error {
 	var (
-		stServers = []string{
+		isIgnoreId = make(map[string]struct{})
+		stServers  = []string{
 			"http://www.speedtest.net/speedtest-servers-static.php",
 			"http://c.speedtest.net/speedtest-servers-static.php",
 		}
@@ -125,12 +133,18 @@ func (st *ST) getServers() error {
 		st.cfg.Client.Lon = st.cfg.Client.Lon * math.Pi / 180
 		st.cfg.Client.Lat = st.cfg.Client.Lat * math.Pi / 180
 
-		for i, server := range hosts.Server {
-			hosts.Server[i].Distance = distance(st.cfg.Client.Lon, st.cfg.Client.Lat, server)
+		for _, ignoreId := range strings.Split(st.cfg.ServerCfg.IgnoreIds, ",") {
+			isIgnoreId[ignoreId] = struct{}{}
 		}
 
-		sort.Sort(byDistance(hosts.Server))
-		st.servers = hosts.Server
+		for i, server := range hosts.Server {
+			if _, ok := isIgnoreId[hosts.Server[i].Id]; !ok {
+				hosts.Server[i].Distance = distance(st.cfg.Client.Lon, st.cfg.Client.Lat, server)
+				st.servers = append(st.servers, hosts.Server[i])
+			}
+		}
+
+		sort.Sort(byDistance(st.servers))
 		break
 	}
 	return nil
@@ -164,8 +178,53 @@ func (st *ST) bestServer() Server {
 	return server
 }
 
-func (st *ST) download() {
+func (st *ST) download(server Server) float64 {
+	var (
+		wg        sync.WaitGroup
+		urls      []string
+		totalRcvd float64
+		sizeDld   = []int{350, 500, 750, 1000, 1500, 2000, 2500, 3000, 3500, 4000}
+	)
 
+	base := server.URL[:strings.LastIndex(server.URL, "/")]
+
+	for _, size := range sizeDld {
+		for i := 0; i < st.cfg.Download.ThreadsPerURL; i++ {
+			urls = append(urls, fmt.Sprintf("%s/random%dx%d.jpg", base, size, size))
+		}
+	}
+	ts := time.Now()
+	for _, url := range urls {
+		wg.Add(1)
+		go func(url string) {
+			var (
+				buf   = make([]byte, 10240)
+				total int
+			)
+
+			defer wg.Done()
+			timeout := time.Duration(st.cfg.Download.TestLength) * time.Second
+			client := http.Client{
+				Timeout: timeout,
+			}
+			resp, _ := client.Get(url)
+			ts := time.Now()
+			for {
+				lr := io.LimitReader(resp.Body, 10240)
+				n, err := io.ReadFull(lr, buf)
+				total += n
+				if n == 0 || err != nil {
+					break
+				}
+				if st.cfg.Download.TestLength < time.Since(ts).Seconds() {
+					break
+				}
+			}
+			totalRcvd += float64(total)
+		}(url)
+	}
+	wg.Wait()
+	return totalRcvd * 8 / time.Since(ts).Seconds() / 1000 / 1000
 }
 
 func distance(cLon, cLat float64, server Server) float64 {
