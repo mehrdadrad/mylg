@@ -26,6 +26,7 @@ import (
 	"github.com/mehrdadrad/mylg/peeringdb"
 	"github.com/mehrdadrad/mylg/scan"
 	"github.com/mehrdadrad/mylg/services/httpd"
+	"github.com/mehrdadrad/mylg/speedtest"
 	"github.com/mehrdadrad/mylg/whois"
 )
 
@@ -64,34 +65,36 @@ var (
 		"telia":  new(lg.Telia),  // telia
 		"level3": new(lg.Level3), // level3
 		"cogent": new(lg.Cogent), //cogent
+		"ntt":    new(lg.NTT),    //cogent
 	}
 
 	// map cmd to function
 	cmdFunc = map[string]func(){
-		"web":     web,          // web dashboard
-		"dump":    dump,         // dump traffic
-		"disc":    discovery,    // network discovery
-		"scan":    scanPorts,    // network scan
-		"mode":    mode,         // editor mode
-		"ping":    pingQuery,    // ping
-		"trace":   trace,        // trace route
-		"bgp":     BGP,          // BGP
-		"whois":   whoisLookup,  // whois / dns lookup
-		"peering": peeringDB,    // peering DB
-		"hping":   hping,        // hping
-		"dig":     dig,          // dig
-		"nms":     setNMS,       // network management system
-		"node":    node,         // change node
-		"connect": connect,      // connect to a country or LG
-		"local":   local,        // local
-		"help":    help,         // help
-		"exit":    cleanUp,      // clean up
-		"quit":    cleanUp,      // clean up
-		"show":    show,         // show config
-		"set":     setConfig,    // set config
-		"lg":      setLG,        // prepare looking glass
-		"ns":      setNS,        // prepare name server
-		"version": printVersion, // prints version
+		"web":       web,          // web dashboard
+		"dump":      dump,         // dump traffic
+		"disc":      discovery,    // network discovery
+		"scan":      scanPorts,    // network scan
+		"mode":      mode,         // editor mode
+		"ping":      pingQuery,    // ping
+		"trace":     trace,        // trace route
+		"bgp":       BGP,          // BGP
+		"whois":     whoisLookup,  // whois / dns lookup
+		"peering":   peeringDB,    // peering DB
+		"hping":     hping,        // hping
+		"dig":       dig,          // dig
+		"nms":       setNMS,       // network management system
+		"node":      node,         // change node
+		"connect":   connect,      // connect to a country or LG
+		"local":     local,        // local
+		"help":      help,         // help
+		"exit":      cleanUp,      // clean up
+		"quit":      cleanUp,      // clean up
+		"show":      show,         // show config
+		"set":       setConfig,    // set config
+		"lg":        setLG,        // prepare looking glass
+		"ns":        setNS,        // prepare name server
+		"speedtest": speedTest,    // prepare name server
+		"version":   printVersion, // prints version
 	}
 )
 
@@ -380,6 +383,12 @@ func pingLocal() {
 		for r := range resp {
 			icmp.CIDRRespPrint(r)
 		}
+	}
+}
+
+func speedTest() {
+	if err := speedtest.Run(); err != nil {
+		println("\n", err.Error())
 	}
 }
 

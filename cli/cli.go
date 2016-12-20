@@ -64,6 +64,7 @@ var (
 		"dump",
 		"disc",
 		"peering",
+		"speedtest",
 		"help",
 		"web",
 		"set",
