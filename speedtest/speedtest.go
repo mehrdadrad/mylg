@@ -62,19 +62,28 @@ type Settings struct {
 
 func Run() error {
 	st := ST{}
+	fmt.Printf("Powered by Ookla — http://www.speedtest.net/terms\n")
+	fmt.Printf("Downloading the speedtest.net configuration")
 	if err := st.getConfig(); err != nil {
 		return err
 	}
+	fmt.Printf(" \u2713\nYour IP: %s, Service Provider: %s\n", st.cfg.Client.IP, st.cfg.Client.ISP)
+	fmt.Printf("Retrieving speedtest.net servers list")
 	if err := st.getServers(); err != nil {
 		return err
 	}
-	server := st.bestServer()
+	fmt.Printf(" \u2713\nSelecting best server based on Geo and Latency")
+	server, latency := st.bestServer()
 	if server.Distance == 0 {
 		return fmt.Errorf("could not find a server")
 	}
-
+	fmt.Printf(" \u2713\nHosted by %s (%s) %.2f ms %.0f miles\n",
+		server.Sponsor,
+		server.Name,
+		latency*1000,
+		server.Distance)
 	down := st.download(server)
-	fmt.Printf("%f\n", down)
+	fmt.Printf("Download: %.2f Mbps\n", down)
 
 	return nil
 }
@@ -150,7 +159,7 @@ func (st *ST) getServers() error {
 	return nil
 }
 
-func (st *ST) bestServer() Server {
+func (st *ST) bestServer() (Server, float64) {
 	var (
 		latency float64
 		sum     float64
@@ -173,9 +182,10 @@ func (st *ST) bestServer() Server {
 		}
 		if sum/2 < latency {
 			server = st.servers[i]
+			latency = sum / 2
 		}
 	}
-	return server
+	return server, latency
 }
 
 func (st *ST) download(server Server) float64 {
@@ -194,6 +204,7 @@ func (st *ST) download(server Server) float64 {
 		}
 	}
 	ts := time.Now()
+	fmt.Printf("Testing download ")
 	for _, url := range urls {
 		wg.Add(1)
 		go func(url string) {
@@ -221,9 +232,11 @@ func (st *ST) download(server Server) float64 {
 				}
 			}
 			totalRcvd += float64(total)
+			fmt.Printf(".")
 		}(url)
 	}
 	wg.Wait()
+	fmt.Printf("\n")
 	return totalRcvd * 8 / time.Since(ts).Seconds() / 1000 / 1000
 }
 
