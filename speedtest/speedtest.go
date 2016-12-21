@@ -84,7 +84,6 @@ func Run() error {
 		server.Distance)
 	down := st.download(server)
 	fmt.Printf("Download: %.2f Mbps\n", down)
-
 	return nil
 }
 
@@ -238,6 +237,43 @@ func (st *ST) download(server Server) float64 {
 	wg.Wait()
 	fmt.Printf("\n")
 	return totalRcvd * 8 / time.Since(ts).Seconds() / 1000 / 1000
+}
+
+func (st *ST) upload(server Server) float64 {
+	var (
+		sizes   []int
+		sizeUpl = []int{32768, 65536, 131072, 262144, 524288, 1048576, 7340032}
+	)
+
+	base := server.URL[:strings.LastIndex(server.URL, "/")]
+	count := st.cfg.Upload.MaxChunkCount * 2 / len(sizeUpl[st.cfg.Upload.Ratio-1:])
+
+	for _, size := range sizeUpl[st.cfg.Upload.Ratio-1:] {
+		for i := 0; i < count; i++ {
+			sizes = append(sizes, size)
+		}
+	}
+	for _, size := range sizes {
+		token := "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+		g := strings.Repeat(token, size/36)
+		_ = g
+		_ = base
+	}
+	return 0.1
+}
+
+func workerUpload(sizeCh chan int, done chan struct{}) {
+LOOP:
+	for {
+		select {
+		case <-sizeCh:
+		case <-done:
+			break LOOP
+		}
+	}
+}
+
+func findExt() {
 }
 
 func distance(cLon, cLat float64, server Server) float64 {
