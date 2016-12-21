@@ -62,10 +62,11 @@ var (
 
 	// register looking glass hosts
 	providers = map[string]Provider{
-		"telia":  new(lg.Telia),  // telia
-		"level3": new(lg.Level3), // level3
-		"cogent": new(lg.Cogent), //cogent
-		"ntt":    new(lg.NTT),    //cogent
+		"telia":  new(lg.Telia),
+		"level3": new(lg.Level3),
+		"cogent": new(lg.Cogent),
+		"ntt":    new(lg.NTT),
+		"kpn":    new(lg.KPN),
 	}
 
 	// map cmd to function
