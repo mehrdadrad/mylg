@@ -115,14 +115,17 @@ func (p *Ping) MRun() chan Response {
 		sigCh       = make(chan os.Signal, 1)
 		_, ipNet, _ = net.ParseCIDR(p.target)
 		ifs, _      = net.Interfaces()
-		netIDs      = map[string]struct{}{}
+		skipIPs     = map[string]struct{}{}
 	)
 
 	for _, i := range ifs {
 		addrs, _ := i.Addrs()
 		for _, addr := range addrs {
-			_, net, _ := net.ParseCIDR(addr.String())
-			netIDs[strings.Split(net.String(), "/")[0]] = struct{}{}
+			IP, net, _ := net.ParseCIDR(addr.String())
+			if IsIPv4(IP) {
+				skipIPs[broadcast(IP, net)] = struct{}{}
+			}
+			skipIPs[strings.Split(net.String(), "/")[0]] = struct{}{}
 		}
 	}
 
@@ -133,8 +136,8 @@ func (p *Ping) MRun() chan Response {
 			defer signal.Stop(sigCh)
 		LOOP:
 			for ip := range walkIPv4(p.target) {
-				// skip local network id
-				if _, ok := netIDs[ip]; ok {
+				// skip local network/broadcast ip addrs
+				if _, ok := skipIPs[ip]; ok {
 					continue
 				}
 				pp := p
@@ -155,6 +158,18 @@ func (p *Ping) MRun() chan Response {
 		close(r)
 	}
 	return r
+}
+
+func broadcast(ipo net.IP, ipnet *net.IPNet) string {
+	ip := ipo.To4()
+	broadcast := make(net.IP, net.IPv4len)
+	copy(broadcast, ip)
+
+	for i, v := range ip {
+		broadcast[i] = v | ^ipnet.Mask[i]
+	}
+
+	return broadcast.String()
 }
 
 // IsIPv4 returns true if ip version is v4
