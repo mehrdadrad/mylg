@@ -241,36 +241,77 @@ func (st *ST) download(server Server) float64 {
 
 func (st *ST) upload(server Server) float64 {
 	var (
-		sizes   []int
-		sizeUpl = []int{32768, 65536, 131072, 262144, 524288, 1048576, 7340032}
+		sizes       []int
+		totalUpload int
+		sizeUpl     = []int{32768, 65536, 131072, 262144, 524288, 1048576, 7340032}
+		count       = st.cfg.Upload.MaxChunkCount * 2 / len(sizeUpl[st.cfg.Upload.Ratio-1:])
+		data        = make(map[int]string, len(sizeUpl))
+		jobCh       = make(chan int, len(sizeUpl)*count)
+		resCh       = make(chan int, len(sizeUpl)*count)
+		done        = make(chan struct{})
+		base        = server.URL[:strings.LastIndex(server.URL, "/")]
 	)
 
-	base := server.URL[:strings.LastIndex(server.URL, "/")]
-	count := st.cfg.Upload.MaxChunkCount * 2 / len(sizeUpl[st.cfg.Upload.Ratio-1:])
-
 	for _, size := range sizeUpl[st.cfg.Upload.Ratio-1:] {
+		token := "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+		data[size] = strings.Repeat(token, size/36)
 		for i := 0; i < count; i++ {
 			sizes = append(sizes, size)
 		}
 	}
-	for _, size := range sizes {
-		token := "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-		g := strings.Repeat(token, size/36)
-		_ = g
-		_ = base
-	}
-	return 0.1
-}
+	for t := 0; t < st.cfg.Upload.MaxChunkCount; t++ {
+		go func() {
+		LOOP:
+			for {
+				size := <-jobCh
+				testLength := int(st.cfg.Upload.TestLength)
+				chunkNums := len(data[size]) / testLength
+				ts := time.Now()
+				c := 0
+				for time.Since(ts).Seconds() < st.cfg.Upload.TestLength {
+					buf := strings.NewReader(data[size][testLength*c : testLength*(c+1)])
+					resp, err := http.Post(base+"/upload.php", "text/plain", buf)
+					if err != nil || resp.StatusCode != 200 {
+						continue
+					}
+					resCh <- testLength
+					chunkNums--
+					if chunkNums > 0 {
+						c++
+					} else {
+						break LOOP
+					}
+					select {
+					case <-done:
+						break LOOP
+					default:
+						continue
+					}
+				}
 
-func workerUpload(sizeCh chan int, done chan struct{}) {
-LOOP:
-	for {
-		select {
-		case <-sizeCh:
-		case <-done:
-			break LOOP
-		}
+			}
+		}()
 	}
+
+	for _, size := range sizes {
+		jobCh <- size
+	}
+
+	go func() {
+		for {
+			chunk, ok := <-resCh
+			if !ok {
+				break
+			}
+			totalUpload += chunk
+		}
+	}()
+
+	<-time.After(time.Duration(st.cfg.Upload.TestLength) * time.Second)
+	close(done)
+	close(resCh)
+
+	return float64(totalUpload) * 8 / st.cfg.Upload.TestLength / 1000 / 1000
 }
 
 func findExt() {
