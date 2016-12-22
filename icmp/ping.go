@@ -111,10 +111,21 @@ func (p *Ping) Run() chan Response {
 
 func (p *Ping) MRun() chan Response {
 	var (
-		r     = make(chan Response, 1000)
-		sigCh = make(chan os.Signal, 1)
+		r           = make(chan Response, 1000)
+		sigCh       = make(chan os.Signal, 1)
+		_, ipNet, _ = net.ParseCIDR(p.target)
+		ifs, _      = net.Interfaces()
+		netIDs      = map[string]struct{}{}
 	)
-	_, ipNet, _ := net.ParseCIDR(p.target)
+
+	for _, i := range ifs {
+		addrs, _ := i.Addrs()
+		for _, addr := range addrs {
+			_, net, _ := net.ParseCIDR(addr.String())
+			netIDs[strings.Split(net.String(), "/")[0]] = struct{}{}
+		}
+	}
+
 	if len(ipNet.IP) == 4 {
 		go func() {
 			// capture interrupt w/ s channel
@@ -122,6 +133,10 @@ func (p *Ping) MRun() chan Response {
 			defer signal.Stop(sigCh)
 		LOOP:
 			for ip := range walkIPv4(p.target) {
+				// skip local network id
+				if _, ok := netIDs[ip]; ok {
+					continue
+				}
 				pp := p
 				pp.isV4Avail = true
 				pp.addr = &net.IPAddr{IP: net.ParseIP(ip)}
