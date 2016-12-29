@@ -77,13 +77,15 @@ func Run() error {
 	if server.Distance == 0 {
 		return fmt.Errorf("could not find a server")
 	}
-	fmt.Printf(" \u2713\nHosted by %s (%s) %.2f ms %.0f miles\n",
+	fmt.Printf(" \u2713\nHosted by %s (%s) %.2f ms, %.0f miles\n",
 		server.Sponsor,
 		server.Name,
 		latency*1000,
 		server.Distance)
 	down := st.download(server)
-	fmt.Printf("Download: %.2f Mbps\n", down)
+	fmt.Printf("Download: %s\n", down)
+	up := st.upload(server)
+	fmt.Printf("Upload: %s\n", up)
 	return nil
 }
 
@@ -187,7 +189,7 @@ func (st *ST) bestServer() (Server, float64) {
 	return server, latency
 }
 
-func (st *ST) download(server Server) float64 {
+func (st *ST) download(server Server) string {
 	var (
 		wg        sync.WaitGroup
 		urls      []string
@@ -236,16 +238,15 @@ func (st *ST) download(server Server) float64 {
 	}
 	wg.Wait()
 	fmt.Printf("\n")
-	return totalRcvd * 8 / time.Since(ts).Seconds() / 1000 / 1000
+	return fmtUnit(totalRcvd / time.Since(ts).Seconds())
 }
 
-func (st *ST) upload(server Server) float64 {
+func (st *ST) upload(server Server) string {
 	var (
 		sizes       []int
 		totalUpload int
 		sizeUpl     = []int{32768, 65536, 131072, 262144, 524288, 1048576, 7340032}
 		count       = st.cfg.Upload.MaxChunkCount * 2 / len(sizeUpl[st.cfg.Upload.Ratio-1:])
-		data        = make(map[int]string, len(sizeUpl))
 		jobCh       = make(chan int, len(sizeUpl)*count)
 		resCh       = make(chan int, len(sizeUpl)*count)
 		done        = make(chan struct{})
@@ -253,27 +254,50 @@ func (st *ST) upload(server Server) float64 {
 	)
 
 	for _, size := range sizeUpl[st.cfg.Upload.Ratio-1:] {
-		token := "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-		data[size] = strings.Repeat(token, size/36)
 		for i := 0; i < count; i++ {
 			sizes = append(sizes, size)
 		}
 	}
+	// TODO: needs optimization
+	fmt.Printf("Testing upload ")
 	for t := 0; t < st.cfg.Upload.MaxChunkCount; t++ {
 		go func() {
-		LOOP:
+			defer func() {
+				recover()
+			}()
+			tr := &http.Transport{
+				DisableKeepAlives:  false,
+				DisableCompression: true,
+			}
+			client := &http.Client{
+				Transport: tr,
+			}
+			req, err := http.NewRequest("POST", base+"/upload.php", nil)
+			if err != nil {
+				return
+			}
+			req.Header.Set("User-Agent", "Mozilla/5.0")
+			testLength := 1024 * 16
+			chunkData := strings.Repeat("0123456789ABCDEFGHIJKLMNOPQRSTUV", testLength/32)
+		DONE:
 			for {
 				size := <-jobCh
-				testLength := int(st.cfg.Upload.TestLength)
-				chunkNums := len(data[size]) / testLength
+				chunkNums := size / testLength
 				ts := time.Now()
 				c := 0
+			LOOP:
 				for time.Since(ts).Seconds() < st.cfg.Upload.TestLength {
-					buf := strings.NewReader(data[size][testLength*c : testLength*(c+1)])
-					resp, err := http.Post(base+"/upload.php", "text/plain", buf)
+					buf := strings.NewReader(chunkData)
+					req.Body = ioutil.NopCloser(buf)
+					resp, err := client.Do(req)
 					if err != nil || resp.StatusCode != 200 {
+						println(err.Error())
 						continue
 					}
+
+					io.Copy(ioutil.Discard, resp.Body)
+					resp.Body.Close()
+
 					resCh <- testLength
 					chunkNums--
 					if chunkNums > 0 {
@@ -283,16 +307,17 @@ func (st *ST) upload(server Server) float64 {
 					}
 					select {
 					case <-done:
-						break LOOP
+						break DONE
 					default:
 						continue
 					}
 				}
-
+				fmt.Printf(".")
 			}
 		}()
 	}
 
+	ts := time.Now()
 	for _, size := range sizes {
 		jobCh <- size
 	}
@@ -311,10 +336,21 @@ func (st *ST) upload(server Server) float64 {
 	close(done)
 	close(resCh)
 
-	return float64(totalUpload) * 8 / st.cfg.Upload.TestLength / 1000 / 1000
+	fmt.Printf("\n")
+	return fmtUnit(float64(totalUpload) / time.Since(ts).Seconds())
 }
 
 func findExt() {
+}
+
+func fmtUnit(n float64) string {
+	n = n * 8
+	if n > 1e9 {
+		return fmt.Sprintf("%.2f Gbps", n/1e9)
+	} else if n > 1e6 {
+		return fmt.Sprintf("%.2f Mbps", n/1e6)
+	}
+	return fmt.Sprintf("%.2f Kbps", n/1e3)
 }
 
 func distance(cLon, cLat float64, server Server) float64 {
