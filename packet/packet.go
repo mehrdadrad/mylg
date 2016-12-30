@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/gopacket"
@@ -49,6 +50,8 @@ type logWriter struct {
 type Options struct {
 	// no color
 	nc bool
+	// no resolve dns
+	n bool
 	// count
 	c int
 	// device list
@@ -63,6 +66,11 @@ type Options struct {
 	s string
 }
 
+type LookUpCache struct {
+	rec map[string]string
+	sync.RWMutex
+}
+
 var (
 	snapLen     int32 = 6 * 1024
 	promiscuous       = false
@@ -71,6 +79,7 @@ var (
 	handle      *pcap.Handle
 	addrs       = make(map[string]struct{}, 20)
 	dev         string
+	luCache     LookUpCache
 
 	options Options
 	filter  string
@@ -90,6 +99,7 @@ func NewPacket(args string) (*Packet, error) {
 
 	options = Options{
 		nc: cli.SetFlag(flag, "nc", false).(bool),
+		n:  cli.SetFlag(flag, "n", false).(bool),
 		c:  cli.SetFlag(flag, "c", 1000000).(int),
 		d:  cli.SetFlag(flag, "d", false).(bool),
 		x:  cli.SetFlag(flag, "x", false).(bool),
@@ -105,6 +115,7 @@ func NewPacket(args string) (*Packet, error) {
 
 	log.SetFlags(0)
 	log.SetOutput(new(logWriter))
+	luCache.rec = make(map[string]string)
 
 	// return first available interface and all ip addresses
 	dev, addrs = lookupDev()
@@ -409,7 +420,52 @@ func czStr(i string, attr ...color.Attribute) string {
 }
 
 func lookup(ip net.IP) []string {
-	host, _ := net.LookupAddr(ip.String())
+	// don't resolve
+	if options.n {
+		return []string{ip.String()}
+	}
+	// dns cache
+	if r, ok := luCache.rec[ip.String()]; ok {
+		return []string{r}
+	}
+
+	var (
+		lu   = make(chan []string, 1)
+		host []string
+	)
+
+	go func() {
+		defer func() {
+			recover()
+		}()
+		host, _ := net.LookupAddr(ip.String())
+		lu <- host
+		luCache.Lock()
+		luCache.rec[ip.String()] = host[0]
+		luCache.Unlock()
+		// clean up cache
+		if len(luCache.rec) > 1e3 {
+			c := 1
+			luCache.Lock()
+			for _, k := range luCache.rec {
+				delete(luCache.rec, k)
+				c++
+				if c > 100 {
+					break
+				}
+			}
+			luCache.Unlock()
+		}
+	}()
+
+	select {
+	case host = <-lu:
+	case <-time.Tick(time.Duration(10) * time.Millisecond):
+		host = []string{ip.String()}
+	}
+
+	close(lu)
+
 	return host
 }
 
@@ -480,6 +536,7 @@ func help() {
           -t             Print without timestamp on each dump line.
           -x             Dump payload in hex format
           -s keyword     Search keyword at payload
+          -n             Don't convert host addresses to names
           -nc            Shows dumps without color
     Example:
           dump tcp and port 443 -c 1000
