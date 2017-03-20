@@ -354,6 +354,9 @@ func fetchNSHosts() []Host {
 	scanner := bufio.NewScanner(resp.Body)
 	for scanner.Scan() {
 		csv := strings.Split(scanner.Text(), ",")
+		if len(csv) < 4 {
+			continue
+		}
 		if csv[3] != "\"\"" {
 			if name, ok := data.Country[csv[2]]; ok && counter[csv[2]] < 5 {
 				name = strings.ToLower(name)
