@@ -500,7 +500,7 @@ func show() {
 
 // setLG set lg prompt and completer
 func setLG() {
-	cPName = "telia"
+	cPName = "level3"
 	c.UpdateCompleter("connect", pNames)
 	c.SetPrompt("lg/" + cPName + "/" + providers[cPName].GetDefaultNode())
 	go func() {
